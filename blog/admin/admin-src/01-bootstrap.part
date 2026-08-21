@@ -1,6 +1,6 @@
 (function () {
   const repo = {
-    owner: "flschr",
+    owner: "example",
     name: "mysite.example",
     // `branch` is the working branch the admin reads & writes (cross-device
     // draft store); `publishBranch` is what Cloudflare builds & serves.
