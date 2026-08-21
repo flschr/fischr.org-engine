@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const siteRoot = path.resolve(process.cwd(), "_site");
-const siteUrl = "https://example.com";
+const siteUrl = "https://mysite.example";
 
 if (!fs.existsSync(siteRoot)) {
   console.error("Missing _site. Run npm run build first.");

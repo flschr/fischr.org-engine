@@ -7,7 +7,7 @@ test.before(async () => {
 });
 
 function request(body, headers = {}) {
-  return new Request("https://example.com/api/admin/alt-text", {
+  return new Request("https://mysite.example/api/admin/alt-text", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body
@@ -47,7 +47,7 @@ test("alt-text endpoint validates sources and returns cleaned OpenAI output", as
 
   let upstreamRequest;
   const response = await endpoint.handleAltTextRequest(
-    context(JSON.stringify({ image: "https://example.com/assets/image.webp" }), { OPENAI_API_KEY: "secret" }),
+    context(JSON.stringify({ image: "https://mysite.example/assets/image.webp" }), { OPENAI_API_KEY: "secret" }),
     {
       ...authenticated,
       fetch: async (_url, options) => {
@@ -64,7 +64,7 @@ test("alt-text endpoint validates sources and returns cleaned OpenAI output", as
 
 test("alt-text endpoint aborts an OpenAI request that takes too long", async () => {
   const response = await endpoint.handleAltTextRequest(
-    context(JSON.stringify({ image: "https://example.com/assets/image.webp" }), { OPENAI_API_KEY: "secret" }),
+    context(JSON.stringify({ image: "https://mysite.example/assets/image.webp" }), { OPENAI_API_KEY: "secret" }),
     {
       ...authenticated,
       upstreamTimeoutMs: 5,

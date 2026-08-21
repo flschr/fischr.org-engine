@@ -304,15 +304,15 @@ test("builds review structured data from explicit schema and title rating", () =
       itemName: "Still: A Michael J. Fox Movie"
     },
     "Still: A Michael J. Fox Movie (5/5)",
-    "https://example.com/still-a-michael-j-fox-movie/",
-    "https://example.com/assets/images/still.webp",
+    "https://mysite.example/still-a-michael-j-fox-movie/",
+    "https://mysite.example/assets/images/still.webp",
     "Ein warmherziges Portraet.",
     "2025-11-02T23:00:00.000Z",
     "2025-11-02T23:00:00.000Z",
     "de",
     {
       name: "Example Author",
-      url: "https://example.com/about/"
+      url: "https://mysite.example/about/"
     }
   );
 
@@ -338,14 +338,14 @@ test("adds book author to review structured data", () => {
       bestRating: 5
     },
     "Die Strasse (4/5)",
-    "https://example.com/die-strasse/",
-    "https://example.com/assets/images/die-strasse.webp",
+    "https://mysite.example/die-strasse/",
+    "https://mysite.example/assets/images/die-strasse.webp",
     "Eine Buchkritik.",
     "2025-09-12T22:00:00.000Z",
     "2025-09-12T22:00:00.000Z",
     "de",
     "Example Author",
-    "https://example.com/about/"
+    "https://mysite.example/about/"
   );
 
   assert.equal(actual.itemReviewed["@type"], "Book");
@@ -366,14 +366,14 @@ test("builds recipe structured data from recipe article sections", () => {
       "<ol><li>Spaghetti al dente kochen.</li><li>Alles cremig vermengen.</li></ol>"
     ].join(""),
     "Spaghetti Carbonara",
-    "https://example.com/spaghetti-carbonara/",
-    "https://example.com/assets/images/carbonara.webp",
+    "https://mysite.example/spaghetti-carbonara/",
+    "https://mysite.example/assets/images/carbonara.webp",
     "Ein cremiges Pastarezept.",
     "2025-05-31T22:00:00.000Z",
     "2025-05-31T22:00:00.000Z",
     "de",
     "Example Author",
-    "https://example.com/about/"
+    "https://mysite.example/about/"
   );
 
   assert.equal(actual["@type"], "Recipe");
@@ -396,8 +396,8 @@ test("skips recipe structured data without ingredients and instructions", () => 
     { type: "recipe" },
     "<p>Spontan zusammengeworfen und lecker.</p>",
     "Überraschend lecker",
-    "https://example.com/uberraschend-lecker/",
-    "https://example.com/assets/images/uberraschend.webp"
+    "https://mysite.example/uberraschend-lecker/",
+    "https://mysite.example/assets/images/uberraschend.webp"
   );
 
   assert.equal(actual, null);

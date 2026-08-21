@@ -41,7 +41,7 @@ function loadConfig() {
 
 function listPublishedPosts(options = {}) {
   const config = loadConfig();
-  const siteUrl = options.siteUrl || config.siteUrl || "https://example.com";
+  const siteUrl = options.siteUrl || config.siteUrl || "https://mysite.example";
   const startAfter = options.startAfter || config.startAfter || "";
   const maxAgeDays = Number(options.maxAgeDays ?? config.maxAgeDays ?? 14);
   const now = options.now || new Date();
@@ -122,7 +122,7 @@ function parsePost(file, siteUrl) {
   };
 }
 
-const livenessUserAgent = "example.com liveness check";
+const livenessUserAgent = "mysite.example liveness check";
 
 // Is `url` already served on the live site (2xx)? Syndication runs on their own
 // crons and gate only on the post date, so a future-dated post can come due a
@@ -452,7 +452,7 @@ function extractMarkdownImages(content) {
 function normalizeImagePath(value) {
   const image = String(value || "").trim();
   if (!image) return "";
-  if (image.startsWith("https://example.com/")) return new URL(image).pathname;
+  if (image.startsWith("https://mysite.example/")) return new URL(image).pathname;
   return image;
 }
 

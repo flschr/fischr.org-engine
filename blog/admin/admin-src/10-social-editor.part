@@ -64,7 +64,7 @@
 
   function socialFillTemplate(template, content) {
     const slug = els.slugInput.value || slugify(els.titleInput.value || "");
-    const url = `${(state.socialConfig?.siteUrl || "https://example.com").replace(/\/$/, "")}/${slug}/`;
+    const url = `${(state.socialConfig?.siteUrl || "https://mysite.example").replace(/\/$/, "")}/${slug}/`;
     return String(template || "")
       .replaceAll("{title}", els.titleInput.value || "")
       .replaceAll("{link}", url)

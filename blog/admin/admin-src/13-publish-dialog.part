@@ -121,7 +121,7 @@
     const custom = els.socialTextInput.value.trim();
     if (rule && wantsLink && !/\{link\}/.test(custom)) {
       const slug = els.slugInput.value || slugify(els.titleInput.value || "");
-      const url = `${(state.socialConfig?.siteUrl || "https://example.com").replace(/\/$/, "")}/${slug}/`;
+      const url = `${(state.socialConfig?.siteUrl || "https://mysite.example").replace(/\/$/, "")}/${slug}/`;
       els.socialLinkHint.hidden = false;
       els.socialLinkHint.textContent = url;
     } else {

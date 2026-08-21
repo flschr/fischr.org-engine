@@ -5,11 +5,11 @@
   "author": {
     "name": "Example Author",
     "email": "",
-    "url": "https://example.com/",
+    "url": "https://mysite.example/",
     "image": "/assets/images/og-default.webp",
     "sameAs": []
   },
-  "url": "https://example.com",
+  "url": "https://mysite.example",
   "language": "en",
   "locale": "en_US",
   "themeColor": "#fffff8",

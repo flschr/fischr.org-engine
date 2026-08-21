@@ -40,7 +40,7 @@ async function main() {
 
   const state = readJson(stateFile, {});
   const posts = listPublishedPosts(config);
-  const siteUrl = config.siteUrl || "https://example.com";
+  const siteUrl = config.siteUrl || "https://mysite.example";
   const maxPosts = positiveInteger(
     process.env.WEBMENTION_MAX_POSTS_PER_RUN ?? webmentions.maxPostsPerRun,
     5,

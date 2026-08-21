@@ -134,7 +134,7 @@ export function isAllowedImage(value = "") {
   if (/^data:image\/(?:avif|gif|jpeg|png|webp);base64,/i.test(value)) return true;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && ["raw.githubusercontent.com", "example.com"].includes(url.hostname);
+    return url.protocol === "https:" && ["raw.githubusercontent.com", "mysite.example"].includes(url.hostname);
   } catch {
     return false;
   }

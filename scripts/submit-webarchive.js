@@ -99,7 +99,7 @@ async function submitOnce(url) {
   const response = await fetchWithTimeout(fetch, `https://web.archive.org/save/${url}`, {
     method: "GET",
     headers: {
-      "User-Agent": "example.com static blog archive submitter"
+      "User-Agent": "mysite.example static blog archive submitter"
     },
     timeoutMs: REQUEST_TIMEOUT_MS
   });

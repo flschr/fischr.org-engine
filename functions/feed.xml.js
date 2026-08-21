@@ -1,4 +1,4 @@
-const GOATCOUNTER_COUNT_API_URL = "https://stats.example.com/api/v0/count";
+const GOATCOUNTER_COUNT_API_URL = "https://stats.mysite.example/api/v0/count";
 const FEED_FETCH_EVENT_PATH = "feed-fetch";
 
 export async function onRequest(context) {

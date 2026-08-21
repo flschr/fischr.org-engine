@@ -12,7 +12,7 @@ const contentRoots = [
   path.join(root, "blog/posts"),
   path.join(root, "blog/pages")
 ];
-const siteUrl = "https://example.com";
+const siteUrl = "https://mysite.example";
 
 const maxWidth = parseInteger(process.env.IMAGE_MAX_WIDTH, 1600);
 const maxHeight = parseInteger(process.env.IMAGE_MAX_HEIGHT, 1600);

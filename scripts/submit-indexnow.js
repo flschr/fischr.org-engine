@@ -52,7 +52,7 @@ async function main() {
     return;
   }
 
-  const siteUrl = config.siteUrl || "https://example.com";
+  const siteUrl = config.siteUrl || "https://mysite.example";
   const body = {
     host: new URL(siteUrl).host,
     key,

@@ -1,4 +1,4 @@
-// example.com admin markdown editor (CodeMirror 6).
+// mysite.example admin markdown editor (CodeMirror 6).
 // Builds a global `window.RWEditor` factory. Markdown stays the source of
 // truth: inline formatting (bold, italic, headings, code, quotes, highlights) is styled
 // live while you type, the syntax markers fade out when the caret leaves them,

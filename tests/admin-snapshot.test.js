@@ -8,7 +8,7 @@ test.before(async () => {
 
 test("admin snapshot requires a session", async () => {
   const response = await snapshot.handleSnapshotRequest(
-    { request: new Request("https://example.com/api/admin/snapshot"), env: {} },
+    { request: new Request("https://mysite.example/api/admin/snapshot"), env: {} },
     { readSession: async () => null }
   );
   assert.equal(response.status, 401);
@@ -27,7 +27,7 @@ test("admin snapshot returns filtered main and drafts trees", async () => {
     throw new Error(`Unexpected ${url}`);
   };
   const response = await snapshot.handleSnapshotRequest(
-    { request: new Request("https://example.com/api/admin/snapshot"), env: {} },
+    { request: new Request("https://mysite.example/api/admin/snapshot"), env: {} },
     { readSession: async () => ({ token: "secret" }), fetch }
   );
   assert.equal(response.status, 200);
@@ -62,7 +62,7 @@ test("admin snapshot keeps working when one changed blob cannot be loaded", asyn
     throw new Error(`Unexpected ${url}`);
   };
   const response = await snapshot.handleSnapshotRequest(
-    { request: new Request("https://example.com/api/admin/snapshot"), env: {} },
+    { request: new Request("https://mysite.example/api/admin/snapshot"), env: {} },
     { readSession: async () => ({ token: "secret" }), fetch, console: { warn() {}, error() {} } }
   );
   const body = await response.json();
@@ -86,7 +86,7 @@ test("admin snapshot rejects a truncated branch tree", async () => {
     throw new Error(`Unexpected ${url}`);
   };
   const response = await snapshot.handleSnapshotRequest(
-    { request: new Request("https://example.com/api/admin/snapshot"), env: {} },
+    { request: new Request("https://mysite.example/api/admin/snapshot"), env: {} },
     { readSession: async () => ({ token: "secret" }), fetch, console: { warn() {}, error() {} } }
   );
   assert.equal(response.status, 502);

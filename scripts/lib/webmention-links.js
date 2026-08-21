@@ -1,7 +1,7 @@
 const { decodeHtmlAttribute, getHtmlAttribute } = require("../../lib/eleventy/html");
 
 function extractTargetUrls(markdown = "", options = {}) {
-  const siteUrl = options.siteUrl || "https://example.com";
+  const siteUrl = options.siteUrl || "https://mysite.example";
   const excludeHosts = new Set([getComparableHost(siteUrl), ...normalizeHosts(options.excludeHosts || [])]);
   const content = stripIgnoredMarkdown(markdown);
   const targets = new Set();

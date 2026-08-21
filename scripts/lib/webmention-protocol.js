@@ -12,7 +12,7 @@ const {
   stripUrlHash
 } = require("./webmention-links");
 
-const defaultUserAgent = "example.com static blog webmention submitter";
+const defaultUserAgent = "mysite.example static blog webmention submitter";
 
 async function getPublishedMf2Targets(sourceUrl, options = {}) {
   const fetchImpl = options.fetch || fetch;

@@ -15,7 +15,7 @@ for (const file of walkHtml(siteRoot)) {
 
   articleCount += 1;
   const relative = path.relative(siteRoot, file);
-  const baseUrl = new URL(relative.replace(/index\.html$/, ""), "https://example.com/").toString();
+  const baseUrl = new URL(relative.replace(/index\.html$/, ""), "https://mysite.example/").toString();
   const parsed = mf2(html, { baseUrl });
   const entry = parsed.items.find((item) => item.type?.includes("h-entry"));
 

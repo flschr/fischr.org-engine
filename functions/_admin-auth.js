@@ -242,7 +242,7 @@ export function unauthorized() {
   return new Response("Authentication required", {
     status: 401,
     headers: {
-      "WWW-Authenticate": 'Basic realm="example.com admin", charset="UTF-8"',
+      "WWW-Authenticate": 'Basic realm="mysite.example admin", charset="UTF-8"',
       "Cache-Control": "no-store",
       "Content-Type": "text/plain; charset=utf-8"
     }

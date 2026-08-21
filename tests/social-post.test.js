@@ -26,7 +26,7 @@ const rule = social.rules[0];
 function post(overrides = {}) {
   return {
     title: "Gipfeltour",
-    url: "https://example.com/gipfeltour/",
+    url: "https://mysite.example/gipfeltour/",
     content: "Ein langer Bodytext zur Tour. ".repeat(40),
     socialTemplate: "",
     socialText: "",
@@ -37,7 +37,7 @@ function post(overrides = {}) {
 test("renderPostText falls back to the category template without custom text", () => {
   assert.equal(
     renderPostText(post(), rule, 300),
-    "Ich war mal wieder wandern! https://example.com/gipfeltour/"
+    "Ich war mal wieder wandern! https://mysite.example/gipfeltour/"
   );
 });
 
@@ -53,7 +53,7 @@ test("a pending post that is not live makes the workflow retry", () => {
 test("plain custom text overrides the template and appends the link inline", () => {
   assert.equal(
     renderPostText(post({ socialText: "Lohnt der Aufstieg? Mein Bericht:" }), rule, 300),
-    "Lohnt der Aufstieg? Mein Bericht: https://example.com/gipfeltour/"
+    "Lohnt der Aufstieg? Mein Bericht: https://mysite.example/gipfeltour/"
   );
 });
 
@@ -64,7 +64,7 @@ test("custom social text loses Markdown but keeps link destinations", () => {
       rule,
       300
     ),
-    "Neu: Zum Archiv (https://example.com/archive) und https://example.net/direkt https://example.com/gipfeltour/"
+    "Neu: Zum Archiv (https://example.com/archive) und https://example.net/direkt https://mysite.example/gipfeltour/"
   );
 });
 
@@ -80,33 +80,33 @@ test("GoToSocial preserves Markdown inline links for server-side rendering", () 
     renderPostText(
       post({
         contentMarkdown:
-          "Zum #Fotovorschlag ein Bild aus unserem [Azoren-Urlaub 2022](https://example.com/azorenhoch/)."
+          "Zum #Fotovorschlag ein Bild aus unserem [Azoren-Urlaub 2022](https://mysite.example/azorenhoch/)."
       }),
       nativeRule,
       500,
       { preserveMarkdownLinks: true }
     ),
-    "Zum #Fotovorschlag ein Bild aus unserem [Azoren-Urlaub 2022](https://example.com/azorenhoch/).\n\n#foto"
+    "Zum #Fotovorschlag ein Bild aus unserem [Azoren-Urlaub 2022](https://mysite.example/azorenhoch/).\n\n#foto"
   );
 });
 
 test("overlong custom text is truncated but the link always survives", () => {
   const text = renderPostText(post({ socialText: "x".repeat(600) }), rule, 300);
   assert.ok(text.length <= 300, `expected <= 300, got ${text.length}`);
-  assert.ok(text.includes("https://example.com/gipfeltour/"), "link must survive truncation");
+  assert.ok(text.includes("https://mysite.example/gipfeltour/"), "link must survive truncation");
 });
 
 test("custom text is a full template only when it places {link} itself", () => {
   assert.equal(
     renderPostText(post({ socialText: "Frage? {link} #wandern" }), rule, 300),
-    "Frage? https://example.com/gipfeltour/ #wandern"
+    "Frage? https://mysite.example/gipfeltour/ #wandern"
   );
 });
 
 test("prose containing {content}/{title} but no {link} still gets the link appended", () => {
   assert.equal(
     renderPostText(post({ socialText: "Mehr zum {content}-Thema:" }), rule, 300),
-    "Mehr zum {content}-Thema: https://example.com/gipfeltour/"
+    "Mehr zum {content}-Thema: https://mysite.example/gipfeltour/"
   );
 });
 
@@ -123,12 +123,12 @@ test("ruleWantsLink defaults on and respects link:false", () => {
 test("a linkless template posts no link (native photo post)", () => {
   const text = renderPostText(post({ content: "Sonnenuntergang über dem See." }), nativeRule, 300);
   assert.equal(text, "Sonnenuntergang über dem See.\n\n#foto");
-  assert.ok(!text.includes("example.com"), "native post must not carry a link");
+  assert.ok(!text.includes("mysite.example"), "native post must not carry a link");
 });
 
 test("a linkless template strips a stray {link} from the template too", () => {
   const text = renderPostText(post({ content: "Foto." }), { ...nativeRule, template: "{content} {link}" }, 300);
-  assert.ok(!text.includes("example.com"), "toggle wins over a leftover {link}");
+  assert.ok(!text.includes("mysite.example"), "toggle wins over a leftover {link}");
 });
 
 test("plain custom text on a linkless template stays linkless", () => {
@@ -141,7 +141,7 @@ test("plain custom text on a linkless template stays linkless", () => {
 test("a link-on template without {link} gets the link appended inline", () => {
   assert.equal(
     renderPostText(post(), { id: "x", name: "X", template: "Schau dir das an:" }, 300),
-    "Schau dir das an: https://example.com/gipfeltour/"
+    "Schau dir das an: https://mysite.example/gipfeltour/"
   );
 });
 
@@ -180,9 +180,9 @@ test("extractMarkdownImages returns every embedded image in order", () => {
 });
 
 test("GoToSocial idempotency keys are stable per canonical post URL", () => {
-  const first = createIdempotencyKey("https://example.com/gipfeltour/");
-  assert.equal(first, createIdempotencyKey("https://example.com/gipfeltour/"));
-  assert.notEqual(first, createIdempotencyKey("https://example.com/andere-tour/"));
+  const first = createIdempotencyKey("https://mysite.example/gipfeltour/");
+  assert.equal(first, createIdempotencyKey("https://mysite.example/gipfeltour/"));
+  assert.notEqual(first, createIdempotencyKey("https://mysite.example/andere-tour/"));
   assert.match(first, /^example-blog:[a-f0-9]{64}$/);
 });
 
@@ -194,7 +194,7 @@ test("GoToSocial posting sends public Markdown with a stable idempotency key", a
   let request;
   global.fetch = async (url, init) => {
     request = { url, init };
-    return new Response(JSON.stringify({ url: "https://social.example.com/@example/statuses/01TEST" }), {
+    return new Response(JSON.stringify({ url: "https://social.mysite.example/@example/statuses/01TEST" }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
@@ -208,22 +208,22 @@ test("GoToSocial posting sends public Markdown with a stable idempotency key", a
 
   const candidate = post();
   const result = await postToGoToSocial(
-    { social: { gotosocialInstance: "https://social.example.com/" } },
+    { social: { gotosocialInstance: "https://social.mysite.example/" } },
     candidate,
     rule,
     []
   );
 
-  assert.equal(request.url, "https://social.example.com/api/v1/statuses");
+  assert.equal(request.url, "https://social.mysite.example/api/v1/statuses");
   assert.equal(request.init.headers.Authorization, "Bearer test-token");
   assert.equal(request.init.headers["Idempotency-Key"], createIdempotencyKey(candidate.url));
   assert.deepEqual(JSON.parse(request.init.body), {
-    status: "Ich war mal wieder wandern! https://example.com/gipfeltour/",
+    status: "Ich war mal wieder wandern! https://mysite.example/gipfeltour/",
     content_type: "text/markdown",
     media_ids: [],
     visibility: "public"
   });
-  assert.equal(result.url, "https://social.example.com/@example/statuses/01TEST");
+  assert.equal(result.url, "https://social.mysite.example/@example/statuses/01TEST");
 });
 
 test("GoToSocial posting exposes HTTP failures and does not return delivery state", async (t) => {
@@ -239,7 +239,7 @@ test("GoToSocial posting exposes HTTP failures and does not return delivery stat
   });
 
   await assert.rejects(
-    postToGoToSocial({ social: { gotosocialInstance: "https://social.example.com" } }, post(), rule, []),
+    postToGoToSocial({ social: { gotosocialInstance: "https://social.mysite.example" } }, post(), rule, []),
     /GoToSocial status API returned 503: temporary failure/
   );
 });
@@ -250,11 +250,11 @@ test("GoToSocial reuses media uploaded by an earlier failed attempt", async (t) 
   process.env.MASTODON_ACCESS_TOKEN = "test-token";
   let requestBody;
   global.fetch = async (url, options) => {
-    assert.equal(url, "https://social.example.com/api/v1/statuses");
+    assert.equal(url, "https://social.mysite.example/api/v1/statuses");
     requestBody = JSON.parse(options.body);
     return {
       ok: true,
-      json: async () => ({ url: "https://social.example.com/@example/statuses/01RETRY" })
+      json: async () => ({ url: "https://social.mysite.example/@example/statuses/01RETRY" })
     };
   };
 
@@ -266,7 +266,7 @@ test("GoToSocial reuses media uploaded by an earlier failed attempt", async (t) 
 
   const image = { path: "/unused/image.webp", size: 1, mimeType: "image/webp", name: "image.webp" };
   await postToGoToSocial(
-    { social: { gotosocialInstance: "https://social.example.com" } },
+    { social: { gotosocialInstance: "https://social.mysite.example" } },
     post(),
     rule,
     [image],
@@ -282,11 +282,11 @@ test("GoToSocial matches reusable media by fingerprint after skipped images", as
   process.env.MASTODON_ACCESS_TOKEN = "test-token";
   let requestBody;
   global.fetch = async (url, options) => {
-    assert.equal(url, "https://social.example.com/api/v1/statuses");
+    assert.equal(url, "https://social.mysite.example/api/v1/statuses");
     requestBody = JSON.parse(options.body);
     return {
       ok: true,
-      json: async () => ({ url: "https://social.example.com/@example/statuses/01MATCHED" })
+      json: async () => ({ url: "https://social.mysite.example/@example/statuses/01MATCHED" })
     };
   };
 
@@ -299,7 +299,7 @@ test("GoToSocial matches reusable media by fingerprint after skipped images", as
   const oversized = { path: "/unused/large.webp", size: 9 * 1024 * 1024, mimeType: "image/webp", name: "large.webp" };
   const reusable = { path: "/unused/reusable.webp", size: 10, mimeType: "image/webp", name: "reusable.webp" };
   await postToGoToSocial(
-    { social: { gotosocialInstance: "https://social.example.com" } },
+    { social: { gotosocialInstance: "https://social.mysite.example" } },
     post(),
     rule,
     [oversized, reusable],

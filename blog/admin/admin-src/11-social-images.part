@@ -5,7 +5,7 @@
   function socialNormalizePath(value) {
     const v = String(value || "").trim();
     if (!v) return "";
-    if (v.startsWith("https://example.com/")) return new URL(v).pathname;
+    if (v.startsWith("https://mysite.example/")) return new URL(v).pathname;
     return v;
   }
 

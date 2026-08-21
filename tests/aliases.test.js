@@ -10,17 +10,17 @@ const {
 } = require("../lib/eleventy/aliases");
 
 test("normalizes internal alias paths", () => {
-  assert.equal(normalizePath("https://example.com/bodenschneid-1669m/"), "/bodenschneid-1669m/");
+  assert.equal(normalizePath("https://mysite.example/bodenschneid-1669m/"), "/bodenschneid-1669m/");
   assert.equal(normalizePath("bodenschneid-1669m"), "/bodenschneid-1669m/");
 });
 
 test("builds aliases from legacy aliases and site original urls", () => {
   const sources = getAliasSources({
     old_alias: ["2026/05/27/bodenschneid-1669m"],
-    original_url: "https://example.com/bodenschneid-1669m/"
+    original_url: "https://mysite.example/bodenschneid-1669m/"
   });
 
-  assert.deepEqual(sources, ["2026/05/27/bodenschneid-1669m", "https://example.com/bodenschneid-1669m/"]);
+  assert.deepEqual(sources, ["2026/05/27/bodenschneid-1669m", "https://mysite.example/bodenschneid-1669m/"]);
   assert.deepEqual(buildAlias(sources[1], "/posts/2026-05-27-bodenschneid-1669m/", "Bodenschneid"), {
     from: "/bodenschneid-1669m/",
     to: "/posts/2026-05-27-bodenschneid-1669m/",

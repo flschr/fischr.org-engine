@@ -13,7 +13,7 @@ import { adminRepository, githubHeaders, jsonResponse, readSession } from "../..
 // token is a Cloudflare secret. The URL is read here from that committed config
 // (the server-side source of truth), never trusted from the client, so the
 // admin token is only ever sent to the host the owner configured.
-const DEFAULT_BASE = "https://stats.example.com";
+const DEFAULT_BASE = "https://stats.mysite.example";
 const CONFIG_PATH = "automation/social-config.json";
 
 // The breakdown panels share the generic /stats/{page} shape.

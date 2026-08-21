@@ -9,5 +9,5 @@ The repository is generated automatically. Changes should be made in the private
 
 ```sh
 npm ci
-npm run validate:site
+npm run validate:public
 ```

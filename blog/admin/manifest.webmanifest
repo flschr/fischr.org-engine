@@ -1,7 +1,7 @@
 {
   "name": "fischr Admin",
   "short_name": "Admin",
-  "description": "Mobile writing and publishing for example.com.",
+  "description": "Mobile writing and publishing for mysite.example.",
   "start_url": "/admin/",
   "scope": "/admin/",
   "display": "standalone",
