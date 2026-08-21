@@ -150,6 +150,17 @@
     return isVideoPath(path) ? publicVideoPath(path) : publicImagePath(path);
   }
 
+  // Predicts the R2 delivery URL a brand-new image upload will resolve to once GitHub-side
+  // normalization uploads it (normalizeUploadedImage / scripts/admin-normalize-image.js) —
+  // images go straight to R2 rather than a `drafts` git blob. Mirrors the images-only mapping
+  // in lib/eleventy/media-assets.js's toDeliveryUrl. Videos are unaffected: they still commit
+  // to Git as before (their poster/dimensions still need a local file to derive from).
+  function publicImageDeliveryPath(path) {
+    const localPath = publicImagePath(path);
+    if (!localPath.startsWith("/assets/images/")) return localPath;
+    return `https://media.mysite.example/images/${localPath.slice("/assets/images/".length)}`;
+  }
+
   function videoPosterPath(path) {
     return `/assets/images/video-posters/${baseName(path)}.webp`;
   }

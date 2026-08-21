@@ -290,11 +290,25 @@ function ruleImageCount(rule = {}) {
   return rule.includeImage ? 1 : 0;
 }
 
-// Build a local image object for a public `/assets/...` path, or null if it
-// isn't a usable local raster image.
+// Media now delivers from its own subdomain (see lib/eleventy/media-assets.js), but the
+// underlying bytes are still committed under blog/assets/{images,videos}/ — map the delivery
+// URL back to that repo-relative path so social attachments can still read the file locally.
+const mediaDeliveryOrigin = "https://media.mysite.example";
+
+function fromMediaDeliveryPath(pathValue) {
+  if (!pathValue.startsWith(mediaDeliveryOrigin)) return pathValue;
+  const pathname = pathValue.slice(mediaDeliveryOrigin.length);
+  if (pathname.startsWith("/images/") || pathname.startsWith("/videos/")) return `/assets${pathname}`;
+  return pathname;
+}
+
+// Build a local image object for a public `/assets/...` path (or the equivalent
+// media-domain URL), or null if it isn't a usable local raster image.
 function localImageFromPath(pathValue, alt, fallbackAlt) {
-  if (!pathValue || !pathValue.startsWith("/")) return null;
-  const absolutePath = path.join(root, "blog", pathValue.replace(/^\//, ""));
+  if (!pathValue) return null;
+  const normalizedPath = fromMediaDeliveryPath(pathValue);
+  if (!normalizedPath.startsWith("/")) return null;
+  const absolutePath = path.join(root, "blog", normalizedPath.replace(/^\//, ""));
   if (!fs.existsSync(absolutePath)) return null;
   const mimeType = imageMimeType(absolutePath);
   if (!mimeType || mimeType === "image/svg+xml" || mimeType === "image/gif") return null;

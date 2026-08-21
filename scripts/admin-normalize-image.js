@@ -7,7 +7,10 @@ const { execFileSync } = require("child_process");
 const heicConvert = require("heic-convert");
 const sharp = require("sharp");
 
+const { loadManifest, objectKeyForPublicPath, publishMediaFile, saveManifest } = require("./lib/r2-media");
+
 const root = process.cwd();
+const manifestRelativePath = "automation/media-manifest.json";
 const sourcePath = normalize(process.env.SOURCE_PATH || "");
 const targetPath = normalize(process.env.TARGET_PATH || "");
 const expectedDraftSha = process.env.DRAFT_SHA || "";
@@ -37,26 +40,34 @@ async function main() {
       .webp({ quality: 76 })
       .toFile(normalizedFile);
 
+    const publicPath = toPublicPath(targetPath);
+
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       git(["fetch", "--quiet", "origin", draftsBranch]);
       const currentDraftSha = git(["rev-parse", `origin/${draftsBranch}`]);
       const currentSourceBlob = gitOptional(["rev-parse", `${currentDraftSha}:${sourcePath}`]);
-      const currentTargetBlob = gitOptional(["rev-parse", `${currentDraftSha}:${targetPath}`]);
 
-      if (!currentSourceBlob && currentTargetBlob) {
-        console.log(`${targetPath} is already normalized.`);
+      git(["checkout", "-B", `admin-image-${process.pid}`, currentDraftSha]);
+      const manifest = loadManifest();
+
+      if (!currentSourceBlob) {
+        console.log(manifest[objectKeyForPublicPath(publicPath)]
+          ? `${targetPath} is already normalized and in R2.`
+          : `${sourcePath} is already gone but never reached R2; leaving as-is.`);
         return;
       }
       if (currentSourceBlob !== expectedBlob) {
         throw new Error(`${sourcePath} changed after upload; refusing to process different bytes.`);
       }
 
-      git(["checkout", "-B", `admin-image-${process.pid}`, currentDraftSha]);
-      const absoluteTarget = path.join(root, targetPath);
-      fs.mkdirSync(path.dirname(absoluteTarget), { recursive: true });
-      fs.copyFileSync(normalizedFile, absoluteTarget);
-      if (sourcePath !== targetPath) fs.rmSync(path.join(root, sourcePath), { force: true });
-      git(["add", "-A", "--", sourcePath, targetPath]);
+      // Uploads to R2 rather than committing the normalized bytes to `drafts` — only the
+      // manifest entry (bookkeeping) and the raw upload's removal need a git commit. Safe to
+      // repeat on retry: publishMediaFile is a no-op once the content hash already matches.
+      await publishMediaFile({ localPath: normalizedFile, publicPath, sourcePath: targetPath, manifest });
+      saveManifest(manifest);
+
+      fs.rmSync(path.join(root, sourcePath), { force: true });
+      git(["add", "-A", "--", sourcePath, manifestRelativePath]);
       if (gitSucceeds(["diff", "--cached", "--quiet"])) {
         console.log(`${sourcePath} already satisfies the normalization policy.`);
         return;
@@ -64,7 +75,7 @@ async function main() {
       git(["commit", "-m", `Normalize admin upload ${path.basename(targetPath)} [skip ci]`]);
       const commitSha = git(["rev-parse", "HEAD"]);
       if (gitSucceeds(["push", "origin", `${commitSha}:refs/heads/${draftsBranch}`])) {
-        console.log(`Normalized ${sourcePath} to ${targetPath}.`);
+        console.log(`Normalized ${sourcePath} and uploaded it to R2 as ${publicPath}.`);
         return;
       }
       console.log(`Drafts moved during image processing (attempt ${attempt}/${attempts}); retrying.`);
@@ -81,6 +92,10 @@ function validateRequest() {
   if (!allowed.test(sourcePath) || !allowed.test(targetPath)) throw new Error("Invalid admin image path.");
   if (!targetPath.endsWith(".webp")) throw new Error("TARGET_PATH must end in .webp.");
   if (path.dirname(sourcePath) !== path.dirname(targetPath)) throw new Error("Image paths must share a directory.");
+}
+
+function toPublicPath(relativePath) {
+  return `/${relativePath.replace(/^blog\//, "")}`;
 }
 
 async function sharpInput(file, extension) {

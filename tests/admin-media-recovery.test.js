@@ -46,8 +46,14 @@ test("the raw upload commit is passed to the media workflow", () => {
 
 test("autosave records pending media and recovery removes references with no durable source", () => {
   assert.match(source, /pendingMedia: Array\.from\(state\.pendingMediaUploads\.values\(\)\)/);
-  assert.match(source, /!treePaths\.has\(item\.sourcePath\) && !treePaths\.has\(item\.targetPath\)/);
+  assert.match(source, /!treePaths\.has\(item\.sourcePath\) &&\s*\n\s*!treePaths\.has\(item\.targetPath\) &&\s*\n\s*!manifestKeys\.has\(mediaManifestKeyFor\(item\.targetPath\)\)/);
   assert.match(source, /removeMediaReferences\(saved\.content \|\| "", missingPendingPaths\)/);
+});
+
+test("R2-migrated image uploads are recognized as durable even without a drafts git blob", () => {
+  assert.match(source, /async function mediaManifestKeys\(treePaths\)/);
+  assert.match(source, /function mediaManifestKeyFor\(gitPath\)/);
+  assert.match(source, /const manifestKeys = await mediaManifestKeys\(treePaths\)/);
 });
 
 test("media failures offer retry or removal instead of permanently poisoning saves", () => {

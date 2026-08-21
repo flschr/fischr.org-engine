@@ -409,7 +409,7 @@ module.exports = function (eleventyConfig) {
   });
 
   eleventyConfig.addFilter("sitemapImages", (item) => {
-    return media.getSitemapImages(item);
+    return media.getSitemapImages(item).map((publicPath) => media.toDeliveryUrl(publicPath));
   });
 
   eleventyConfig.addFilter("adminMediaReferences", (item) => {

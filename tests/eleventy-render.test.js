@@ -468,6 +468,31 @@ test("adds media performance attributes and responsive srcsets", async () => {
   assertSnapshot("mediaAttributes", normalized);
 });
 
+test("only rewrites image/video src to the media delivery host once R2 confirms it was uploaded", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-media-manifest-"));
+  const imageRoot = path.join(tmp, "blog/assets/images");
+  fs.mkdirSync(imageRoot, { recursive: true });
+
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 1, g: 2, b: 3 } } })
+    .webp()
+    .toFile(path.join(imageRoot, "migrated.webp"));
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: { r: 4, g: 5, b: 6 } } })
+    .webp()
+    .toFile(path.join(imageRoot, "not-migrated.webp"));
+
+  const media = createMediaAssetHelpers({
+    root: tmp,
+    localImageRoot: imageRoot,
+    localVideoRoot: path.join(tmp, "blog/assets/videos"),
+    outputRoot: path.join(tmp, "_site"),
+    responsiveImageCacheRoot: path.join(tmp, ".cache/responsive-images"),
+    mediaManifest: { "images/migrated.webp": { sha256: "irrelevant-for-this-test" } }
+  });
+
+  assert.equal(media.toDeliveryUrl("/assets/images/migrated.webp"), "https://media.mysite.example/images/migrated.webp");
+  assert.equal(media.toDeliveryUrl("/assets/images/not-migrated.webp"), "/assets/images/not-migrated.webp");
+});
+
 test("skips the blur-up placeholder for transparent images", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-alpha-"));
   const imageRoot = path.join(tmp, "blog/assets/images");

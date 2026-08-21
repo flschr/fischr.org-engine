@@ -59,7 +59,7 @@
   function preparedMediaChange(change) {
     if (change?.mediaKind !== "image" || ["gif", "svg"].includes(extension(change.path))) return change;
     const path = change.path.replace(/\.[^.\/]+$/, ".webp");
-    return { ...change, path, publicPath: publicMediaPath(path) };
+    return { ...change, path, publicPath: publicImageDeliveryPath(path) };
   }
 
   async function normalizeUploadedImage(change, draftSha, force = false) {

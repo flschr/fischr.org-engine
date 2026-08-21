@@ -5,6 +5,9 @@ const path = require("path");
 
 const siteRoot = path.resolve(process.cwd(), "_site");
 const siteUrl = "https://mysite.example";
+const mediaUrl = "https://media.mysite.example";
+const manifestPath = path.resolve(process.cwd(), "automation/media-manifest.json");
+const mediaManifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, "utf8")) : {};
 
 if (!fs.existsSync(siteRoot)) {
   console.error("Missing _site. Run npm run build first.");
@@ -35,6 +38,16 @@ for (const file of articleFiles) {
     ["twitter:image", twitterImage]
   ]) {
     if (!imageUrl) continue;
+
+    if (imageUrl.startsWith(`${mediaUrl}/`)) {
+      // Media-hosted images live in R2, not in _site — verify against the migration
+      // manifest (the record of what was actually uploaded) instead of the filesystem.
+      const key = decodeURI(new URL(imageUrl).pathname).slice(1);
+      if (!mediaManifest[key]) {
+        problems.push(`${relativeFile}: ${label} is not in the media manifest (${imageUrl})`);
+      }
+      continue;
+    }
 
     if (!imageUrl.startsWith(`${siteUrl}/`)) {
       problems.push(`${relativeFile}: ${label} is not a local absolute URL (${imageUrl})`);

@@ -2,6 +2,29 @@
 
   const docKeyFor = editorRecovery.docKey;
 
+  // A successfully R2-migrated image never gets a `drafts` blob at all (see
+  // normalizeUploadedImage / scripts/admin-normalize-image.js), so its completion signal
+  // is an automation/media-manifest.json entry rather than a git tree path. Mirrors the
+  // object-key mapping in scripts/lib/r2-media.js's objectKeyForPublicPath.
+  function mediaManifestKeyFor(gitPath) {
+    const value = String(gitPath || "");
+    if (value.startsWith("blog/assets/images/")) return `images/${value.slice("blog/assets/images/".length)}`;
+    if (value.startsWith("blog/assets/videos/")) return `videos/${value.slice("blog/assets/videos/".length)}`;
+    return "";
+  }
+
+  async function mediaManifestKeys(treePaths) {
+    const manifestPath = "automation/media-manifest.json";
+    if (!treePaths.has(manifestPath)) return new Set();
+    try {
+      const sha = blobShaMap(state.tree).get(manifestPath);
+      const manifest = JSON.parse((await getBlobText(sha)) || "{}");
+      return new Set(Object.keys(manifest));
+    } catch {
+      return new Set();
+    }
+  }
+
   function clearAutosave() {
     state.autosaveSnapshot = "";
     if (state.autosaveTimer) {
@@ -94,8 +117,13 @@
         });
       } else {
         const treePaths = new Set((state.tree?.tree || []).map((item) => item.path));
+        const manifestKeys = await mediaManifestKeys(treePaths);
         const missingPendingPaths = (saved.pendingMedia || [])
-          .filter((item) => !treePaths.has(item.sourcePath) && !treePaths.has(item.targetPath))
+          .filter((item) => (
+            !treePaths.has(item.sourcePath) &&
+            !treePaths.has(item.targetPath) &&
+            !manifestKeys.has(mediaManifestKeyFor(item.targetPath))
+          ))
           .map((item) => publicMediaPath(item.targetPath));
         const doc = splitDocument(removeMediaReferences(saved.content || "", missingPendingPaths));
         fillEditor(doc.fields, doc.preserved, doc.body, {

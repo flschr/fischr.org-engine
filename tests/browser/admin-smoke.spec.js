@@ -195,7 +195,7 @@ test("editor inserts image Markdown while GitHub processing is still pending", a
   });
 
   await expect(page.locator(".cm-content")).toContainText("![](");
-  await expect(page.locator(".cm-content")).toContainText("/assets/images/uploads/");
+  await expect(page.locator(".cm-content")).toContainText("https://media.mysite.example/images/uploads/");
   await expect(page.locator(".cm-content")).toContainText(".webp");
   await page.locator(".cm-content").click();
   await page.keyboard.insertText("Ich kann sofort weiterschreiben.");
@@ -216,10 +216,10 @@ test("failed media can be removed completely and does not poison later saves", a
     { name: "zwei.png", mimeType: "image/png", buffer: Buffer.from("two") }
   ]);
 
-  await expect(page.locator(".cm-content")).toContainText("/assets/images/uploads/");
+  await expect(page.locator(".cm-content")).toContainText("https://media.mysite.example/images/uploads/");
   await expect(page.locator("#mediaFailureDialog")).toBeVisible();
   await page.getByRole("button", { name: "Medium entfernen" }).click();
-  await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
+  await expect(page.locator(".cm-content")).not.toContainText("https://media.mysite.example/images/uploads/");
 
   await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
@@ -305,7 +305,7 @@ test("failed media cleanup updates its saved article after navigating away", asy
     .map((request) => String(request.body.content || ""))
     .findLast((content) => content.includes("Artikel mit späterem Medienfehler"));
   expect(cleanedArticleBlob).toContain("Artikel mit späterem Medienfehler");
-  expect(cleanedArticleBlob).not.toContain("/assets/images/uploads/late-failure.webp");
+  expect(cleanedArticleBlob).not.toContain("https://media.mysite.example/images/uploads/late-failure.webp");
   expect(cleanedArticleBlob).not.toContain("title: Anderer Artikel");
 });
 
@@ -542,7 +542,7 @@ test("a refresh failure after the durable cleanup still completes the editor act
   await page.getByRole("button", { name: "Medium entfernen" }).click();
 
   await expect(page.locator("#statusBar")).toContainText("Fehlgeschlagene Medien wurden entfernt");
-  await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
+  await expect(page.locator(".cm-content")).not.toContainText("https://media.mysite.example/images/uploads/");
   await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
 });
@@ -586,7 +586,7 @@ test("a failed post-commit tree read preserves the cleaned article for its next 
   await expect(page.locator("#mediaFailureDialog")).toBeVisible();
   await page.getByRole("button", { name: "Medium entfernen" }).click();
   await expect(page.locator("#statusBar")).toContainText("Fehlgeschlagene Medien wurden entfernt");
-  await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
+  await expect(page.locator(".cm-content")).not.toContainText("https://media.mysite.example/images/uploads/");
   await page.locator(".cm-content").click();
   await page.keyboard.insertText(" Weiterbearbeitet.");
   await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
