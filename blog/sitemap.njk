@@ -1,0 +1,22 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="utf-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  {% for item in collections.all %}
+    {% if item.url and item.data.sitemap !== false %}
+      {% set sitemapImages = item | sitemapImages %}
+      {% set lastModified = item | sitemapLastModified %}
+      <url>
+        <loc>{{ item.url | absoluteUrl(site.url) }}</loc>
+        {% if lastModified %}<lastmod>{{ lastModified | htmlDate }}</lastmod>{% endif %}
+        {% for image in sitemapImages %}
+          <image:image>
+            <image:loc>{{ image | absoluteUrl(site.url) }}</image:loc>
+          </image:image>
+        {% endfor %}
+      </url>
+    {% endif %}
+  {% endfor %}
+</urlset>

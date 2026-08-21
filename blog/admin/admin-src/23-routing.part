@@ -1,0 +1,95 @@
+  // --- View routing --------------------------------------------------------
+
+  function showView(name) {
+    state.view = name;
+    document.body.classList.toggle("is-editor-view", name === "editor");
+    els.libraryView.hidden = name !== "library";
+    els.editorForm.hidden = name !== "editor";
+    els.mediaView.hidden = name !== "media";
+    els.queueView.hidden = name !== "queue";
+    if (els.statsView) els.statsView.hidden = name !== "stats";
+    if (els.socialConfigView) els.socialConfigView.hidden = name !== "social";
+    if (els.settingsNav) els.settingsNav.classList.toggle("is-active", name === "social");
+    if (els.statsNav) els.statsNav.classList.toggle("is-active", name === "stats");
+    // Social and Stats aren't tied to a content collection.
+    if (name === "social" || name === "stats") els.navButtons.forEach((button) => button.classList.remove("is-active"));
+    else updateNav();
+    if (isMobile() && state.sidebarOpen) closeSidebar();
+  }
+
+  function setSidebar(open) {
+    const mobile = isMobile();
+    const nextOpen = mobile ? open : true;
+    state.sidebarOpen = nextOpen;
+    document.body.classList.toggle("is-sidebar-collapsed", !nextOpen);
+    els.sidebarToggle.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+    els.sidebarToggle.setAttribute("aria-label", nextOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen");
+    els.sidebarScrim.hidden = !(nextOpen && mobile);
+  }
+
+  function openSidebar() {
+    if (!isMobile() || state.sidebarOpen) return;
+    setSidebar(true);
+    // On mobile, push a tagged history entry so the browser back button/gesture
+    // closes the drawer instead of leaving the view. (Standalone has no back, so
+    // this is simply inert there; the swipe handles open/close.)
+    if (isMobile()) {
+      try { history.pushState({ ...currentNavState(), rwSidebar: true }, ""); } catch (error) { /* ignore */ }
+    }
+  }
+
+  function closeSidebar() {
+    if (!isMobile() || !state.sidebarOpen) return;
+    setSidebar(false);
+    // Don't touch history here: a back press is handled in handlePopState (it
+    // closes the drawer), and any leftover drawer entry just routes to its own
+    // underlying view when popped. Calling history.back() here would race with
+    // the synchronous pushNav() that navigation does and desync view/history.
+  }
+
+  function updateNav() {
+    els.navButtons.forEach((button) => {
+      const active = button.dataset.collection === state.collection;
+      button.classList.toggle("is-active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+  }
+
+  function setCollection(collection) {
+    // Navigating via the sidebar cancels an in-progress social-image pick.
+    if (state.socialImagePick) {
+      state.socialImagePick = null;
+      if (els.mediaPickBar) els.mediaPickBar.hidden = true;
+    }
+    state.collection = collection;
+    updateNav();
+
+    // "New" creates a page only on the Pages view; everywhere else an article.
+    const newLabel = collection === "pages" ? "Neue Seite" : "Neuer Artikel";
+    if (els.newEntryButtonLabel) els.newEntryButtonLabel.textContent = newLabel;
+
+    if (collection === "media") {
+      showView("media");
+      pushNav();
+      // Use the cached tree (invalidated on every save/upload/publish), so
+      // switching to the gallery is instant instead of refetching the whole tree.
+      refreshMedia(false).catch((error) => showStatus(`Media could not be loaded: ${error.message}`, "error"));
+      return;
+    }
+
+    els.libraryTitle.textContent = collections[collection].title;
+    els.searchInput.placeholder = collection === "pages" ? "Search pages" : "Search articles";
+    if (els.newEntryButtonLib) {
+      els.newEntryButtonLib.setAttribute("aria-label", newLabel);
+      els.newEntryButtonLib.title = newLabel;
+    }
+    showView("library");
+    pushNav();
+    refreshEntries(false).catch((error) => showStatus(`List could not be loaded: ${error.message}`, "error"));
+  }
+
+  function backToLibrary() {
+    if (state.collection === "media") showView("media");
+    else showView("library");
+  }

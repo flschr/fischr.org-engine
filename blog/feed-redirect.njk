@@ -1,0 +1,18 @@
+---
+permalink: /feed/index.html
+eleventyExcludeFromCollections: true
+sitemap: false
+---
+<!doctype html>
+<html lang="{{ site.language }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url=/feed.xml">
+    <link rel="canonical" href="{{ '/feed.xml' | absoluteUrl(site.url) }}">
+    <title>Weiterleitung | {{ site.title }}</title>
+  </head>
+  <body>
+    <p>Weiter zum <a href="/feed.xml">RSS-Feed</a>.</p>
+  </body>
+</html>

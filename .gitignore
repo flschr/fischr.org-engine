@@ -1,0 +1,12 @@
+node_modules/
+_site/
+.cache/
+.env
+.env.*
+!.env.example
+.DS_Store
+npm-debug.log*
+playwright-report/
+test-results/
+blog/admin/vendor/
+blog/assets/css/generated/

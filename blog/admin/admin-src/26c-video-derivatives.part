@@ -1,0 +1,118 @@
+  function videoPosterRepoPath(value) {
+    const publicPath = String(value || "");
+    if (!publicPath.startsWith("/assets/images/video-posters/")) return "";
+    const repoPath = `blog/${publicPath.slice(1)}`;
+    return repoPath.split("/").includes("..") ? "" : repoPath;
+  }
+
+  async function commitMediaDiscardPlan(videoOperations, fileChanges, message) {
+    const metadataPath = "blog/_data/videoMetadata.json";
+    const draftTree = await fetchTree(true);
+    const mainTree = await fetchMainTree(true);
+    const draftsMap = blobShaMap(draftTree);
+    const mainMap = blobShaMap(mainTree);
+    const entries = new Map();
+    const expectedBlobs = {};
+    let draftMetadata = null;
+    let mainMetadata = {};
+
+    const onlyNewDraftVideos = videoOperations.length > 0 && videoOperations.every(({ item, existing }) => (
+      existing?.kind === "upsert" && !mainMap.has(item.path)
+    ));
+
+    if (videoOperations.length) {
+      const draftMetadataEntry = (draftTree?.tree || []).find((entry) => entry.path === metadataPath);
+      const mainMetadataEntry = (mainTree?.tree || []).find((entry) => entry.path === metadataPath);
+      if (!draftMetadataEntry?.sha && !onlyNewDraftVideos) {
+        throw new Error("Video-Metadaten fehlen. Bitte die Medienverarbeitung reparieren, bevor das Video gelöscht wird.");
+      }
+      draftMetadata = draftMetadataEntry?.sha ? parseVideoMetadata(await getBlobText(draftMetadataEntry.sha), "Entwurfs-Video-Metadaten") : null;
+      mainMetadata = mainMetadataEntry?.sha ? parseVideoMetadata(await getBlobText(mainMetadataEntry.sha), "veröffentlichte Video-Metadaten") : {};
+    }
+
+    const addEntry = (path, sha) => {
+      entries.set(path, { path, mode: "100644", type: "blob", sha });
+      expectedBlobs[path] = draftsMap.get(path) || null;
+    };
+
+    const operatedVideoPaths = new Set(videoOperations.map(({ item }) => item.publicPath));
+    const posterOwners = (metadata, posterPath) => Object.entries(metadata || {})
+      .filter(([videoPath, value]) => videoPosterRepoPath(value?.poster) === posterPath && !operatedVideoPaths.has(videoPath))
+      .map(([videoPath]) => videoPath);
+
+    for (const { item, existing } of videoOperations) {
+      const discardPendingUpload = existing?.kind === "upsert";
+      const draftVideoMetadata = draftMetadata?.[item.publicPath] || null;
+      const mainVideoMetadata = mainMetadata[item.publicPath] || null;
+      const draftPosterPath = videoPosterRepoPath(draftVideoMetadata?.poster);
+      const mainPosterPath = videoPosterRepoPath(mainVideoMetadata?.poster);
+      const draftHasVideo = draftsMap.has(item.path);
+      const requiredPosterPath = draftHasVideo ? draftPosterPath : mainPosterPath;
+      const requiredMap = draftHasVideo ? draftsMap : mainMap;
+
+      const incompleteNewUpload = discardPendingUpload && !mainMap.has(item.path);
+      if ((!requiredPosterPath || !requiredMap.has(requiredPosterPath)) && !incompleteNewUpload) {
+        throw new Error(`Die Video-Metadaten für ${item.name || baseName(item.path)} enthalten kein gültiges Vorschaubild. Bitte die Medienverarbeitung reparieren.`);
+      }
+
+      if (draftMetadata) {
+        if (discardPendingUpload && mainVideoMetadata) draftMetadata[item.publicPath] = mainVideoMetadata;
+        else delete draftMetadata[item.publicPath];
+      }
+
+      const targetSha = (path) => discardPendingUpload ? (mainMap.get(path) || null) : null;
+      addEntry(item.path, targetSha(item.path));
+      for (const posterPath of new Set([draftPosterPath, mainPosterPath].filter(Boolean))) {
+        const otherOwners = new Set([
+          ...posterOwners(draftMetadata, posterPath),
+          ...posterOwners(mainMetadata, posterPath)
+        ]);
+        if (otherOwners.size && targetSha(posterPath) !== (draftsMap.get(posterPath) || null)) {
+          throw new Error(`Das Vorschaubild von ${item.name || baseName(item.path)} wird auch von einem anderen Video verwendet.`);
+        }
+        addEntry(posterPath, targetSha(posterPath));
+      }
+    }
+
+    for (const change of fileChanges) addEntry(change.path, mainMap.get(change.path) || null);
+
+    if (draftMetadata) {
+      const metadataBlob = await github("git/blobs", {
+        method: "POST",
+        body: { content: `${JSON.stringify(draftMetadata, null, 2)}\n`, encoding: "utf-8" }
+      });
+      if (!metadataBlob?.sha) throw new Error("Video-Metadaten konnten nicht aktualisiert werden.");
+      addEntry(metadataPath, metadataBlob.sha);
+    }
+
+    await commitToDrafts(Array.from(entries.values()), message, expectedBlobs);
+    await loadChanges();
+  }
+
+  async function queueVideoDelete(item, existing) {
+    await commitMediaDiscardPlan(
+      [{ item, existing }],
+      [],
+      `${existing?.kind === "upsert" ? "Discard" : "Delete"} ${item.path} with video derivatives`
+    );
+  }
+
+  async function discardUnusedMediaChanges(changes) {
+    const videoOperations = changes
+      .filter((change) => isVideoPath(change.path))
+      .map((item) => ({ item, existing: { kind: "upsert" } }));
+    const fileChanges = changes.filter((change) => !isVideoPath(change.path));
+    await commitMediaDiscardPlan(
+      videoOperations,
+      fileChanges,
+      `Discard ${changes.length} unused upload${changes.length === 1 ? "" : "s"}`
+    );
+  }
+
+  async function discardTechnicalPosterChanges(changes) {
+    await commitMediaDiscardPlan(
+      [],
+      changes,
+      `Discard ${changes.length} technical video poster repair${changes.length === 1 ? "" : "s"}`
+    );
+  }

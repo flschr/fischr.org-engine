@@ -1,0 +1,175 @@
+{%- set pageLanguage = lang if lang else site.language -%}
+<!doctype html>
+<html lang="{{ pageLanguage }}">
+  <head>
+    {% set displayTitle = title | ratingTitle %}
+    {% set pageTitle = displayTitle if title else site.title %}
+    {% set documentTitle = browserTitle if browserTitle else (displayTitle ~ " | " ~ site.title if title else site.title) %}
+    {% set detectedImageAlt = content | firstImageAlt %}
+    {% set metaDescription = content | metaDescription(description, detectedImageAlt, pageTitle) %}
+    {% set canonical = page.url | absoluteUrl(site.url) %}
+    {% set previewImageSource = social_image if social_image else image %}
+    {% set previewImage = previewImageSource | socialImage(content) %}
+    {% set previewImageAlt = image_alt if image_alt else (pageTitle if social_image else (detectedImageAlt if detectedImageAlt else pageTitle)) %}
+    {% set previewImageType = previewImage | imageMimeType %}
+    {% set robotsContent = robots if robots else ("noindex, follow" if noindex else "") %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    {% if robotsContent %}<meta name="robots" content="{{ robotsContent }}">{% endif %}
+    <title>{{ documentTitle }}</title>
+    <meta name="description" content="{{ metaDescription }}">
+    <link rel="canonical" href="{{ canonical }}">
+    {% if pagination and pagination.href.previous %}<link rel="prev" href="{{ pagination.href.previous | absoluteUrl(site.url) }}">{% endif %}
+    {% if pagination and pagination.href.next %}<link rel="next" href="{{ pagination.href.next | absoluteUrl(site.url) }}">{% endif %}
+    <link rel="alternate" type="application/rss+xml" href="{{ '/feed.xml' | absoluteUrl(site.url) }}" title="{{ site.title }}">
+    {% for profile in site.author.sameAs %}<link rel="me" href="{{ profile }}">
+    {% endfor %}
+    {% if atproto.did %}
+    <link rel="site.standard.publication" href="at://{{ atproto.did }}/site.standard.publication/{{ atproto.publicationRkey }}">
+    {% if layout == "layouts/post.njk" %}<link rel="site.standard.document" href="at://{{ atproto.did }}/site.standard.document/{{ slug | atprotoDocKey(page.fileSlug) }}">{% endif %}
+    {% endif %}
+    <link rel="icon" href="/assets/images/favicon-32x32.png?v=20260821" sizes="32x32" type="image/png">
+    <link rel="icon" href="/assets/images/favicon-16x16.png?v=20260821" sizes="16x16" type="image/png">
+    <link rel="icon" href="/favicon.ico?v=20260821" sizes="any" type="image/x-icon">
+    <link rel="shortcut icon" href="/favicon.ico?v=20260821" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png?v=20260821">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:title" content="{{ pageTitle }}">
+    <meta property="og:description" content="{{ metaDescription }}">
+    <meta property="og:type" content="{{ 'article' if layout == 'layouts/post.njk' else 'website' }}">
+    <meta property="og:url" content="{{ canonical }}">
+    <meta property="og:image" content="{{ previewImage | absoluteUrl(site.url) }}">
+    {% if previewImageType %}<meta property="og:image:type" content="{{ previewImageType }}">{% endif %}
+    {% if previewImage == "/assets/images/og-default.webp" %}
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="674">
+    {% endif %}
+    <meta property="og:image:alt" content="{{ previewImageAlt }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ pageTitle }}">
+    <meta name="twitter:description" content="{{ metaDescription }}">
+    <meta name="twitter:image" content="{{ previewImage | absoluteUrl(site.url) }}">
+    <meta name="twitter:image:alt" content="{{ previewImageAlt }}">
+    <meta name="theme-color" content="{{ site.themeColor }}">
+    <link rel="preload" href="/assets/fonts/dm-sans/dm-sans-variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ '/assets/css/generated/main.css' | assetUrl }}">
+    {% set modifiedDate = updated if updated else page.date %}
+    {% set schemaType = "BlogPosting" if layout == "layouts/post.njk" else ("Blog" if bodyClass == "home" else "WebPage") %}
+    {% set schemaName = site.title if page.url == "/" else pageTitle %}
+    {% set structuredImage = site.author.image if profile else previewImage %}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "{{ schemaType }}",
+        "name": {{ schemaName | dump | safe }},
+        "headline": {{ pageTitle | dump | safe }},
+        "url": {{ canonical | dump | safe }},
+        "description": {{ metaDescription | dump | safe }},
+        {% if layout == "layouts/post.njk" %}
+        "datePublished": {{ (page.date | isoDate) | dump | safe }},
+        "dateModified": {{ ((updated if updated else page.date) | isoDate) | dump | safe }},
+        {% endif %}
+        "inLanguage": {{ pageLanguage | dump | safe }},
+        "image": {{ (structuredImage | absoluteUrl(site.url)) | dump | safe }},
+        "author": {
+          "@type": "Person",
+          "@id": {{ (site.url ~ "/#person") | dump | safe }},
+          "name": {{ site.author.name | dump | safe }},
+          "url": {{ site.author.url | absoluteUrl(site.url) | dump | safe }},
+          "image": {{ (site.author.image | absoluteUrl(site.url)) | dump | safe }},
+          "sameAs": {{ site.author.sameAs | dump | safe }}
+        }{% if bodyClass == "home" %},
+        "isPartOf": {
+          "@type": "WebSite",
+          "@id": {{ (site.url ~ "/#website") | dump | safe }},
+          "name": {{ site.title | dump | safe }},
+          "alternateName": {{ site.alternateName | dump | safe }},
+          "url": {{ site.url | dump | safe }}
+        }{% endif %}
+      }
+    </script>
+    {% set reviewStructuredData = schema | reviewStructuredData(title, canonical, previewImage | absoluteUrl(site.url), metaDescription, page.date, modifiedDate, pageLanguage, site.author.name, site.author.url | absoluteUrl(site.url)) %}
+    {% if reviewStructuredData %}
+    <script type="application/ld+json">
+      {{ reviewStructuredData | dump | safe }}
+    </script>
+    {% endif %}
+    {% set recipeStructuredData = schema | recipeStructuredData(content, pageTitle, canonical, previewImage | absoluteUrl(site.url), metaDescription, page.date, modifiedDate, pageLanguage, site.author.name, site.author.url | absoluteUrl(site.url)) %}
+    {% if recipeStructuredData %}
+    <script type="application/ld+json">
+      {{ recipeStructuredData | dump | safe }}
+    </script>
+    {% endif %}
+    {% if profile %}
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "ProfilePage",
+            "@id": {{ (canonical ~ "#profilepage") | dump | safe }},
+            "url": {{ canonical | dump | safe }},
+            "name": {{ pageTitle | dump | safe }},
+            "inLanguage": {{ pageLanguage | dump | safe }},
+            "mainEntity": { "@id": {{ (site.url ~ "/#person") | dump | safe }} }
+          },
+          {
+            "@type": "Person",
+            "@id": {{ (site.url ~ "/#person") | dump | safe }},
+            "name": {{ site.author.name | dump | safe }},
+            "url": {{ site.author.url | absoluteUrl(site.url) | dump | safe }},
+            "image": {{ (site.author.image | absoluteUrl(site.url)) | dump | safe }},
+            "jobTitle": {{ site.author.jobTitle | dump | safe }},
+            "worksFor": {
+              "@type": "Organization",
+              "name": {{ site.author.worksFor.name | dump | safe }},
+              "url": {{ site.author.worksFor.url | dump | safe }}
+            },
+            "sameAs": {{ site.author.sameAs | dump | safe }}
+          },
+          {
+            "@type": "Organization",
+            "@id": {{ (site.author.founderOf.url ~ "/#organization") | dump | safe }},
+            "name": {{ site.author.founderOf.name | dump | safe }},
+            "url": {{ site.author.founderOf.url | dump | safe }},
+            "founder": { "@id": {{ (site.url ~ "/#person") | dump | safe }} }{% if site.author.founderOf.brand %},
+            "brand": {
+              "@type": "Brand",
+              "name": {{ site.author.founderOf.brand.name | dump | safe }},
+              "url": {{ site.author.founderOf.brand.url | dump | safe }}
+            }{% endif %}
+          }
+        ]
+      }
+    </script>
+    {% endif %}
+  </head>
+  <body id="top" class="{{ bodyClass if bodyClass else ('post' if layout == 'layouts/post.njk' else 'page') }}">
+    <a class="skip-link" href="#content">Zum Inhalt springen</a>
+    <div class="site">
+      {% include "partials/header.njk" %}
+      <main id="content" class="site-main"{% if layout == "layouts/page.njk" and pagefind == true %} data-pagefind-body{% endif %}>
+        {% block content %}{{ content | safe }}{% endblock %}
+      </main>
+      {% if not hideFooter and layout != "layouts/post.njk" %}
+        {% include "partials/footer.njk" %}
+      {% endif %}
+    </div>
+    <a class="back-to-top" href="#top" aria-label="Nach oben scrollen">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+        <path d="M12 20V4M5 11l7-7 7 7" />
+      </svg>
+    </a>
+    <script type="module" src="{{ '/assets/js/back-to-top.js' | assetUrl }}"></script>
+    {% if env.environment == "production" and site.analytics.goatcounter %}
+    <script>
+      window.goatcounter = {
+        no_onload: navigator.doNotTrack === "1" || window.doNotTrack === "1"
+      };
+    </script>
+    <script type="module" data-goatcounter="{{ site.analytics.goatcounter.endpoint }}" src="{{ site.analytics.goatcounter.script | assetUrl }}"></script>
+    {% endif %}
+  </body>
+</html>

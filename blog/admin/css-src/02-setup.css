@@ -1,0 +1,45 @@
+/* GitHub connection lives in a popover anchored to the "Einstellungen" button,
+   so it is only visible on demand instead of sitting in the queue layout. */
+.setup-card {
+  width: min(24rem, calc(100vw - 1.5rem));
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.setup-card[popover] {
+  position: fixed;
+  inset: auto;
+  overflow: clip;
+}
+.setup-card[popover]::backdrop { background: transparent; }
+.setup-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.65rem;
+  padding: 0.7rem 0.9rem 0.15rem;
+}
+.setup-title { margin: 0; font-size: 0.98rem; font-weight: 650; letter-spacing: -0.01em; }
+.setup-state { margin-left: auto; color: var(--ink-faint); font-size: 0.78rem; font-weight: 550; }
+.setup-body {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.35rem 0.9rem 0.95rem;
+}
+.setup-text { margin: 0; color: var(--ink-soft); font-size: 0.85rem; line-height: 1.5; }
+.setup-text code { padding: 0.05em 0.35em; border-radius: 5px; background: var(--panel-2); font-family: var(--mono); font-size: 0.85em; }
+.setup-user { margin: 0; color: var(--ink); font-size: 0.9rem; font-weight: 600; }
+.setup-card input { font-family: var(--mono); font-size: 0.82rem; }
+.setup-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.token-fallback {
+  padding-top: 0.15rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+/* Dev-only escape hatch — keep it quiet. */
+.token-fallback summary { cursor: pointer; font-weight: 550; font-size: 0.76rem; color: var(--ink-faint); }
+.token-fallback summary:hover { color: var(--ink-soft); }
+.token-fallback[open] { display: grid; gap: 0.65rem; }

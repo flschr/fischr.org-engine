@@ -1,0 +1,120 @@
+  // --- GitHub --------------------------------------------------------------
+
+  function encodePath(path) {
+    return path.split("/").map(encodeURIComponent).join("/");
+  }
+
+  async function fetchTree(force) {
+    return fetchBranchTree(repo.branch, "tree", "treeHeadSha", force);
+  }
+
+  function sessionHasGithubAccess() {
+    return Boolean(state.session?.authenticated && state.session?.authorized !== false);
+  }
+
+  function tokenHasGithubAccess() {
+    return Boolean(state.token && !state.session?.configured);
+  }
+
+  function hasGithubAccess() {
+    return Boolean(sessionHasGithubAccess() || tokenHasGithubAccess());
+  }
+
+  function normalizeSession(payload = {}) {
+    return {
+      authenticated: Boolean(payload.authenticated),
+      authorized: Boolean(payload.authenticated && payload.authorized !== false),
+      configured: Boolean(payload.configured),
+      login: payload.login || "",
+      name: payload.name || "",
+      repository: payload.repository || "",
+      authorizationError: payload.authorizationError || ""
+    };
+  }
+
+  function githubConnectionError() {
+    return state.session?.authorizationError || state.tokenAuthorizationError || "";
+  }
+
+  function focusGithubConnection() {
+    if (state.session?.configured && els.loginButton && !els.loginButton.hidden) {
+      els.loginButton.focus();
+      return;
+    }
+    if (els.tokenInput && !els.tokenFallback?.hidden) els.tokenInput.focus();
+  }
+
+  function requireGithubAccess(action = "saving") {
+    if (hasGithubAccess()) return true;
+    writeAutosave();
+    const error = githubConnectionError();
+    const message = `Melde dich vor „${action}“ erneut bei GitHub an. Dein Text bleibt in der lokalen Wiederherstellungskopie erhalten.`;
+    showStatus(error ? `${error} ${message}` : message, "error");
+    focusGithubConnection();
+    return false;
+  }
+
+  async function validateTokenAccess(token) {
+    if (!token) throw new Error("GitHub token missing.");
+
+    const response = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.name}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    });
+
+    if (!response.ok) throw new Error(await githubRepositoryError(response));
+
+    const repository = await response.json();
+    const permissions = repository.permissions || {};
+    if (!permissions.admin && !permissions.maintain && !permissions.push) {
+      throw new Error(`GitHub token has no write access to ${repo.owner}/${repo.name}.`);
+    }
+
+    return repository;
+  }
+
+  async function githubRepositoryError(response) {
+    let detail = "";
+    try {
+      const payload = await response.json();
+      detail = payload.message ? `: ${payload.message}` : "";
+    } catch (error) {
+      detail = "";
+    }
+    return `GitHub authorization could not be verified (${response.status}${detail}).`;
+  }
+
+  async function verifyStoredTokenAccess() {
+    state.tokenAuthorizationError = "";
+    if (!state.token || state.session?.configured) return;
+
+    try {
+      await validateTokenAccess(state.token);
+    } catch (error) {
+      state.tokenAuthorizationError = error.message;
+      state.token = "";
+      sessionStorage.removeItem(tokenKey);
+      if (els.tokenInput) els.tokenInput.value = "";
+    }
+  }
+
+  async function refreshSession() {
+    try {
+      const response = await fetch("/api/admin/auth/session", {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) throw new Error(`Session ${response.status}`);
+      state.session = normalizeSession(await response.json());
+      if (state.session.configured) {
+        state.token = "";
+        sessionStorage.removeItem(tokenKey);
+        if (els.tokenInput) els.tokenInput.value = "";
+      }
+    } catch {
+      state.session = { authenticated: false, authorized: false, configured: false };
+    }
+  }

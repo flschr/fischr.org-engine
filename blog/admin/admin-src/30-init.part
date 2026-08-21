@@ -1,0 +1,72 @@
+  // --- Init ----------------------------------------------------------------
+
+  async function loadInitialGithubContent() {
+    let snapshotLoaded = false;
+    if (sessionHasGithubAccess()) {
+      try {
+        snapshotLoaded = await loadAdminSnapshot();
+      } catch {
+        snapshotLoaded = false;
+      }
+    }
+    if (hasGithubAccess() && !snapshotLoaded) await ensureDraftsBranch();
+    try {
+      await loadChanges();
+      await refreshEntries(!snapshotLoaded);
+    } finally {
+      state.startupSnapshotActive = false;
+    }
+  }
+
+  function handleInitialLoadError(error) {
+    if (!isTransientGitHubError(error)) {
+      showStatus(`Start fehlgeschlagen: ${error.message}`, "error");
+      return;
+    }
+
+    showStatus("GitHub ist vorübergehend nicht erreichbar. Du bleibst angemeldet; neuer Versuch läuft automatisch.", "error");
+    window.clearTimeout(state.startRetryTimer);
+    state.startRetryTimer = window.setTimeout(async () => {
+      try {
+        await loadInitialGithubContent();
+        state.startRetryTimer = null;
+        showStatus("GitHub ist wieder erreichbar. Inhalte wurden geladen.");
+      } catch (retryError) {
+        handleInitialLoadError(retryError);
+      }
+    }, 12000);
+  }
+
+  async function init() {
+    setSidebar(!isMobile());
+    requestAnimationFrame(() => document.body.classList.remove("is-sidebar-initializing"));
+    renderFormatToolbar();
+    await refreshSession();
+    await verifyStoredTokenAccess();
+    wireEvents();
+    if (state.token && els.tokenInput) els.tokenInput.value = state.token;
+    updateConnectionState();
+    updateNav();
+    els.libraryTitle.textContent = collections.posts.title;
+    showView("library");
+    replaceNav();
+
+    if (hasGithubAccess()) loadSocialConfig().then(applyStatsTabVisibility).catch(() => {});
+
+    try {
+      await loadInitialGithubContent();
+      if (hasGithubAccess()) recoverPendingMediaOperations().catch((error) => {
+        showStatus(`Wiederaufnahme der Bildverarbeitung fehlgeschlagen: ${error.message}`, "error");
+      });
+      if (hasGithubAccess()) await resumePublish();
+      if (!hasGithubAccess()) {
+        const error = githubConnectionError();
+        showStatus(error || (state.session?.configured ? "Melde dich bei GitHub an, um Inhalte zu laden." : "GitHub-Verbindung fehlt."), error ? "error" : undefined);
+      }
+    } catch (error) {
+      handleInitialLoadError(error);
+    }
+  }
+
+  init();
+})();

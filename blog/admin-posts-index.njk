@@ -1,0 +1,6 @@
+---
+permalink: /admin/posts-index.json
+eleventyExcludeFromCollections: true
+sitemap: false
+---
+[{% for post in collections.adminPosts %}{% if not loop.first %},{% endif %}{"path":{{ post.inputPath | dump | safe }},"title":{{ post.data.title | dump | safe }},"url":{{ (post.url or "") | dump | safe }},"date":{{ post.date | isoDate | dump | safe }},"draft":{{ post.data.draft | default(false) | dump | safe }},"media":{{ (post | adminMediaReferences) | dump | safe }}}{% endfor %}]

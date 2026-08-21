@@ -1,0 +1,182 @@
+  // --- Sync ----------------------------------------------------------------
+
+  function publishElapsedLabel() {
+    const startedAt = Date.parse(state.publishRequest?.startedAt || "");
+    if (!Number.isFinite(startedAt)) return "";
+    const totalSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = String(totalSeconds % 60).padStart(2, "0");
+    return `${minutes}:${seconds} min`;
+  }
+
+  function publishProgressMeta() {
+    const status = state.publishStatus || {};
+    const phase = status.phaseIndex != null && status.phaseCount
+      ? `Schritt ${status.phaseIndex} von ${status.phaseCount}`
+      : "";
+    return [phase, publishElapsedLabel()].filter(Boolean).join(" · ");
+  }
+
+  function formatPublishDuration(milliseconds) {
+    if (!Number.isFinite(milliseconds)) return "";
+    const seconds = Math.round(milliseconds / 1000);
+    return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} min`;
+  }
+
+  function publishTimingLabel() {
+    const timings = state.publishStatus?.timings || {};
+    return [
+      ["Warten", timings.waitingMs],
+      ["Vorbereitung", timings.preparationMs],
+      ["Prüfung", timings.validationMs],
+      ["Deployment", timings.deploymentMs]
+    ].filter(([, value]) => Number.isFinite(value)).map(([label, value]) => `${label} ${formatPublishDuration(value)}`).join(" · ");
+  }
+
+  function visibleQueueChanges(changes) {
+    const allChanges = changes || Array.from(state.changes.values());
+    const visibleChanges = allChanges.filter((change) => !isVideoPosterPath(change.path));
+    if (visibleChanges.length || !allChanges.length) return visibleChanges;
+    return [{
+      path: "technical-video-poster-repair",
+      kind: "technical-repair",
+      collection: "media",
+      label: "Technische Video-Reparatur",
+      technicalPosterChanges: allChanges
+    }];
+  }
+
+  function renderSyncState(changes) {
+    const count = visibleQueueChanges(changes).length;
+    const countEl = els.syncButton.querySelector(".sync-count");
+    const labelEl = els.syncButton.querySelector(".sync-label");
+    if (countEl) countEl.textContent = String(count);
+    if (labelEl) labelEl.textContent = state.publishInFlight
+      ? (state.publishStatus?.message || "Wird veröffentlicht …")
+      : "Veröffentlichen";
+    els.syncButton.setAttribute("aria-label", state.publishInFlight
+      ? "Änderungen werden veröffentlicht"
+      : (count === 1 ? "1 Änderung veröffentlichen" : `${count} Änderungen veröffentlichen`));
+    els.syncButton.classList.toggle("has-changes", count > 0);
+    els.syncButton.classList.toggle("is-publishing", state.publishInFlight);
+    els.syncButton.disabled = state.isBusy || state.publishInFlight || count === 0 || !hasGithubAccess();
+    if (state.view === "queue") renderQueue();
+  }
+
+  function hasPendingMediaProcessing(changes = []) {
+    return changes.some((change) => needsGithubImageNormalization(change));
+  }
+
+  function hasActiveMediaWork() {
+    return state.mediaProcessing;
+  }
+
+  async function videoNeedsPreparation(change) {
+    if (change?.mediaKind !== "video" || change.kind !== "upsert") return false;
+    const metadataEntry = (state.tree?.tree || []).find((item) => item.path === "blog/_data/videoMetadata.json");
+    if (!metadataEntry?.sha) return true;
+    try {
+      const metadata = parseVideoMetadata(await getBlobText(metadataEntry.sha), "Video-Metadaten");
+      const item = metadata[publicMediaPath(change.path)];
+      const posterPath = videoPosterRepoPath(item?.poster);
+      return !item?.sourceHash || !(state.tree?.tree || []).some((entry) => entry.path === posterPath);
+    } catch {
+      return true;
+    }
+  }
+
+  async function hasUnfinishedMediaProcessing(changes = []) {
+    if (hasActiveMediaWork() || hasPendingMediaProcessing(changes)) return true;
+    for (const change of changes) {
+      if (await videoNeedsPreparation(change)) return true;
+    }
+    return false;
+  }
+
+  function guardMediaIdle(action = "Diese Aktion") {
+    if (!hasActiveMediaWork()) return true;
+    showStatus(`${action} wartet, bis GitHub alle Medien verarbeitet hat.`, "error");
+    return false;
+  }
+
+  async function guardMediaReadyForPublish(changes) {
+    if (!await hasUnfinishedMediaProcessing(changes)) return true;
+    showStatus("Die Veröffentlichung wartet, bis GitHub alle Medien verarbeitet hat.", "error");
+    return false;
+  }
+
+  async function loadFreshChanges() {
+    await Promise.all([fetchTree(true), fetchMainTree(true)]);
+    state.changeCache = null;
+    return loadChanges();
+  }
+
+  function changeSetSignature(changes = []) {
+    return changes
+      .map((change) => `${change.kind}:${change.path}:${change.sha || ""}`)
+      .sort()
+      .join("|");
+  }
+
+  function recoverPendingMediaOperations() {
+    if (state.mediaRecoveryPromise) return state.mediaRecoveryPromise;
+    const recovery = (async () => {
+      state.mediaRecoveryJobs += 1;
+      updateMediaProcessingState();
+      renderSyncState(Array.from(state.changes.values()));
+      try {
+        const pendingImages = Array.from(state.changes.values()).filter(needsGithubImageNormalization);
+        const pendingVideos = [];
+        for (const change of state.changes.values()) {
+          if (await videoNeedsPreparation(change)) pendingVideos.push(change);
+        }
+        if ((!pendingImages.length && !pendingVideos.length) || !state.treeHeadSha) return;
+        showStatus(`${pendingImages.length + pendingVideos.length} unterbrochene Medienverarbeitung wird auf GitHub fortgesetzt …`);
+        let expectedRecoveryStatus = els.statusBar.textContent;
+        for (const change of pendingImages) {
+          expectedRecoveryStatus = `GitHub verarbeitet ${change.label} …`;
+          await normalizeUploadedImage(change, state.treeHeadSha);
+        }
+        for (const change of pendingVideos) {
+          expectedRecoveryStatus = `GitHub erstellt Videometadaten für ${change.label} …`;
+          await prepareUploadedVideo(change, state.treeHeadSha);
+        }
+        await refreshCurrentSilent();
+        if (els.statusBar.textContent === expectedRecoveryStatus) {
+          showStatus("Medienverarbeitung abgeschlossen. Nicht eingefügte Medien liegen in der Mediathek bereit.");
+        }
+      } finally {
+        state.mediaRecoveryJobs = Math.max(0, state.mediaRecoveryJobs - 1);
+        updateMediaProcessingState();
+        renderSyncState(Array.from(state.changes.values()));
+        if (state.view === "media") {
+          renderMedia();
+          try {
+            await refreshMedia(false);
+          } catch (error) {
+            showStatus(`Mediathek konnte nach der Verarbeitung nicht aktualisiert werden: ${error.message}`, "error");
+          }
+        }
+      }
+    })();
+    state.mediaRecoveryPromise = recovery;
+    const clearRecovery = () => {
+      if (state.mediaRecoveryPromise === recovery) state.mediaRecoveryPromise = null;
+    };
+    recovery.then(clearRecovery, clearRecovery);
+    return recovery;
+  }
+
+  async function refreshQueueFromGitHub() {
+    if (!hasGithubAccess()) return;
+    const request = state.queueRefreshRequest + 1;
+    state.queueRefreshRequest = request;
+    state.tree = null;
+    state.mainTree = null;
+    state.changeCache = null;
+    try {
+      await loadChanges();
+    } catch (error) {
+      if (request === state.queueRefreshRequest) showStatus(`Warteschlange konnte nicht aktualisiert werden: ${error.message}`, "error");
+    }
+  }

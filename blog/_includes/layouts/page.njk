@@ -1,0 +1,8 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  <h1{% if hidePageHeading %} class="visually-hidden"{% endif %} data-pagefind-meta="title">{{ pageHeading if pageHeading else title }}</h1>
+  <div class="post-content">
+    {{ content | contentConventions | safe }}
+  </div>
+{% endblock %}

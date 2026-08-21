@@ -1,0 +1,46 @@
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self' https:; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src https:; img-src 'self' data: blob: https:; media-src 'self'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:
+  Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+
+/assets/images/*
+  ! Cache-Control
+  Cache-Control: public, max-age=2592000
+
+/assets/videos/*
+  ! Cache-Control
+  Cache-Control: public, max-age=2592000
+
+/assets/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=2592000, immutable
+
+/assets/images/responsive/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/css/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/js/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+/.well-known/site.standard.publication
+  Content-Type: text/plain; charset=utf-8
+
+/archive/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self' https:; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src https:; img-src 'self' data: blob: https:; media-src 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:
+
+/pagefind/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:
+
+/admin/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; img-src 'self' data: blob: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:

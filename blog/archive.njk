@@ -1,0 +1,35 @@
+---
+layout: layouts/page.njk
+title: Archiv
+description: "Alle Blog-Beiträge durchsuchen oder nach Jahr sortiert durchstöbern."
+permalink: /archive/
+hidePageHeading: true
+---
+<div class="search-page" data-pagefind-ignore>
+  <form class="search-form" id="search-form" role="search" action="/archive/">
+    <label class="visually-hidden" for="site-search">Archiv durchsuchen</label>
+    <div class="search-input-row">
+      <input class="search-input" id="site-search" name="q" type="search" autocomplete="off" autofocus placeholder="Archiv durchsuchen …">
+      <button class="search-button" type="submit">Suchen</button>
+    </div>
+  </form>
+
+  <p class="search-status" id="search-status" aria-live="polite"></p>
+  <ol class="search-results" id="search-results" hidden></ol>
+
+  <div id="archive-list">
+    {% for group in collections.publishedPosts | groupByYear %}
+      <h2>{{ group.year }}</h2>
+      <ul class="post-list">
+        {% for post in group.posts %}
+          <li>
+            <time datetime="{{ post.date | htmlDate }}">{{ post.date | date }}</time>
+            <a href="{{ post.url }}" aria-label="{{ post.data.title | ratingTitleAria }}">{{ post.data.title | ratingTitleHtml | safe }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </div>
+</div>
+
+<script type="module" src="{{ '/assets/js/search.js' | assetUrl }}"></script>

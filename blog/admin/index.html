@@ -1,0 +1,353 @@
+---
+sitemap: false
+eleventyExcludeFromCollections: true
+---
+<!doctype html>
+<html lang="de" data-admin-bundle-version="{{ '' | adminBundleVersion }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!-- The first thing the admin does is load content from GitHub — warm the
+         DNS + TLS connections up front so that fetch starts sooner. -->
+    <link rel="preconnect" href="https://api.github.com" crossorigin>
+    <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+    <link rel="dns-prefetch" href="https://api.github.com">
+    <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
+    <title>fischr Admin</title>
+    <!-- The admin keeps its own accent mark and manifest so /admin/ can launch
+         as a distinct home-screen app while sharing the blog's icon palette. -->
+    <link rel="icon" href="{{ '/admin/favicon.ico' | adminAssetUrl }}" sizes="any" type="image/x-icon">
+    <link rel="icon" href="{{ '/admin/favicon-32.png' | adminAssetUrl }}" sizes="32x32" type="image/png">
+    <link rel="shortcut icon" href="{{ '/admin/favicon.ico' | adminAssetUrl }}" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png" sizes="180x180">
+    <link rel="manifest" href="{{ '/admin/manifest.webmanifest' | adminAssetUrl }}">
+    <!-- Run full-screen (no Safari chrome) when launched from the home screen. -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="fischr Admin">
+    <meta name="application-name" content="fischr Admin">
+    <meta name="theme-color" content="#f5f5f4" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1c1e23" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="{{ '/admin/vendor/styles/admin.css' | adminAssetUrl }}">
+  </head>
+  <body class="admin-body is-sidebar-collapsed is-sidebar-initializing">
+    <a class="skip-link" href="#content">Zum Inhalt springen</a>
+
+    <div class="admin-shell">
+      <button id="sidebarToggle" class="sidebar-toggle icon-button" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Seitenleiste ausklappen">
+        <!-- Mobile-only hamburger button for the navigation drawer. -->
+        <span class="toggle-burger" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span>
+      </button>
+
+      <div class="admin-layout">
+        <aside id="sidebar" class="admin-sidebar" aria-label="Navigation">
+          <nav class="sidebar-nav" aria-label="Bereiche">
+            <button class="nav-link is-active" type="button" data-collection="posts" aria-current="page">
+              <span class="nav-icon" data-icon="file-text" aria-hidden="true"></span>
+              <span class="nav-label">Artikel</span>
+            </button>
+            <button class="nav-link" type="button" data-collection="pages">
+              <span class="nav-icon" data-icon="file" aria-hidden="true"></span>
+              <span class="nav-label">Seiten</span>
+            </button>
+            <button class="nav-link" type="button" data-collection="media">
+              <span class="nav-icon" data-icon="image" aria-hidden="true"></span>
+              <span class="nav-label">Mediathek</span>
+            </button>
+            <button id="statsNav" class="nav-link" type="button">
+              <span class="nav-icon" data-icon="bar-chart-2" aria-hidden="true"></span>
+              <span class="nav-label">Statistik</span>
+            </button>
+          </nav>
+          <button id="syncButton" class="sync-button" type="button">
+            <span data-icon="refresh-cw" aria-hidden="true"></span>
+            <span class="sync-label">Veröffentlichen</span>
+            <span class="sync-count">0</span>
+          </button>
+          <button id="settingsNav" class="sidebar-settings" type="button">
+            <span data-icon="sliders-horizontal" aria-hidden="true"></span>
+            <span>Einstellungen</span>
+          </button>
+        </aside>
+
+        <div id="sidebarScrim" class="sidebar-scrim" hidden></div>
+
+        <main id="content" class="admin-workspace">
+          <!-- Library view: list of posts / pages -->
+          <section id="libraryView" class="view library-view" aria-label="Inhalte">
+            <div class="library-head view-head">
+              <h1 id="libraryTitle" class="view-title">Articles</h1>
+              <div class="library-tools">
+                <input id="searchInput" class="search" type="search" autocomplete="off" placeholder="Suchen">
+                <button id="refreshButton" type="button" class="icon-button" aria-label="Aktualisieren">
+                  <span data-icon="refresh-cw" aria-hidden="true"></span>
+                </button>
+                <button id="newEntryButtonLib" type="button" class="primary-action lib-new js-new" aria-label="Neuer Artikel" title="Neuer Artikel">
+                  <span data-icon="plus" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+            <ol id="entryList" class="entry-list"></ol>
+          </section>
+
+          <!-- Editor view -->
+          <form id="editorForm" class="view editor-form" hidden>
+            <div class="editor-head view-head">
+              <h1 id="editorViewTitle" class="view-title">New article</h1>
+            </div>
+            <nav class="editor-bar" aria-label="Editor">
+              <button id="publishButton" class="tb-btn tb-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                <span data-icon="send" aria-hidden="true"></span>
+              </button>
+              <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
+                <span data-icon="save" aria-hidden="true"></span>
+              </button>
+              <button id="deleteButton" class="tb-btn tb-delete" type="button" aria-label="Löschen" title="Löschen">
+                <span data-icon="trash-2" aria-hidden="true"></span>
+              </button>
+              <span class="tb-divider" aria-hidden="true"></span>
+              <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
+                <span data-icon="eye" aria-hidden="true"></span>
+              </button>
+              <button id="toggleMetaButton" class="tb-btn" type="button" aria-expanded="false" aria-label="Artikeloptionen" title="Artikeloptionen">
+                <span data-icon="sliders-horizontal" aria-hidden="true"></span>
+              </button>
+              <span class="tb-divider" aria-hidden="true"></span>
+              <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung"></div>
+              <span class="tb-divider" aria-hidden="true"></span>
+              <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)">
+                <span data-icon="undo-2" aria-hidden="true"></span>
+              </button>
+              <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)">
+                <span data-icon="redo-2" aria-hidden="true"></span>
+              </button>
+              <input id="imageUploadInput" class="hidden-file-input" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
+              <input id="gpxUploadInput" class="hidden-file-input" type="file" accept="application/gpx+xml,.gpx">
+            </nav>
+
+            <article class="editor-article">
+              <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel"></textarea>
+              <p id="editorMetaLine" class="editor-meta"></p>
+
+              <div id="metaPanel" class="meta-panel" hidden>
+                <label data-field="slug">
+                  <span>Slug</span>
+                  <input id="slugInput" type="text" autocomplete="off" spellcheck="false">
+                </label>
+                <label data-field="permalink">
+                  <span>Permalink</span>
+                  <input id="permalinkInput" type="text" autocomplete="off" spellcheck="false">
+                </label>
+                <label data-field="date">
+                  <span>Datum</span>
+                  <input id="dateInput" type="datetime-local" autocomplete="off">
+                </label>
+                <label data-field="lang">
+                  <span>Sprache</span>
+                  <select id="langInput">
+                    <option value="de">Deutsch</option>
+                    <option value="en">Englisch</option>
+                  </select>
+                </label>
+                <label data-field="ogimage">
+                  <span>Vorschaubild</span>
+                  <div class="meta-input-action">
+                    <input id="socialImageInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="/assets/images/...">
+                    <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library">
+                      <span data-icon="image" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </label>
+                <input id="draftInput" type="checkbox" hidden>
+              </div>
+
+              <div id="editorMount" class="editor-mount" aria-label="Content"></div>
+              <div id="previewPanel" class="editor-preview" aria-label="Preview" hidden></div>
+            </article>
+          </form>
+
+          <!-- Publish dialog: what the post IS (structured data) + how it is shared -->
+          <dialog id="publishDialog" class="publish-dialog" aria-label="Veröffentlichen">
+            <div class="publish-dialog-inner">
+              <div class="publish-dialog-head">
+                <h2 id="publishDialogTitle" class="publish-dialog-title" tabindex="-1" autofocus>Publish</h2>
+              </div>
+
+              <section class="publish-section">
+                <h3 class="publish-section-title">Content type</h3>
+                <label class="social-field">
+                  <select id="contentTypeSelect">
+                    <option value="">Normaler Beitrag</option>
+                    <option value="recipe">Rezept</option>
+                    <option value="book">Buchrezension</option>
+                    <option value="movie">Filmrezension</option>
+                    <option value="series">Serienrezension</option>
+                  </select>
+                </label>
+                <p class="social-hint">Steuert die strukturierten Daten für Suchmaschinen – unabhängig vom Teilen.</p>
+                <div id="reviewFields" class="review-fields" hidden>
+                  <label class="social-field"><span>Titel des Werks</span><input id="reviewItemName" type="text" autocomplete="off"></label>
+                  <div class="review-rating-row">
+                    <label class="social-field"><span>Bewertung</span><input id="reviewRating" type="number" min="0" step="0.5" inputmode="decimal"></label>
+                    <label class="social-field"><span>von</span><input id="reviewBest" type="number" min="1" step="1" inputmode="numeric"></label>
+                  </div>
+                  <label class="social-field" id="reviewAuthorField"><span>Autor oder Autorin</span><input id="reviewAuthor" type="text" autocomplete="off"></label>
+                  <label class="social-field"><span>Link (optional)</span><input id="reviewSameAs" type="text" inputmode="url" autocomplete="off" placeholder="https://…"></label>
+                </div>
+              </section>
+
+              <section class="publish-section" id="shareSection">
+                <h3 class="publish-section-title">Sharing</h3>
+                <p id="publishDialogSocialHint" class="social-hint" hidden>Bereits versendete Social-Posts werden bei einem Update nicht erneut gesendet. Falls dieser Beitrag noch nie geteilt wurde, wird das beim nächsten Sync nachgeholt.</p>
+                <label class="social-field">
+                  <select id="categorySelect"></select>
+                </label>
+                <!-- Details are greyed/disabled when "Don't share" is picked in the
+                     select above; the select itself stays outside so it's always live. -->
+                <div id="shareDetails" class="share-details">
+                  <label class="social-field">
+                    <span>Text <span id="socialTextCount" class="social-count"></span></span>
+                    <!-- One field visually: the editable text, then the link the
+                         template appends pinned read-only at its end. -->
+                    <div class="social-text-field">
+                      <textarea id="socialTextInput" rows="3" autocomplete="off" spellcheck="true" placeholder=""></textarea>
+                      <span id="socialLinkHint" class="social-text-link" hidden></span>
+                    </div>
+                  </label>
+                  <div class="social-field">
+                    <span>Bilder</span>
+                    <div id="socialImagePicker" class="social-image-picker">
+                      <div id="socialImageThumbs" class="social-image-thumbs"></div>
+                      <button id="socialImageGalleryAdd" type="button" class="social-gallery-add">+ aus Mediathek</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="publish-dialog-foot">
+                <span class="publish-dialog-foot-spacer"></span>
+                <button id="publishDialogCancel" type="button" class="ghost">Abbrechen</button>
+                <button id="publishDialogConfirm" type="button" class="primary-action">Veröffentlichen</button>
+              </div>
+            </div>
+          </dialog>
+
+          <dialog id="missingAltDialog" class="dialog">
+            <form method="dialog">
+              <h2>Missing alt text</h2>
+              <p id="missingAltDialogText"></p>
+              <menu>
+                <button type="submit" class="ghost" value="no">Trotzdem veröffentlichen</button>
+                <button type="submit" class="primary-action" value="generate">Alt-Text erzeugen</button>
+              </menu>
+            </form>
+          </dialog>
+
+          <!-- Media / gallery view -->
+          <section id="mediaView" class="view media-view" aria-label="Medien" hidden>
+            <div class="library-head view-head">
+              <h1 class="view-title">Media</h1>
+              <div class="library-tools">
+                <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Medien suchen">
+                <select id="mediaFilterInput" aria-label="Medienfilter">
+                  <option value="all">Alle</option>
+                  <option value="duplicates">Duplikate</option>
+                  <option value="pending">Ausstehend</option>
+                </select>
+                <button id="refreshMediaButton" type="button" class="icon-button" aria-label="Aktualisieren">
+                  <span data-icon="refresh-cw" aria-hidden="true"></span>
+                </button>
+                <label class="file-button primary-action">
+                  <input id="mediaUploadInput" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
+                  Medien
+                </label>
+              </div>
+            </div>
+            <div id="mediaPickBar" class="media-pick-bar" hidden>
+              <span data-icon="image" aria-hidden="true"></span>
+              <span class="media-pick-text">Bild zum Teilen auswählen.</span>
+              <button id="mediaPickCancel" type="button" class="ghost">Abbrechen</button>
+            </div>
+            <div id="mediaGrid" class="media-grid"></div>
+          </section>
+
+          <!-- Publish queue: everything saved to drafts, pending publish to main -->
+          <section id="queueView" class="view queue-view" hidden>
+            <div class="queue-head view-head">
+              <h1 class="view-title">Publish</h1>
+              <div class="queue-actions">
+                <button id="pushButton" type="button" class="primary-action" disabled>
+                  <span data-icon="send" aria-hidden="true"></span>
+                  <span id="pushButtonLabel">Veröffentlichen</span>
+                  <span id="pushButtonCount" class="queue-count" hidden>0</span>
+                </button>
+                <button id="cleanupOrphansButton" type="button" class="ghost danger" hidden>
+                  <span data-icon="trash-2" aria-hidden="true"></span>
+                  <span>Unbenutzte verwerfen</span>
+                  <span id="cleanupOrphansCount" class="queue-count">0</span>
+                </button>
+                <button id="discardAllButton" type="button" class="ghost danger" disabled>
+                  <span data-icon="trash-2" aria-hidden="true"></span>
+                  <span>Alles verwerfen</span>
+                </button>
+              </div>
+            </div>
+            <p id="publishPlan" class="social-hint" role="status"></p>
+            <h2 class="section-title">Queue</h2>
+            <ol id="queueList" class="entry-list"></ol>
+          </section>
+
+          <!-- Stats view: a compact read-only GoatCounter dashboard. All data
+               comes from /api/admin/stats (server-side, session-gated) — the
+               admin-level API token never reaches the browser. -->
+          <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
+            <div class="library-head view-head">
+              <h1 class="view-title">Statistics<a class="stats-external" href="https://stats.example.com" target="_blank" rel="noopener noreferrer" aria-label="Vollständiges GoatCounter-Dashboard öffnen" title="In GoatCounter öffnen"><span data-icon="external-link" aria-hidden="true"></span></a></h1>
+              <div class="library-tools">
+                <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
+                  <button type="button" class="stats-range-btn is-active" data-days="7">Woche</button>
+                  <button type="button" class="stats-range-btn" data-days="30">Monat</button>
+                  <button type="button" class="stats-range-btn" data-days="90">Quartal</button>
+                  <button type="button" class="stats-range-btn" data-days="365">Jahr</button>
+                </div>
+                <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren">
+                  <span data-icon="refresh-cw" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+            <p id="statsRangeLabel" class="stats-range-label"></p>
+            <div id="statsBody" class="stats-body"></div>
+          </section>
+
+          {% include "admin/settings.njk" %}
+        </main>
+      </div>
+
+      <div id="statusBar" class="status-bar" role="status" aria-live="polite"></div>
+    </div>
+
+    {% include "admin/dialogs.njk" %}
+    <div id="adminRuntimeAssets" hidden
+      data-editor-src="{{ '/admin/vendor/editor/editor.js' | adminAssetUrl }}"
+      data-conventions-src="{{ '/admin/markdown-conventions.js' | adminAssetUrl }}"
+      data-markdown-src="{{ '/admin/vendor/markdown-it/markdown-it.min.js' | adminAssetUrl }}"
+      data-preview-src="{{ '/admin/preview-renderer.js' | adminAssetUrl }}"></div>
+    <script src="{{ '/admin/vendor/icons/icons.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/github-service.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/draft-repository.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/content-service.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/source-pages.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/markdown-media.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/editor-recovery.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/social-config.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/publish-plan.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/publish-status.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/publish-service.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/media-service.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/gpx-service.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/vendor/app/admin.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/register-service-worker.js' | adminAssetUrl }}"></script>
+  </body>
+</html>

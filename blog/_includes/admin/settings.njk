@@ -1,0 +1,98 @@
+          <!-- Settings view: GitHub connection (sync) + social configuration -->
+          <section id="socialConfigView" class="view social-config-view settings-view" aria-label="Einstellungen" hidden>
+            <div class="queue-head view-head">
+              <h1 class="view-title">Settings</h1>
+            </div>
+
+            <!-- GitHub connection (its own save: OAuth / token). -->
+            <div id="connectionPanel" class="setup-card">
+              <div class="setup-head">
+                <span id="connectionDot" class="connection-dot" aria-hidden="true"></span>
+                <h2 class="setup-title">GitHub connection</h2>
+                <span id="connectionState" class="setup-state">nicht verbunden</span>
+              </div>
+              <div class="setup-body">
+                <p id="connectionText" class="setup-text">Mit GitHub anmelden, um Beiträge und Medien zu laden und Änderungen zu veröffentlichen.</p>
+                <p id="connectionUser" class="setup-user" hidden></p>
+                <div class="setup-actions">
+                  <a id="loginButton" class="primary-action" href="/api/admin/auth/login?return_to=/admin/">Mit GitHub anmelden</a>
+                  <a id="logoutButton" class="ghost" href="/api/admin/auth/logout" hidden>Abmelden</a>
+                </div>
+                <details id="tokenFallback" class="token-fallback" hidden>
+                  <summary>Token-Ersatz</summary>
+                  <p class="setup-text">Nur verwenden, solange GitHub OAuth noch nicht eingerichtet ist.</p>
+                  <input id="tokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… or ghp_…">
+                  <div class="setup-actions">
+                    <button id="saveTokenButton" type="button" class="primary-action">Verbinden</button>
+                    <button id="clearTokenButton" type="button" class="ghost">Trennen</button>
+                  </div>
+                </details>
+              </div>
+            </div>
+
+            <!-- Syndication config — the cards below are saved together. -->
+            <div class="settings-section-head">
+              <h2 class="section-title">Distribution</h2>
+              <div class="queue-actions">
+                <span id="socialConfigStatus" class="social-config-status"></span>
+                <button id="socialConfigReset" type="button" class="ghost" disabled>
+                  <span data-icon="refresh-cw" aria-hidden="true"></span>
+                  <span>Zurücksetzen</span>
+                </button>
+                <button id="socialConfigSave" type="button" class="primary-action" disabled>
+                  <span data-icon="save" aria-hidden="true"></span>
+                  <span>Speichern</span>
+                </button>
+              </div>
+            </div>
+            <p class="social-config-intro">Vorgaben für neue Beiträge bei GoToSocial. Weitere Verteilung übernimmt der Server.</p>
+
+            <div class="settings-card">
+              <div class="settings-card-head"><h3 class="settings-card-title">Publishing destination</h3></div>
+              <p class="settings-card-hint">Wohin neue Beiträge veröffentlicht werden.</p>
+              <div class="settings-fields">
+                <label class="settings-field"><span>GoToSocial instance</span><input id="cfgGotosocialInstance" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://social.example.org"></label>
+              </div>
+            </div>
+
+            <details class="settings-card settings-advanced">
+              <summary>
+                <span class="summary-text">
+                  <span class="settings-card-title">Erweitert</span>
+                  <span class="settings-card-hint">Zeitplan-Einstellungen – die Vorgaben passen meistens</span>
+                </span>
+              </summary>
+              <div class="settings-fields">
+                <label class="settings-field"><span>Maximale Beiträge pro Lauf</span><input id="cfgMaxPostsPerRun" type="number" min="1" step="1" inputmode="numeric"><small>Anzahl der Beiträge pro geplantem Lauf.</small></label>
+                <label class="settings-field"><span>Maximales Alter in Tagen</span><input id="cfgMaxAgeDays" type="number" min="0" step="1" inputmode="numeric"><small>Ältere Beiträge überspringen.</small></label>
+                <label class="settings-field"><span>Nicht veröffentlichen vor</span><input id="cfgStartAfter" type="datetime-local" autocomplete="off"><small>Frühere Beiträge überspringen; leer bedeutet unbegrenzt.</small></label>
+              </div>
+            </details>
+
+            <div class="settings-section">
+              <div class="settings-card-head">
+                <h3 class="settings-card-title">Post types</h3>
+                <button id="socialConfigAdd" type="button" class="ghost">
+                  <span data-icon="plus" aria-hidden="true"></span>
+                  <span>Hinzufügen</span>
+                </button>
+              </div>
+              <p class="settings-card-hint">Wiederverwendbare Vorlagen zum Teilen. Ohne Auswahl gilt die Vorgabe.</p>
+              <label class="settings-field"><span>Standard-Beitragstyp</span><select id="cfgDefaultCategory"></select></label>
+              <div id="socialCategoryList" class="social-category-list"></div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-card-head"><h3 class="settings-card-title">Statistics</h3></div>
+              <p class="settings-card-hint">Schreibgeschütztes GoatCounter-Dashboard in der Seitenleiste.</p>
+              <div class="settings-card">
+                <div class="settings-fields">
+                  <label class="social-check"><input id="cfgStatsEnabled" type="checkbox"> <span>Statistik anzeigen</span></label>
+                  <div id="cfgStatsFields" class="settings-fields settings-field-indent">
+                    <label class="settings-field"><span>GoatCounter-URL</span><input id="cfgStatsUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://stats.example.com"><small>Die GoatCounter-Website oder eigene Domain.</small></label>
+                    <p class="settings-field"><span>API-Token</span><span id="cfgStatsTokenStatus" class="stats-token-status">wird geprüft …</span><small>Schreibgeschützter Token im Cloudflare-Secret <code>GOATCOUNTER_STATS_TOKEN</code>.</small></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>

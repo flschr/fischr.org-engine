@@ -1,0 +1,72 @@
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  max-width: var(--layout-page-max);
+  margin: auto;
+  padding: var(--page-gutter);
+  font-family: var(--font-main);
+  font-size: var(--font-scale);
+  font-optical-sizing: auto;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  overflow-wrap: break-word;
+  word-break: normal;
+  text-rendering: optimizeLegibility;
+}
+
+body.post,
+body.page,
+body.home {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+body.post .post-content,
+body.home .post-content {
+  hyphens: none;
+  overflow-wrap: break-word;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+img,
+video {
+  height: auto;
+}
+
+hr {
+  height: 40px;
+  margin: 2.5rem 0;
+  border: 0;
+  background: center / contain no-repeat url("/assets/images/fish-line.svg");
+}
+
+@media (prefers-color-scheme: dark) {
+  hr:not(.post-signature-separator) {
+    filter: invert(1) brightness(2);
+  }
+}

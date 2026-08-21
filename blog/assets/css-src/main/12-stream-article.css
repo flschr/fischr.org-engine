@@ -1,0 +1,141 @@
+.stream-entry {
+  display: flow-root;
+  margin: 0;
+}
+
+/* The stream owns the space between entries. Do not let the final content
+   block make that spacing depend on whether a post ends in text or media. */
+.stream-entry .post-content > :last-child,
+.stream-entry .post-content > p:last-child > :is(img, picture, video):only-child {
+  margin-bottom: 0;
+}
+
+.stream-entry + .stream-entry {
+  margin-top: 3.75rem;
+}
+
+.stream-entry:last-child {
+  margin-bottom: 3.75rem;
+}
+
+.stream-entry + .stream-entry::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 0 0 3.75rem;
+  background-color: var(--border);
+}
+
+.stream-entry-header h2 {
+  margin: 0;
+  font-size: 1.6em;
+}
+
+.stream-entry-header h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.stream-entry-header h2 a:hover {
+  text-decoration: underline;
+}
+
+/* Title-only thoughts and pure quotes read like a passing thought, not a
+   bold section heading: a touch larger than body text, italic, normal weight. */
+.stream-entry--thought .stream-entry-header h2,
+.stream-entry--quote .stream-entry-header h2 {
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--quote-border);
+  font-size: 1.15em;
+  font-weight: 450;
+  font-style: italic;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--quote-color);
+}
+
+.stream-entry--thought .stream-entry-header .post-meta,
+.stream-entry--quote .stream-entry-header .post-meta {
+  margin-left: calc(1.1rem + 2px);
+}
+
+.stream-entry-header .post-meta {
+  margin: 0.35rem 0 0.9rem;
+}
+
+body.post .post-entry--thought .post-header > h1 {
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--quote-border);
+  font-size: 1.35em;
+  font-weight: 450;
+  font-style: italic;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--quote-color);
+}
+
+body.post .post-entry--thought .post-header .post-meta {
+  margin-left: calc(1.1rem + 2px);
+}
+
+.post-footer {
+  margin-top: 4rem;
+}
+
+.post-footer .post-signature-separator {
+  width: 100%;
+  height: 1px;
+  margin: 0 0 2rem;
+  border-top: 1px solid var(--border);
+  background: none;
+}
+
+/* Footnotes already mark the end of the article. Avoid stacking a second
+   separator directly below them. */
+body.post .post-content:has(.footnotes) + .post-footer {
+  margin-top: 2.5rem;
+}
+
+body.post .post-content:has(.footnotes) + .post-footer .post-signature-separator {
+  display: none;
+}
+
+.post-adjacent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.post-adjacent-link {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.post-adjacent-link--newer {
+  grid-column: 2;
+  text-align: right;
+}
+
+.post-adjacent-direction {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.post-adjacent-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.post-adjacent-link:hover .post-adjacent-title {
+  text-decoration-thickness: 2px;
+}

@@ -1,0 +1,100 @@
+/* ---- Workspace + views ------------------------------------------------- */
+
+.admin-workspace {
+  /* The fixed sidebar is out of grid flow, so pin the workspace to the second
+     column explicitly (column 1 stays reserved for the sidebar's width). */
+  grid-column: 2;
+  min-width: 0;
+  min-height: calc(100vh - var(--topbar-h));
+  padding: clamp(1.1rem, 2.6vw, 2.4rem) clamp(1rem, 3vw, 2.75rem);
+}
+/* When the sidebar is collapsed the floating toggle sits over the workspace's
+   top-left, so push the content's leading edge clear of it. The editor is the
+   exception: its toolbar shares the toggle's row (cleared sideways instead), so
+   it only needs a sliver of top room. */
+.admin-body.is-sidebar-collapsed .admin-workspace { padding-top: calc(3.2rem + env(safe-area-inset-top)); }
+.admin-body.is-sidebar-collapsed .admin-workspace:has(.editor-form:not([hidden])) { padding-top: calc(0.6rem + env(safe-area-inset-top)); }
+.view { min-width: 0; }
+
+.library-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1rem;
+  max-width: var(--content-w);
+  margin: 0 auto 1.4rem 0;
+}
+.view-title {
+  flex: 1 1 auto;
+  margin: 0 auto 0 0;
+  color: var(--ink);
+  font-size: clamp(1.45rem, 3vw, 1.8rem);
+  font-weight: 680;
+  letter-spacing: -0.03em;
+}
+.library-tools { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.45rem; }
+.library-tools .search { flex: 0 0 15rem; width: 15rem; min-width: 8rem; }
+.search { background: var(--panel-2); border-radius: var(--radius-pill); padding-inline: 0.95rem; }
+
+/* List */
+.entry-list { display: grid; gap: 0.4rem; max-width: var(--content-w); margin: 0 auto 0 0; padding: 0; list-style: none; }
+.entry-card {
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  min-height: 0;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  text-align: left;
+  white-space: normal;
+}
+.entry-card:hover {
+  border-color: var(--line-2);
+  background: var(--panel-2);
+}
+.entry-card.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.entry-card.has-local-change { border-color: var(--amber-line); background: var(--amber-weak); }
+
+/* Library rows: title + meta on the left, status on the right */
+.library-view .entry-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title status" "meta status";
+  align-items: center;
+  column-gap: 1.1rem;
+}
+.library-view .entry-title { grid-area: title; }
+.library-view .entry-meta { grid-area: meta; }
+.library-view .entry-status {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+.library-view .entry-pill { margin-top: 0; }
+
+.entry-title { color: var(--ink); font-size: 1rem; font-weight: 620; line-height: 1.3; overflow-wrap: anywhere; }
+.entry-meta { display: block; color: var(--ink-faint); font-size: 0.78rem; line-height: 1.4; overflow-wrap: anywhere; }
+.entry-pill {
+  justify-self: start;
+  margin-top: 0.35rem;
+  padding: 0.14rem 0.55rem;
+  border: 1px solid var(--amber-line);
+  border-radius: var(--radius-pill);
+  background: var(--amber-weak);
+  color: var(--amber);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+.entry-pill.is-delete { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
+.entry-pill.is-draft { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
+.entry-empty {
+  max-width: var(--content-w);
+  margin: 0 auto 0 0;
+  padding: 3.5rem 1rem;
+  color: var(--ink-faint);
+  font-size: 0.92rem;
+  text-align: left;
+}

@@ -1,0 +1,10 @@
+---
+permalink: /random-posts.json
+eleventyExcludeFromCollections: true
+sitemap: false
+---
+[
+{%- for post in collections.publishedPosts %}
+  {"title": {{ post.data.title | ratingTitle | dump | safe }}, "url": {{ post.url | dump | safe }}}{% if not loop.last %},{% endif %}
+{%- endfor %}
+]

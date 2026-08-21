@@ -1,0 +1,52 @@
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #6f7378;
+}
+
+.token.punctuation {
+  color: inherit;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: #8f3f71;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin {
+  color: #3f6f44;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #7a4f14;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #5b5aa0;
+}
+
+.token.function,
+.token.class-name {
+  color: #8a4b2a;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #8a4b2a;
+}

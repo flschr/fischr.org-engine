@@ -1,0 +1,123 @@
+/* Viewport overrides for the public site live here in cascade order. */
+
+@media (max-width: 42rem) {
+  .project-entry {
+    grid-template-columns: 1fr;
+    gap: 1.35rem;
+    padding: 2rem 0;
+  }
+
+  .project-visual {
+    width: 100%;
+    max-width: 22rem;
+  }
+
+  .author-card {
+    display: flow-root;
+    margin: 1rem 0 3.25rem;
+    padding: 1rem;
+  }
+
+  .author-card-photo {
+    float: left;
+    width: 4.5rem;
+    margin: 0 1rem 0 0;
+  }
+
+  .author-card--compact {
+    margin: 2.75rem 0 3rem;
+  }
+
+  .about-hero {
+    display: flow-root;
+    margin-top: 1rem;
+    padding-bottom: 2.25rem;
+  }
+
+  .about-portrait {
+    float: left;
+    width: 5.5rem;
+    margin: 0 1rem 0.5rem 0;
+  }
+
+  .about-hero h1 {
+    font-size: 1.6em;
+  }
+
+  .about-lede {
+    font-size: 1em;
+  }
+
+  .about-social-links {
+    clear: both;
+    grid-template-columns: repeat(3, max-content);
+    gap: 0.6rem 0.75rem;
+    padding-top: 0.85rem;
+    font-size: clamp(0.68rem, 3.3vw, 0.86rem);
+  }
+
+  .about-gallery {
+    gap: 0.45rem;
+    margin: 2.75rem 0;
+  }
+
+  .post-footer {
+    margin-top: 3.5rem;
+  }
+
+  .post-content > p > img,
+  .post-content > figure img {
+    border-radius: 0;
+  }
+
+  .post-adjacent {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  :root {
+    --page-gutter: 16px;
+    --media-bleed: var(--page-gutter);
+  }
+
+  body {
+    padding: var(--page-gutter);
+  }
+
+  .site-header {
+    display: block;
+    margin-bottom: 3rem;
+  }
+
+  .site-nav {
+    justify-content: flex-start;
+    margin-top: 0.75rem;
+  }
+
+  .site-footer {
+    margin-top: 3rem;
+  }
+}
+
+@media (max-width: 32rem) {
+  :root {
+    --font-scale: 1.0625rem;
+  }
+
+  .about-social-links {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 25rem) and (max-width: 42rem) {
+  .site-header {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .site-nav {
+    flex-wrap: nowrap;
+    gap: 0.35rem 0.65rem;
+    margin-top: 0;
+  }
+}

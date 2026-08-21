@@ -1,0 +1,27 @@
+<div class="post-stream">
+  {% for post in posts %}
+    {% set cleanedContent = post.templateContent | withoutDuplicateTitle(post.data.title) | contentConventions %}
+    {% set entryKind = cleanedContent | streamEntryKind %}
+    <article class="stream-entry{% if entryKind != 'full' %} stream-entry--{{ entryKind }}{% endif %}">
+      <header class="stream-entry-header">
+        <h2><a href="{{ post.url }}" aria-label="{{ post.data.title | ratingTitleAria }}">{{ post.data.title | ratingTitleHtml | safe }}</a></h2>
+        <p class="post-meta">
+          <time datetime="{{ post.date | htmlDate }}">{{ post.date | date }}</time>
+        </p>
+      </header>
+
+      {% if cleanedContent %}
+        <div class="post-content">
+          {{ cleanedContent | safe }}
+        </div>
+      {% endif %}
+    </article>
+  {% endfor %}
+</div>
+
+{% if pagination and (pagination.href.previous or pagination.href.next) %}
+  <nav class="pagination" aria-label="Seitennavigation">
+    {% if pagination.href.previous %}<a href="{{ pagination.href.previous }}">← Neuer</a>{% endif %}
+    {% if pagination.href.next %}<a href="{{ pagination.href.next }}">Älter →</a>{% endif %}
+  </nav>
+{% endif %}

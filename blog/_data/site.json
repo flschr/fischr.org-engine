@@ -1,0 +1,25 @@
+{
+  "title": "Example Blog",
+  "alternateName": "Example Author",
+  "description": "A small personal website built with Markdown, Git and Eleventy.",
+  "author": {
+    "name": "Example Author",
+    "email": "",
+    "url": "https://example.com/",
+    "image": "/assets/images/og-default.webp",
+    "sameAs": []
+  },
+  "url": "https://example.com",
+  "language": "en",
+  "locale": "en_US",
+  "themeColor": "#fffff8",
+  "analytics": {
+    "goatcounter": {
+      "endpoint": "",
+      "script": ""
+    }
+  },
+  "social": {
+    "rss": "/feed.xml"
+  }
+}

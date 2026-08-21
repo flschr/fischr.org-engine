@@ -1,0 +1,173 @@
+/* ---- Shell ------------------------------------------------------------- */
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Floating menu toggle — styled to read as the first button of the editor
+   toolbar (same size, border and fill), just pinned so it stays put while the
+   sidebar slides. Sits over the sidebar when open, over the workspace when
+   collapsed. Offsets respect the notch/status bar (viewport-fit=cover). */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: calc(0.6rem + env(safe-area-inset-top));
+  left: calc(0.6rem + env(safe-area-inset-left));
+  z-index: 50;
+  width: 2.3rem;
+  height: 2.3rem;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--ink-soft);
+}
+.sidebar-toggle:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
+.sidebar-toggle svg { width: 1.05rem; height: 1.05rem; }
+
+/* Sync/publish status lives at the foot of the sidebar now. */
+.sync-button {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  margin-top: auto;
+  border-color: var(--line-2);
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-weight: 550;
+}
+.sync-button svg { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; }
+.sync-button .sync-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sync-button.has-changes {
+  border-color: transparent;
+  background: var(--accent-weak);
+  color: var(--accent-ink);
+}
+.sync-button.is-publishing:disabled { opacity: 1; }
+.sync-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  min-height: 1.3rem;
+  padding: 0 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.sync-button.has-changes .sync-count { background: var(--accent); color: #fff; }
+
+/* Small, quiet settings link directly under the sync button at the foot. */
+.sidebar-settings {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  min-height: 2.1rem;
+  padding: 0 0.6rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+.sidebar-settings:hover { background: var(--panel-2); color: var(--ink); }
+.sidebar-settings.is-active { background: var(--accent-weak); color: var(--accent-ink); }
+.sidebar-settings svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
+
+/* ---- Layout + sidebar -------------------------------------------------- */
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  min-height: calc(100vh - var(--topbar-h));
+  transition: grid-template-columns 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.admin-body.is-sidebar-collapsed .admin-layout {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+.admin-body.is-sidebar-initializing .admin-layout,
+.admin-body.is-sidebar-initializing .admin-sidebar { transition: none; }
+
+.admin-sidebar {
+  /* Fixed, not sticky: the layout grid caps its row at viewport height, so a
+     sticky sidebar had no taller containing block to stick within and scrolled
+     away with the page. The grid column below still reserves its width. */
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  width: var(--sidebar-w);
+  z-index: 20;
+  /* dvh, not vh: on iOS vh runs behind the browser chrome / home indicator, which
+     pushed the bottom-docked sync button off-screen. */
+  height: calc(100dvh - var(--topbar-h));
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Top padding clears the floating toggle; bottom padding clears the home bar. */
+  padding: calc(3.1rem + env(safe-area-inset-top)) 0.6rem calc(0.85rem + env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+  transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1), padding 200ms ease, opacity 160ms ease;
+}
+.admin-body.is-sidebar-collapsed .admin-sidebar {
+  width: 0;
+  min-width: 0;
+  padding-inline: 0;
+  border-right-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-new { width: 100%; margin-bottom: 0.35rem; }
+.sidebar-new svg { width: 1.05rem; height: 1.05rem; }
+
+.sidebar-nav { display: grid; gap: 0.15rem; align-content: start; }
+.nav-link {
+  justify-content: flex-start;
+  gap: 0.6rem;
+  min-height: 2.4rem;
+  padding: 0 0.6rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 550;
+}
+.nav-link:hover { background: var(--panel-2); color: var(--ink); }
+.nav-link.is-active {
+  background: var(--accent-weak);
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.nav-link.is-active .nav-icon { color: var(--accent); }
+.nav-icon { display: inline-flex; flex: 0 0 1.3rem; color: var(--ink-faint); }
+.nav-icon svg { width: 1.3rem; height: 1.3rem; }
+.nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.connection-dot {
+  flex: 0 0 auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: var(--radius-pill);
+  background: var(--ink-faint);
+}
+.connection-dot.is-connected { background: var(--green); box-shadow: 0 0 0 3px rgb(21 128 61 / 0.14); }
+
+.sidebar-scrim {
+  position: fixed;
+  inset: var(--topbar-h) 0 0;
+  z-index: 25;
+  background: rgb(17 18 24 / 0.35);
+  backdrop-filter: blur(2px);
+}

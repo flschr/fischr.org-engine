@@ -1,0 +1,54 @@
+.home .post-list {
+  margin-top: -0.5rem;
+}
+
+.post-stream {
+  display: grid;
+  gap: 0;
+}
+
+.author-card {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 1.35rem;
+  align-items: start;
+  margin: 1.5rem 0 4rem;
+  padding: 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(127, 127, 127, 0.045);
+}
+
+.author-card-photo {
+  display: block;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.author-card h1,
+.author-card h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1em;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+
+.author-card-name {
+  white-space: nowrap;
+}
+
+.author-card p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.author-card p a {
+  white-space: nowrap;
+}
+
+.author-card--compact {
+  margin: 3.25rem 0 4rem;
+}

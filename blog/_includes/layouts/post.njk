@@ -1,0 +1,55 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+  {% set cleanedContent = content | withoutDuplicateTitle(title) | contentConventions %}
+  {% set entryKind = cleanedContent | streamEntryKind %}
+  {% set canonical = page.url | absoluteUrl(site.url) %}
+  <article class="h-entry{% if entryKind != 'full' %} post-entry--{{ entryKind }}{% endif %}" data-pagefind-body>
+    <header class="post-header">
+      <h1 class="p-name" data-pagefind-meta="title" aria-label="{{ title | ratingTitleAria }}">{{ title | ratingTitleHtml | safe }}</h1>
+      <p class="post-meta" data-pagefind-ignore>
+        <time class="dt-published" datetime="{{ page.date | isoDate }}" data-pagefind-meta="date" data-pagefind-sort="date[datetime]">{{ page.date | date }}</time>
+      </p>
+    </header>
+
+    <a class="u-url" href="{{ canonical }}" hidden aria-hidden="true" tabindex="-1">{{ title }}</a>
+    <span class="p-author h-card" hidden>
+      <a class="u-url p-name" href="{{ site.author.url | absoluteUrl(site.url) }}">{{ site.author.name }}</a>
+      <img class="u-photo" src="{{ site.author.image | absoluteUrl(site.url) }}" alt="">
+    </span>
+
+    {% if cleanedContent %}
+      <div class="post-content e-content">
+        {{ cleanedContent | safe }}
+      </div>
+    {% endif %}
+
+    {% set older = collections.publishedPosts | olderPost(page.url) %}
+    {% set newer = collections.publishedPosts | newerPost(page.url) %}
+    <footer class="post-footer" data-pagefind-ignore>
+      <hr class="post-signature-separator">
+
+      {% if older or newer %}
+        <nav class="post-adjacent" aria-label="Weitere Blogbeiträge">
+          {% if older %}
+            <a class="post-adjacent-link post-adjacent-link--older" href="{{ older.url }}" aria-label="Älterer Beitrag: {{ older.data.title | ratingTitleAria }}">
+              <span class="post-adjacent-direction">← Älterer Beitrag</span>
+              <span class="post-adjacent-title">{{ older.data.title | ratingTitleHtml | safe }}</span>
+            </a>
+          {% endif %}
+
+          {% if newer %}
+            <a class="post-adjacent-link post-adjacent-link--newer" href="{{ newer.url }}" aria-label="Neuerer Beitrag: {{ newer.data.title | ratingTitleAria }}">
+              <span class="post-adjacent-direction">Neuerer Beitrag →</span>
+              <span class="post-adjacent-title">{{ newer.data.title | ratingTitleHtml | safe }}</span>
+            </a>
+          {% endif %}
+        </nav>
+      {% endif %}
+
+      {% set authorCardVariant = "post" %}
+      {% include "partials/author-card.njk" %}
+
+    </footer>
+  </article>
+{% endblock %}

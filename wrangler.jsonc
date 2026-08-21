@@ -1,0 +1,5 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fischr-org",
+  "pages_build_output_dir": "./_site"
+}

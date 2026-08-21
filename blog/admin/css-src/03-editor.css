@@ -1,0 +1,114 @@
+/* ---- Editor ------------------------------------------------------------ */
+
+.editor-form { display: grid; gap: 0.9rem; grid-template-rows: auto auto minmax(0, 1fr); }
+.editor-head {
+  max-width: var(--editor-content-w);
+  margin: 0 auto -0.1rem 0;
+}
+.editor-bar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  max-width: var(--editor-content-w);
+  margin: 0.3rem auto 0 0;
+  padding: 0.5rem 0;
+  background: var(--bg);
+}
+.editor-bar-spacer { flex: 1 1 auto; }
+.tb-divider { flex: 0 0 auto; width: 1px; height: 1.6rem; margin: 0 0.1rem; background: var(--line-2); }
+.format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+
+.preview-gpx {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.25rem 0.65rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--panel-2);
+}
+
+.preview-gpx .rw-icon {
+  grid-row: 1 / span 2;
+}
+
+.preview-gpx small {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tb-text { font-size: 1rem; font-weight: 750; }
+
+/* Bear-style discrete bordered buttons */
+.editor-bar .tb-btn,
+.editor-bar .tb-button {
+  min-width: 2.3rem;
+  min-height: 2.3rem;
+  padding: 0 0.45rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--ink-soft);
+}
+.editor-bar .tb-btn:hover,
+.editor-bar .tb-button:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
+.editor-bar .tb-btn svg,
+.editor-bar .tb-button svg { width: 1.05rem; height: 1.05rem; }
+
+/* Colored, filled action buttons (Bear style) */
+.editor-bar #previewModeButton[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent-weak-2); color: var(--accent-ink); }
+.editor-bar .tb-publish.is-publish { background: var(--accent); border-color: transparent; color: #fff; }
+.editor-bar .tb-publish.is-publish:hover { background: var(--accent-hover); border-color: transparent; color: #fff; }
+.editor-bar .tb-publish.is-published { background: var(--brown); border-color: transparent; color: #fff; }
+.editor-bar .tb-publish.is-published:hover { background: #6f4419; border-color: transparent; color: #fff; }
+.editor-bar .tb-save { background: var(--green); border-color: transparent; color: #fff; }
+.editor-bar .tb-save:hover { background: #11652f; border-color: transparent; color: #fff; }
+.editor-bar .tb-delete { background: var(--red); border-color: transparent; color: #fff; }
+.editor-bar .tb-delete:hover { background: #b91c1c; border-color: transparent; color: #fff; }
+.editor-actions .danger svg { width: 1.05rem; height: 1.05rem; }
+/* New = indigo + */
+.lib-new { border-color: transparent; background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgb(79 70 229 / 0.35); }
+.lib-new:hover { background: var(--accent-hover); color: #fff; }
+.lib-new svg { width: 1.15rem; height: 1.15rem; }
+
+.editor-article { width: 100%; max-width: var(--editor-content-w); margin: 0 auto 0 0; }
+.title-input {
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.3rem 0 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.title-input::placeholder { color: var(--ink-faint); }
+.title-input:focus { outline: none; }
+.editor-meta {
+  margin: 0 0 0.4rem;
+  color: var(--ink-faint);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.editor-form.is-source-mode .editor-article { max-width: none; }
+.editor-form.is-source-mode .editor-mount .cm-content {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+}
+.editor-form.is-source-mode .tb-divider { display: none; }

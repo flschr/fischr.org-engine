@@ -1,0 +1,53 @@
+  function wireAdminViewEvents() {
+    els.settingsNav?.addEventListener("click", async () => {
+      if (state.view === "social") {
+        if (isMobile()) closeSidebar();
+        return;
+      }
+      if (await confirmLeaveEditor()) {
+        openSocialConfig();
+        if (isMobile()) closeSidebar();
+      }
+    });
+
+    window.addEventListener("focus", refreshAfterTabResume);
+    document.addEventListener("visibilitychange", refreshAfterTabResume);
+
+    els.statsNav?.addEventListener("click", async () => {
+      if (state.view === "stats") {
+        if (isMobile()) closeSidebar();
+        return;
+      }
+      if (await confirmLeaveEditor()) {
+        openStats();
+        if (isMobile()) closeSidebar();
+      }
+    });
+    els.statsRange?.addEventListener("click", (event) => {
+      const button = event.target.closest(".stats-range-btn");
+      if (!button) return;
+      const days = Number(button.dataset.days);
+      if (!days || days === state.statsDays) return;
+      state.statsDays = days;
+      setStatsRangeButtons();
+      loadStats();
+    });
+    els.statsRefresh?.addEventListener("click", () => loadStats(true));
+    // Delegated: rows are re-rendered on every load, the container persists.
+    els.statsBody?.addEventListener("click", toggleStatsRowDrill);
+    els.socialConfigSave?.addEventListener("click", saveSocialConfig);
+    els.socialConfigReset?.addEventListener("click", resetSocialConfig);
+    els.socialConfigAdd?.addEventListener("click", addSocialCategory);
+    [els.cfgGotosocialInstance, els.cfgMaxPostsPerRun, els.cfgMaxAgeDays, els.cfgStartAfter, els.cfgStatsUrl].forEach((input) => {
+      input?.addEventListener("input", updateSocialConfigDirty);
+    });
+    els.cfgStatsEnabled?.addEventListener("change", () => {
+      updateStatsFieldsState();
+      updateSocialConfigDirty();
+    });
+    els.cfgDefaultCategory?.addEventListener("change", () => {
+      // Mirror into the live draft so re-renders (add/remove rule) keep the pick.
+      if (state.socialConfigDraft?.social) state.socialConfigDraft.social.defaultTemplate = els.cfgDefaultCategory.value;
+      updateSocialConfigDirty();
+    });
+  }

@@ -1,0 +1,16 @@
+{
+  "mdExtension": "md",
+  "media": [
+    {
+      "categories": [
+        "image"
+      ],
+      "input": "blog/assets/images/imported",
+      "label": "Images",
+      "name": "images",
+      "output": "/assets/images/imported"
+    }
+  ],
+  "publicMediaPath": "assets/images/imported/",
+  "repoMediaPath": "blog/assets/images/imported/"
+}

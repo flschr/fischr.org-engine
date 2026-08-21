@@ -1,0 +1,30 @@
+---
+permalink: /feed.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>{{ site.title | escape }}</title>
+    <link>{{ site.url }}/</link>
+    <atom:link href="{{ '/feed.xml' | absoluteUrl(site.url) }}" rel="self" type="application/rss+xml" />
+    <description>{{ site.description | escape }}</description>
+    <language>{{ site.language | escape }}</language>
+    <lastBuildDate>{{ collections.publishedPosts[0].date | dateToRfc822 }}</lastBuildDate>
+    {% for post in collections.publishedPosts | limit(30) %}
+      {% set feedContent = post.templateContent | withoutDuplicateTitle(post.data.title) | feedEmbeds %}
+      {% set feedTrackingPixel = "" %}
+      {% if env.environment == "production" and site.analytics.goatcounter %}
+        {% set feedTrackingPixel = post | feedReadTrackingPixel(site.analytics.goatcounter.endpoint) %}
+      {% endif %}
+      <item>
+        <title>{{ post.data.title | ratingTitle | escape }}</title>
+        <link>{{ post.url | absoluteUrl(site.url) }}</link>
+        <guid>{{ post.url | absoluteUrl(site.url) }}</guid>
+        <pubDate>{{ post.date | dateToRfc822 }}</pubDate>
+        <description>{{ feedContent | excerpt(280) | escape }}</description>
+        <content:encoded><![CDATA[{{ feedContent | htmlToAbsoluteUrls(site.url) | safe }}{{ feedTrackingPixel | safe }}]]></content:encoded>
+      </item>
+    {% endfor %}
+  </channel>
+</rss>

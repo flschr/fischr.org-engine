@@ -1,0 +1,142 @@
+.meta-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.1rem;
+  margin: 0.5rem 0 0;
+  padding: 1.05rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.meta-panel label { display: grid; gap: 0.3rem; min-width: 0; }
+.meta-panel .meta-wide { grid-column: 1 / -1; }
+.meta-panel span { color: var(--ink-soft); font-size: 0.73rem; font-weight: 600; }
+.meta-panel input, .meta-panel select { background: var(--panel); }
+.tag-autocomplete {
+  position: relative;
+  min-width: 0;
+}
+.tag-suggestions {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  z-index: 24;
+  display: grid;
+  gap: 0.1rem;
+  max-height: 14rem;
+  padding: 0.3rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: auto;
+}
+.tag-suggestion {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.83rem;
+  font-weight: 550;
+}
+.tag-suggestion:hover,
+.tag-suggestion.is-active {
+  background: var(--accent-weak);
+  color: var(--accent-ink);
+}
+.tag-suggestion-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag-suggestion-count {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.meta-input-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+.meta-input-action input { min-width: 0; }
+.meta-input-action .icon-button {
+  width: 2.45rem;
+  height: 2.45rem;
+  border-color: var(--line-2);
+  background: var(--panel);
+}
+
+.social-count {
+  margin-left: 0.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+.social-count[data-state="over"] { color: var(--danger, #c0392b); }
+.social-hint {
+  margin: 0;
+  font-size: 0.73rem;
+  color: var(--ink-faint);
+}
+.social-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* The global input reset sets appearance:none, which strips a checkbox down to a
+   blank bordered box with no checkmark. Restore real checkbox rendering with a
+   clear checked state for every checkbox in the social panels/editor. */
+.social-check input[type="checkbox"],
+.social-inline-check input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.social-check span { color: var(--ink) !important; font-size: 0.82rem !important; font-weight: 550 !important; }
+/* The text input now wraps the editable textarea plus a read-only suffix that
+   shows the link the template appends — the two read as a single field. */
+.social-text-field {
+  display: grid;
+  /* minmax(0,…) lets the column shrink below the link's intrinsic (nowrap) width
+     so the URL clips with an ellipsis instead of forcing the sheet wider than the
+     viewport (which let it pan sideways once a field was focused). */
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  overflow: hidden;
+}
+.social-text-field:focus-within { border-color: var(--accent); outline: 3px solid rgb(79 70 229 / 0.16); }
+.social-text-field textarea { width: 100%; min-width: 0; border: 0; border-radius: 0; background: transparent; padding-bottom: 0.2rem; }
+.social-text-field textarea:focus { outline: none; }
+.social-text-link {
+  min-width: 0;
+  padding: 0 0.7rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--accent-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

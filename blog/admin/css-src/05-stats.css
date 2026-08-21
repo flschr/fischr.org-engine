@@ -1,0 +1,119 @@
+/* ---- Stats (GoatCounter dashboard) ------------------------------------- */
+.stats-view { max-width: var(--content-w); margin: 0 auto 0 0; }
+.stats-range { display: inline-flex; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel-2); }
+.stats-range-btn {
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.8rem;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.stats-range-btn:hover { color: var(--ink); }
+.stats-range-btn.is-active { background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+.stats-range-label { margin: 0.1rem 0 1rem; color: var(--ink-faint); font-size: 0.82rem; }
+.stats-state { margin: 2rem 0; color: var(--ink-soft); text-align: left; }
+.stats-state-error { color: var(--red); }
+
+.stats-total {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+}
+.stats-total-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.stats-total-label { color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
+.stats-total-value { color: var(--ink); font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 720; letter-spacing: -0.03em; }
+.stats-spark { display: block; width: 100%; height: 3rem; overflow: visible; }
+.stats-spark-fill { fill: var(--accent-weak); }
+.stats-spark-line { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  min-width: 0;
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+}
+.stats-panel {
+  min-width: 0;
+  padding: 1rem 1.1rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.stats-panel-title { margin: 0 0 0.6rem; color: var(--ink); font-size: 0.95rem; font-weight: 660; letter-spacing: -0.01em; }
+.stats-rows { display: grid; gap: 0.1rem; margin: 0; padding: 0; list-style: none; }
+.stats-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+/* The proportional bar sits behind the text as a soft fill. */
+.stats-row-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w, 0%);
+  background: var(--accent-weak);
+  border-radius: var(--radius-sm);
+  z-index: 0;
+}
+.stats-row-text { position: relative; z-index: 1; min-width: 0; display: grid; gap: 0.05rem; }
+.stats-row-path { color: var(--ink); font-size: 0.85rem; font-weight: 560; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-row-title { color: var(--ink-faint); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-row-count { position: relative; z-index: 1; color: var(--ink-soft); font-size: 0.82rem; font-weight: 620; font-variant-numeric: tabular-nums; }
+.stats-row-empty { color: var(--ink-faint); font-size: 0.85rem; padding: 0.6rem 0.5rem; }
+
+/* External-link to the full GoatCounter dashboard, next to the Stats title. */
+.stats-external {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.5rem;
+  color: var(--ink-faint);
+  vertical-align: middle;
+  transition: color 130ms ease;
+}
+.stats-external:hover { color: var(--accent); }
+.stats-external svg { width: 1.05rem; height: 1.05rem; }
+
+/* Expandable rows (Top pages → referrers, Top referrers → source URLs). */
+.stats-row-group { display: block; }
+.stats-row-plain { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.stats-row-toggle {
+  display: grid;
+  grid-template-columns: 0.95rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stats-row-toggle:hover { background: var(--panel-2); }
+.stats-row-chevron {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-faint);
+  transition: transform 140ms ease;
+}
+.stats-row-chevron svg { width: 0.9rem; height: 0.9rem; }
+.stats-row-toggle[aria-expanded="true"] .stats-row-chevron { transform: rotate(180deg); }
+.stats-subrefs { padding: 0.05rem 0 0.35rem 1.45rem; }
+.stats-subrows { gap: 0.05rem; }
+.stats-subrow .stats-row-path { font-weight: 500; color: var(--ink-soft); }
+.stats-subrow .stats-row-bar { background: var(--accent-weak-2); }
+.stats-substate { margin: 0.3rem 0 0.4rem 1.45rem; color: var(--ink-faint); font-size: 0.8rem; }

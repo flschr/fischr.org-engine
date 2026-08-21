@@ -1,0 +1,196 @@
+/* Central settings view (GitHub connection + social configuration) */
+.social-config-view { max-width: var(--content-w); margin: 0 auto 0 0; }
+.social-config-view.settings-view { max-width: var(--content-w); }
+/* The connection card is now an inline section here, not a floating popover. */
+.settings-view #connectionPanel { width: auto; margin: 0 0 0.4rem; box-shadow: none; }
+.settings-view .setup-head .connection-dot { flex: 0 0 auto; }
+
+/* Grouped settings: each concern in its own bordered card with a title + hint. */
+.settings-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.9rem;
+}
+.settings-section-head .section-title { margin: 0; }
+.settings-card {
+  margin-top: 0.85rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.settings-card-title { margin: 0; font-size: 0.92rem; font-weight: 650; color: var(--ink); }
+.settings-card-hint { margin: 0.15rem 0 0; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.45; }
+.settings-card > .settings-fields { margin-top: 0.9rem; }
+.settings-fields { display: grid; gap: 0.9rem; }
+.settings-field { display: grid; gap: 0.3rem; min-width: 0; }
+.settings-field > span { font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+.settings-field small { font-size: 0.74rem; color: var(--ink-faint); line-height: 1.4; }
+.settings-field-indent { margin-left: 1.65rem; }
+/* Stats settings: dim the URL/token rows when the tab is switched off. */
+.settings-fields.is-disabled { opacity: 0.5; pointer-events: none; }
+.stats-token-status { font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
+.stats-token-status[data-tone="ok"] { color: var(--accent); }
+.stats-token-status[data-tone="pending"] { color: var(--amber); }
+
+/* Advanced = a card that's also a collapsible <details>. */
+.settings-advanced { padding-bottom: 0.95rem; }
+.settings-advanced > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  list-style: none;
+  cursor: pointer;
+}
+.settings-advanced > summary::-webkit-details-marker { display: none; }
+.settings-advanced > summary .summary-text { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.settings-advanced > summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.2rem;
+  border-right: 2px solid var(--ink-faint);
+  border-bottom: 2px solid var(--ink-faint);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.settings-advanced[open] > summary::after { transform: rotate(-135deg); }
+.settings-advanced[open] > summary { margin-bottom: 0.6rem; }
+
+.settings-section { margin-top: 1.9rem; }
+.settings-section > .settings-card-head { margin-bottom: 0.1rem; }
+.social-config-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  align-self: center;
+  margin-right: 0.2rem;
+}
+.social-config-status[data-tone="ok"] { color: var(--accent); }
+.social-config-status[data-tone="pending"] { color: var(--amber); }
+.social-config-status[data-tone="off"] { color: var(--danger, #c0392b); }
+.social-config-status[data-tone="muted"] { color: var(--ink-faint); }
+.social-config-intro {
+  margin: 0 0 1rem;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.social-config-global {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.1rem;
+  margin-bottom: 1.4rem;
+  padding: 1.05rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.social-config-global label { display: grid; gap: 0.3rem; min-width: 0; }
+.social-config-global span { color: var(--ink-soft); font-size: 0.73rem; font-weight: 600; }
+.social-config-global input { background: var(--panel); }
+.social-config-categories-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.social-config-categories-head .section-title { margin: 0; }
+.social-category-list { display: grid; gap: 0.55rem; margin-top: 0.7rem; }
+.social-category-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.social-category-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.social-category-name { flex: 1 1 auto; font-weight: 600; }
+.social-category-head .icon-button {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-color: var(--line-2);
+  background: var(--panel-2);
+}
+.social-category-head .icon-button.danger { color: var(--danger, #c0392b); }
+.social-category-order {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.social-category-moves { display: flex; gap: 0.35rem; }
+.social-category-moves .icon-button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-color: var(--line-2);
+  background: var(--panel-2);
+}
+.social-category-moves .icon-button.danger { color: var(--danger, #c0392b); }
+.social-category-moves .icon-button:disabled { opacity: 0.4; }
+.social-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem 0.9rem;
+}
+.social-category-grid label { display: grid; gap: 0.25rem; min-width: 0; }
+.social-category-grid span { color: var(--ink-soft); font-size: 0.72rem; font-weight: 600; }
+.social-category-template { display: grid; gap: 0.25rem; }
+.social-category-template > span { color: var(--ink-soft); font-size: 0.72rem; font-weight: 600; }
+.social-category-template textarea {
+  width: 100%;
+  min-height: 2.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+.social-category-opts,
+.social-category-net {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.social-category-net { padding-top: 0.1rem; }
+.social-advanced {
+  border-top: 1px solid var(--line);
+  padding-top: 0.55rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.social-advanced > summary {
+  cursor: pointer;
+  list-style: revert;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  width: max-content;
+}
+.social-advanced[open] > summary { margin-bottom: 0.2rem; }
+.social-category-hint { color: var(--ink-faint); font-size: 0.72rem; }
+.social-config-empty { color: var(--ink-faint); font-size: 0.85rem; }

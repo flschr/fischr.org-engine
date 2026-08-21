@@ -1,0 +1,22 @@
+---
+pagination:
+  data: collections.aliases
+  size: 1
+  alias: redirect
+permalink: "{{ redirect.from }}index.html"
+eleventyExcludeFromCollections: true
+sitemap: false
+---
+<!doctype html>
+<html lang="{{ site.language }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url={{ redirect.to }}">
+    <link rel="canonical" href="{{ redirect.to | absoluteUrl(site.url) }}">
+    <title>{{ redirect.title or "Weiterleitung" }} | {{ site.title }}</title>
+  </head>
+  <body>
+    <p>Weiter zu <a href="{{ redirect.to }}">{{ redirect.title or redirect.to }}</a>.</p>
+  </body>
+</html>
