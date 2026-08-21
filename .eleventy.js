@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const syntaxHighlight = require("@11ty/eleventy-plugin-syntaxhighlight");
 const pluginRss = require("@11ty/eleventy-plugin-rss");
 const markdownIt = require("markdown-it");
-const { markdownItMark, markdownItOptions } = require("./blog/admin/markdown-conventions");
+const { markdownItAdmonitions, markdownItMark, markdownItOptions } = require("./blog/admin/markdown-conventions");
 const {
   faBluesky,
   faGithub,
@@ -33,7 +33,6 @@ const {
 const { createAssetHelpers } = require("./lib/eleventy/assets");
 const {
   buildMetaDescription,
-  normalizeAdmonitionHeadings,
   removeDuplicateTitleParagraph,
   renderFigureCaptions,
   streamEntryKind
@@ -261,6 +260,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.setLibrary(
     "md",
     markdownIt(markdownItOptions({ html: true })).use(markdownItMark)
+      .use(markdownItAdmonitions)
       .use(embeds.markdownMediaShortcodes)
   );
 
@@ -338,10 +338,6 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addFilter("withoutDuplicateTitle", (content, title) => {
     return removeDuplicateTitleParagraph(content, title);
-  });
-
-  eleventyConfig.addFilter("contentConventions", (content) => {
-    return normalizeAdmonitionHeadings(content);
   });
 
   eleventyConfig.addFilter("streamEntryKind", (content) => {

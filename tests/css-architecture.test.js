@@ -18,6 +18,25 @@ function assertBoundedModules(directory, maxLines = 200) {
   }
 }
 
+function relativeLuminance(hex) {
+  const channels = hex.match(/[a-f\d]{2}/gi).map((value) => parseInt(value, 16) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+}
+
+function contrastRatio(left, right) {
+  const values = [relativeLuminance(left), relativeLuminance(right)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
+
+function declarationValues(source, selector, property) {
+  const values = [];
+  postcss.parse(source).walkRules(selector, (rule) => {
+    rule.walkDecls(property, (declaration) => values.push(declaration.value));
+  });
+  return values;
+}
+
 test("style bundle manifests explicitly own every source file", () => {
   for (const [bundle, directory] of Object.entries({
     main: "blog/assets/css-src/main",
@@ -44,6 +63,48 @@ test("public CSS modules stay bounded and responsive rules stay centralized", ()
 test("public CSS manifest order matches its numbered source order", () => {
   assert.deepEqual(Object.keys(publicStyleBundles), ["main"]);
   assert.deepEqual(styleSources.main, [...styleSources.main].sort((a, b) => a.localeCompare(b)));
+});
+
+test("actual admonition title colors remain readable on the public site and in admin", () => {
+  const publicTokens = read("blog/assets/css-src/main/01-tokens.css");
+  const publicAdmonitions = read("blog/assets/css-src/main/13a-admonitions.css");
+  const publicBackgrounds = declarationValues(publicTokens, ":root", "--background-color");
+  for (const selector of [".admonition-info", ".admonition-warning", ".admonition-caution"]) {
+    const accents = declarationValues(publicAdmonitions, selector, "--adm-accent");
+    assert.equal(accents.length, publicBackgrounds.length, `${selector} must define one accent per public color scheme`);
+    for (let index = 0; index < accents.length; index += 1) {
+      assert.ok(contrastRatio(publicBackgrounds[index], accents[index]) >= 4.5, `${accents[index]} lacks text contrast on ${publicBackgrounds[index]}`);
+    }
+  }
+
+  const adminTokens = read("blog/admin/css-src/01-tokens.css");
+  const adminPreview = read("blog/admin/css-src/04-publish-dialog.css");
+  const [adminBackground] = declarationValues(adminTokens, ":root", "--panel-2");
+  const adminAssignments = [
+    [".editor-preview .admonition", "--accent-ink"],
+    [".editor-preview .admonition-warning", "--amber"],
+    [".editor-preview .admonition-caution", "--red"]
+  ];
+  for (const [selector, variable] of adminAssignments) {
+    const [accent] = declarationValues(adminTokens, ":root", variable);
+    assert.ok(contrastRatio(adminBackground, accent) >= 4.5, `${variable} lacks admin preview contrast on ${adminBackground}`);
+    assert.deepEqual(declarationValues(adminPreview, selector, "--adm-accent"), [`var(${variable})`], `${selector} must use the tested accent`);
+  }
+});
+
+test("formatted admonition titles keep normal inline text flow", () => {
+  const publicAdmonitions = read("blog/assets/css-src/main/13a-admonitions.css");
+  const adminPreview = read("blog/admin/css-src/04-publish-dialog.css");
+
+  for (const [source, titleSelector, iconSelector] of [
+    [publicAdmonitions, ".admonition-title", ".admonition-icon"],
+    [adminPreview, ".editor-preview .admonition-title", ".editor-preview .admonition-icon"]
+  ]) {
+    assert.deepEqual(declarationValues(source, titleSelector, "display"), [], `${titleSelector} must preserve inline child flow`);
+    assert.deepEqual(declarationValues(source, titleSelector, "gap"), [], `${titleSelector} must not space inline fragments as flex items`);
+    assert.deepEqual(declarationValues(source, iconSelector, "display"), ["inline-block"]);
+    assert.deepEqual(declarationValues(source, iconSelector, "margin-right"), ["0.5rem"]);
+  }
 });
 
 test("all public page types inherit one page-width contract", () => {

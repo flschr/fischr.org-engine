@@ -26,39 +26,6 @@ pre code {
   background: none;
 }
 
-.admonition {
-  --adm-accent: var(--heading-color);
-  margin: 2.2rem 0;
-  padding: 0.9rem 0 0.9rem 1.1rem;
-  border: 0;
-  border-left: 3px solid var(--adm-accent);
-  border-radius: 0;
-  color: var(--text-color);
-  background: transparent;
-  font-style: normal;
-}
-
-.admonition-info {
-  --adm-accent: rgba(9, 105, 218, 0.75);
-}
-
-.admonition-warning {
-  --adm-accent: rgba(178, 90, 0, 0.75);
-}
-
-.admonition-caution {
-  --adm-accent: rgba(180, 35, 24, 0.75);
-}
-
-.admonition-title {
-  margin: 0 0 0.55rem;
-  font-family: var(--font-main);
-  font-size: 1.02em;
-  font-weight: 800;
-  line-height: 1.25;
-  color: var(--heading-color);
-}
-
 .post-content > blockquote:not(.admonition) {
   margin: 2rem 0;
   padding-left: 1.1rem;

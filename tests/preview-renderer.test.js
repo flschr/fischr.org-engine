@@ -12,6 +12,19 @@ test("preview and production share custom Markdown shortcut parsing", () => {
   assert.match(preview.render("!gpx[Wandern](/tour.gpx)"), /GPX-Tour · Wandern/);
 });
 
+test("preview renders admonitions like the public site", () => {
+  const html = preview.render("> [!CAUTION]\n> **Back up first**\n>\n> Keep the old CSS.\n");
+  assert.match(html, /<aside class="admonition admonition-caution" role="note" aria-label="Vorsicht">/);
+  assert.match(html, /<p class="admonition-title"><svg class="admonition-icon"[^>]*>.*<\/svg>Back up first<\/p>/);
+  assert.match(html, /<p>Keep the old CSS\.<\/p>/);
+});
+
+test("preview localizes the admonition type independently of inline HTML", () => {
+  const html = preview.render("> [!CAUTION]\n> **<img src=\"/x\" alt=\"Backup\">**\n", { lang: "en" });
+  assert.match(html, /aria-label="Caution"/);
+  assert.doesNotMatch(html, /aria-label="[^"]*Backup/);
+});
+
 test("preview renders safe Markdown and footnotes", () => {
   const markdown = [
     "Text **strong** <sup class=\"footnote-ref\" id=\"fnref-1\"><a href=\"#fn-1\">1</a></sup>",

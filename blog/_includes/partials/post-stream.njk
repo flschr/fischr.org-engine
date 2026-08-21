@@ -1,6 +1,6 @@
 <div class="post-stream">
   {% for post in posts %}
-    {% set cleanedContent = post.templateContent | withoutDuplicateTitle(post.data.title) | contentConventions %}
+    {% set cleanedContent = post.templateContent | withoutDuplicateTitle(post.data.title) %}
     {% set entryKind = cleanedContent | streamEntryKind %}
     <article class="stream-entry{% if entryKind != 'full' %} stream-entry--{{ entryKind }}{% endif %}">
       <header class="stream-entry-header">

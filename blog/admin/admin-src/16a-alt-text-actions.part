@@ -69,6 +69,7 @@
 
   function renderPreview(markdown) {
     return window.RWPreviewRenderer.render(markdown, {
+      lang: els.langInput.value || "de",
       imagePreview: previewImagePath,
       imageFallback: rawGitHubImageUrl
     });

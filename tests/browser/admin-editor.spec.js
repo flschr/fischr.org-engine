@@ -18,6 +18,34 @@ test("admin preview cannot execute stored active HTML", async ({ page }) => {
   await expect(page.locator("#previewPanel [onerror]")).toHaveCount(0);
 });
 
+test("admonition toolbar wraps selected text and previews the chosen type", async ({ page }) => {
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page);
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+
+  const editor = page.locator(".cm-content");
+  await editor.click();
+  await page.keyboard.insertText("Selected warning text");
+  await editor.press("Shift+Home");
+  await page.getByRole("button", { name: "Hinweis einfügen" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Typ", { exact: true }).selectOption("CAUTION");
+  await dialog.getByLabel("Titel", { exact: true }).fill("Back up first");
+  await dialog.getByRole("button", { name: "Einfügen" }).click();
+
+  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Vorschau" }).click();
+  await expect(page.getByRole("note", { name: "Vorsicht", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Artikeloptionen" }).click();
+  await page.getByLabel("Sprache").selectOption("en");
+
+  const admonition = page.locator("#previewPanel .admonition-caution");
+  await expect(page.getByRole("note", { name: "Caution", exact: true })).toBeVisible();
+  await expect(admonition).toContainText("Back up first");
+  await expect(admonition).toContainText("Selected warning text");
+  await expect(admonition.locator(".admonition-icon")).toBeVisible();
+});
+
 test("select all in the article editor stays inside the article text", async ({ page }, testInfo) => {
   test.skip(Boolean(testInfo.project.use.isMobile), "Hardware keyboard select-all is covered by desktop browsers.");
   await page.unroute("**/api/admin/auth/session");

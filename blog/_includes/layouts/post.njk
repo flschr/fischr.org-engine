@@ -1,7 +1,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  {% set cleanedContent = content | withoutDuplicateTitle(title) | contentConventions %}
+  {% set cleanedContent = content | withoutDuplicateTitle(title) %}
   {% set entryKind = cleanedContent | streamEntryKind %}
   {% set canonical = page.url | absoluteUrl(site.url) %}
   <article class="h-entry{% if entryKind != 'full' %} post-entry--{{ entryKind }}{% endif %}" data-pagefind-body>

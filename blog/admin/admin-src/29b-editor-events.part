@@ -101,6 +101,7 @@
       const lang = els.langInput.value || "de";
       els.titleInput.lang = lang === "en" ? "en" : "de";
       if (state.editor?.setLanguage) state.editor.setLanguage(lang);
+      if (state.editorMode === "preview") renderEditorBody();
     });
 
     [els.dateInput, els.draftInput].forEach((input) => {

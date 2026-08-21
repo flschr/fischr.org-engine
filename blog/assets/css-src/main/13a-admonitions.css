@@ -1,0 +1,43 @@
+.admonition {
+  --adm-accent: var(--heading-color);
+  margin: 2.2rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--adm-accent);
+  border-radius: var(--radius);
+  color: var(--text-color);
+  background: rgba(127, 127, 127, 0.045);
+  font-style: normal;
+}
+
+.admonition-info { --adm-accent: #0969da; }
+.admonition-warning { --adm-accent: #7a4b00; }
+.admonition-caution { --adm-accent: #a40e26; }
+
+.admonition-title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-main);
+  font-size: 1.02em;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--adm-accent);
+}
+
+.admonition-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5rem;
+  vertical-align: -0.125em;
+  fill: currentColor;
+}
+
+.admonition > :last-child {
+  margin-bottom: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .admonition-info { --adm-accent: #58a6ff; }
+  .admonition-warning { --adm-accent: #d29922; }
+  .admonition-caution { --adm-accent: #ff7b72; }
+}

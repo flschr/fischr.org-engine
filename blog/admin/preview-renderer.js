@@ -135,6 +135,7 @@
 
     const md = new MarkdownIt(conventions?.markdownItOptions?.() || { html: false, breaks: false, linkify: true, typographer: true });
     conventions?.markdownItMark(md);
+    conventions?.markdownItAdmonitions(md);
     const defaultLinkOpen = md.renderer.rules.link_open || ((tokens, index, renderOptions, env, renderer) => renderer.renderToken(tokens, index, renderOptions));
     md.renderer.rules.link_open = (tokens, index, renderOptions, env, renderer) => {
       const hrefIndex = tokens[index].attrIndex("href");
@@ -152,7 +153,7 @@
       const fallback = safeUrl((options.imageFallback || (() => ""))(original));
       return `<img src="${escapeHtml(preview || original)}" alt="${escapeHtml(token.content)}"${fallback ? ` data-fallback-src="${escapeHtml(fallback)}"` : ""} loading="lazy" decoding="async">`;
     };
-    let html = md.render(source);
+    let html = md.render(source, { lang: options.lang || "de" });
     media.forEach((value, index) => { html = replaceBlockToken(html, `RWMEDIABLOCK${index}TOKEN`, value); });
     footnotes.forEach((value, index) => { html = replaceBlockToken(html, `RWFOOTNOTEBLOCK${index}TOKEN`, value); });
     footnoteRefs.forEach((value, index) => { html = html.replaceAll(`RWFOOTNOTEREF${index}TOKEN`, value); });

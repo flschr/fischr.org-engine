@@ -65,6 +65,12 @@
       run: (ed) => insertFootnoteFromDialog(ed)
     },
     {
+      name: "admonition",
+      title: "Hinweis einfügen",
+      icon: "circle-alert",
+      run: (ed) => insertAdmonitionFromDialog(ed)
+    },
+    {
       name: "alt-text",
       title: "Generate alt texts",
       icon: "sparkles",

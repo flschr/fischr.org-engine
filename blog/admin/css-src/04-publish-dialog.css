@@ -115,6 +115,12 @@
 .editor-preview pre { padding: 0.95rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); overflow: auto; }
 .editor-preview pre code { padding: 0; background: transparent; }
 .editor-preview blockquote { padding-left: 1.05rem; border-left: 3px solid var(--line-2); color: var(--ink-soft); }
+.editor-preview .admonition { --adm-accent: var(--accent-ink); margin: 0 0 1.05rem; padding: 1rem 1.15rem; border: 1px solid var(--line-2); border-left: 4px solid var(--adm-accent); border-radius: var(--radius); color: var(--ink); background: var(--panel-2); }
+.editor-preview .admonition-warning { --adm-accent: var(--amber); }
+.editor-preview .admonition-caution { --adm-accent: var(--red); }
+.editor-preview .admonition-title { margin-bottom: 0.45rem; color: var(--adm-accent); font-weight: 800; }
+.editor-preview .admonition-icon { display: inline-block; width: 1em; height: 1em; margin-right: 0.5rem; vertical-align: -0.125em; fill: currentColor; }
+.editor-preview .admonition > :last-child { margin-bottom: 0; }
 .editor-preview figure { display: grid; gap: 0.55rem; }
 .editor-preview img,
 .editor-preview video { display: block; max-width: 100%; height: auto; border-radius: var(--radius); background: var(--panel-2); }

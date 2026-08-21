@@ -8,7 +8,8 @@ const sharp = require("sharp");
 const markdownIt = require("markdown-it");
 
 const { createAssetHelpers } = require("../lib/eleventy/assets");
-const { buildMetaDescription, normalizeAdmonitionHeadings, renderFigureCaptions, streamEntryKind } = require("../lib/eleventy/content");
+const { buildMetaDescription, renderFigureCaptions, streamEntryKind } = require("../lib/eleventy/content");
+const { markdownItAdmonitions } = require("../blog/admin/markdown-conventions");
 const { createEmbedHelpers } = require("../lib/eleventy/embeds");
 const { createMediaAssetHelpers } = require("../lib/eleventy/media-assets");
 const postsData = require("../blog/posts/posts.11tydata");
@@ -191,24 +192,49 @@ test("adds local video posters to feed embeds", () => {
   assertSnapshot("feedLocalVideo", actual);
 });
 
-test("normalizes admonitions without changing surrounding headings", () => {
-  const actual = normalizeAdmonitionHeadings(
-    "<blockquote><h5>Spoilers ahead</h5><p>Text</p></blockquote><h4>Deep</h4>"
+test("renders GitHub-style admonitions as semantic asides", () => {
+  const actual = markdownIt().use(markdownItAdmonitions).render(
+    "> [!WARNING]\n> **Spoilers ahead**\n>\n> Text with **formatting**.\n"
   );
 
-  assertSnapshot("contentConventions", actual);
+  assert.match(actual, /^<aside class="admonition admonition-warning" role="note" aria-label="Warnung">/);
+  assert.match(actual, /<p class="admonition-title"><svg class="admonition-icon"[^>]*>.*<\/svg>Spoilers ahead<\/p>/);
+  assert.match(actual, /<p>Text with <strong>formatting<\/strong>\.<\/p>/);
+  assert.match(actual, /<\/aside>\n$/);
 });
 
-test("preserves authored heading levels through Markdown rendering", () => {
-  const rendered = markdownIt().render("### Update\n\nText\n\n#### Detail\n");
-  const actual = normalizeAdmonitionHeadings(rendered);
-
-  assert.equal(actual, "<h3>Update</h3>\n<p>Text</p>\n<h4>Detail</h4>\n");
+test("preserves inline Markdown in admonition titles without token-position assumptions", () => {
+  const actual = markdownIt().use(markdownItAdmonitions).render(
+    "> [!NOTE]\n> **Read [this](/details) and `that`**\n>\n> Text.\n"
+  );
+  assert.match(actual, /<svg class="admonition-icon"/);
+  assert.match(actual, /Read <a href="\/details">this<\/a> and <code>that<\/code>/);
+  assert.match(actual, /aria-label="Hinweis"/);
 });
 
-test("registers content conventions exactly once in the rendering pipeline", () => {
-  assert.equal((eleventyConfigSource.match(/normalizeAdmonitionHeadings\(content\)/g) || []).length, 1);
-  assert.doesNotMatch(eleventyConfigSource, /addTransform\("admonitionHeadings"/);
+test("localizes accessible admonition type names without duplicating the title", () => {
+  const md = markdownIt({ html: true }).use(markdownItAdmonitions);
+  const english = md.render("> [!NOTE]\n> **<img src=\"/x\" alt=\"Backup\">**\n", { lang: "en" });
+  const german = md.render("> [!WARNING]\n> **<abbr>API</abbr> prüfen**\n", { lang: "de" });
+  assert.match(english, /aria-label="Note"/);
+  assert.match(german, /aria-label="Warnung"/);
+  assert.doesNotMatch(english, /aria-label="[^"]*Backup/);
+  assert.doesNotMatch(german, /aria-label="[^"]*API/);
+});
+
+test("does not treat the former heading syntax as an admonition", () => {
+  const actual = markdownIt().use(markdownItAdmonitions).render("> #### Legacy title\n> Text\n");
+  assert.equal(actual, "<blockquote>\n<h4>Legacy title</h4>\n<p>Text</p>\n</blockquote>\n");
+  assert.doesNotMatch(eleventyConfigSource, /normalizeAdmonitionHeadings|contentConventions/);
+});
+
+test("renders every centrally declared admonition type and rejects unknown markers", () => {
+  const { types } = require("../blog/admin/admonitions");
+  const md = markdownIt().use(markdownItAdmonitions);
+  for (const type of types) {
+    assert.match(md.render(`> [!${type.marker}]\n> **Title**\n`), new RegExp(`admonition-${type.className}`));
+  }
+  assert.doesNotMatch(md.render("> [!TIP]\n> **Title**\n"), /class="admonition/);
 });
 
 test("classifies stream entries as thought, quote, or full", () => {
