@@ -4,6 +4,7 @@ module.exports = defineConfig({
   testDir: "./tests/browser",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
+  workers: process.env.CI ? 2 : undefined,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
