@@ -11,7 +11,9 @@ test("normal admin content uses the content validation path", () => {
     "blog/assets/images/imported/legacy/unused.webp",
     "blog/assets/videos/uploads/article.mp4",
     "blog/assets/files/gpx/uploads/tour.gpx",
-    "blog/_data/videoMetadata.json"
+    "blog/_data/videoMetadata.json",
+    // An image upload's only Git trace since media moved to R2.
+    "automation/media-manifest.json"
   ];
 
   assert.equal(paths.every(isContentOnlyPath), true);

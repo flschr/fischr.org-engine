@@ -13,7 +13,12 @@
     /^blog\/_data\/videoMetadata\.json$/,
     /^blog\/assets\/images\/.+\.webp$/,
     /^blog\/assets\/videos\/uploads\/.+\.(?:mp4|webm)$/,
-    /^blog\/assets\/files\/gpx\/uploads\/.+\.gpx$/
+    /^blog\/assets\/files\/gpx\/uploads\/.+\.gpx$/,
+    // Since media moved to R2 (DB-1129) an image upload no longer adds a WebP to Git — its
+    // manifest entry is the whole trace. Without this the manifest forced every image publish
+    // into full validation, including the ten-minute browser suite, while the admin promised
+    // the fast path. The file is generated bookkeeping, not code.
+    /^automation\/media-manifest\.json$/
   ];
 
   function isContentOnlyPath(filePath) {
