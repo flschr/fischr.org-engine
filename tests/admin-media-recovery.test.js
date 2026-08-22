@@ -51,9 +51,13 @@ test("autosave records pending media and recovery removes references with no dur
 });
 
 test("R2-migrated image uploads are recognized as durable even without a drafts git blob", () => {
-  assert.match(source, /async function mediaManifestKeys\(treePaths\)/);
-  assert.match(source, /function mediaManifestKeyFor\(gitPath\)/);
-  assert.match(source, /const manifestKeys = await mediaManifestKeys\(treePaths\)/);
+  assert.match(source, /async function mediaManifestKeys\(\)/);
+  assert.match(source, /function mediaManifestKeyFor\(path\)/);
+  assert.match(source, /const manifestKeys = await mediaManifestKeys\(\)/);
+  // The keys come from the shared loader, which reads the manifest blob out of the drafts
+  // tree — the previous local reader silently returned an empty set whenever the snapshot
+  // had filtered the manifest out of that tree, which it always did.
+  assert.match(source, /new Set\(Object\.keys\(await loadMediaManifest\(false\)\)\)/);
 });
 
 test("media failures offer retry or removal instead of permanently poisoning saves", () => {

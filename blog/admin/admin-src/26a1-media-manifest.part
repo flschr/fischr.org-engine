@@ -1,0 +1,146 @@
+  // --- Media manifest (the R2 index) ---------------------------------------
+
+  // Map between a repository path and its key in automation/media-manifest.json. Mirrors
+  // objectKeyForPublicPath in scripts/lib/r2-media.js — the manifest key is the R2 object key,
+  // and since DB-1129 it is what identifies a media file, not a blob sha.
+  function mediaManifestKeyFor(path) {
+    const value = String(path || "");
+    if (value.startsWith(`${collections.media.dir}/`)) return `images/${value.slice(collections.media.dir.length + 1)}`;
+    if (value.startsWith(`${collections.media.videoDir}/`)) return `videos/${value.slice(collections.media.videoDir.length + 1)}`;
+    return "";
+  }
+
+  function repositoryPathForMediaManifestKey(key) {
+    const value = String(key || "");
+    if (value.startsWith("images/")) return `${collections.media.dir}/${value.slice("images/".length)}`;
+    if (value.startsWith("videos/")) return `${collections.media.videoDir}/${value.slice("videos/".length)}`;
+    return "";
+  }
+
+  // DB-1129 moved the media bytes out of Git: an upload is normalized straight into R2 and
+  // scripts/admin-normalize-image.js commits nothing but its manifest entry. The manifest is
+  // therefore the media library's index — the tree only still holds legacy media and raw
+  // uploads whose normalization has not run yet, both of which refreshMedia merges on top.
+  async function loadMediaManifest(force = false) {
+    const tree = state.tree?.tree ? state.tree : await fetchTree(false);
+    const sha = blobShaMap(tree).get(mediaManifestPath) || "";
+    if (!sha) {
+      state.mediaManifest = {};
+      state.mediaManifestSha = "";
+      return state.mediaManifest;
+    }
+    if (!force && state.mediaManifest && state.mediaManifestSha === sha) return state.mediaManifest;
+    state.mediaManifest = validMediaManifest(await getBlobText(sha));
+    state.mediaManifestSha = sha;
+    return state.mediaManifest;
+  }
+
+  function validMediaManifest(content) {
+    let value = null;
+    try {
+      value = JSON.parse(String(content || "{}"));
+    } catch (error) {
+      value = null;
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Das Medien-Manifest ist ungültig; die Mediathek kann nicht geladen werden.");
+    }
+    return value;
+  }
+
+  // Byte-identical to saveManifest in scripts/lib/r2-media.js, so an admin-side deletion and a
+  // pipeline-side write never differ in formatting and produce a diff of exactly the removed
+  // entries.
+  function serializeMediaManifest(manifest) {
+    const sorted = Object.keys(manifest).sort().reduce((result, key) => {
+      result[key] = manifest[key];
+      return result;
+    }, {});
+    return `${JSON.stringify(sorted, null, 2)}\n`;
+  }
+
+  function manifestMediaItems(manifest, pendingByPath) {
+    return Object.entries(manifest)
+      .map(([key, entry]) => ({
+        key,
+        entry: entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {},
+        path: repositoryPathForMediaManifestKey(key)
+      }))
+      .filter(({ path }) => path && isMediaLibraryPath(path))
+      .map(({ key, entry, path }) => buildMediaItem(path, {
+        size: Number(entry.size) || 0,
+        contentHash: String(entry.sha256 || ""),
+        manifestKey: key,
+        pending: pendingByPath.has(path),
+        preview: pendingByPath.get(path)?.preview || ""
+      }));
+  }
+
+  // One shape for all three sources (manifest, tree, queued upload) so the card, the sort and
+  // the delete path never have to ask where an item came from.
+  function buildMediaItem(path, overrides = {}) {
+    const referencedEntry = referencedEntryFromMediaPath(path);
+    const publicPath = overrides.publicPath || publicMediaPath(path);
+    const mediaKind = overrides.mediaKind || (isVideoPath(path) ? "video" : "image");
+    return {
+      path,
+      publicPath,
+      name: fileName(path),
+      size: 0,
+      // Empty for anything that only exists in R2: there is no blob, and the delete path uses
+      // that to decide between removing a blob and removing a manifest entry.
+      sha: "",
+      contentHash: "",
+      manifestKey: "",
+      pending: false,
+      preview: "",
+      mediaKind,
+      entryDate: referencedEntry?.date || "",
+      entryPath: referencedEntry?.path || "",
+      entrySort: referencedEntry?.sortKey || 0,
+      uploadSort: mediaDateSortValue(path),
+      poster: mediaKind === "video" ? videoPosterPath(publicPath) : "",
+      references: [],
+      duplicate: false,
+      ...overrides
+    };
+  }
+
+  // Content identity for the duplicate marker: the manifest's sha256 for R2 objects, the blob
+  // sha for anything still tracked. The two are different hashes of different framings, so a
+  // duplicate is only ever detected within one of the two worlds — which is what matters,
+  // since Git-tracked media is what the migration left behind.
+  function mediaFingerprint(item) {
+    return item.contentHash || item.sha || "";
+  }
+
+  // A file that only exists in R2 has no blob to remove, so its deletion is the removal of its
+  // manifest entry — the same reasoning that keeps untracked video posters out of the tree
+  // request in commitMediaDiscardPlan. The R2 object itself stays: it is content-addressed,
+  // unreferenced once the entry is gone, and nothing in the pipeline collects the bucket today.
+  async function buildMediaManifestChange(keys) {
+    const manifest = await loadMediaManifest(true);
+    const removable = keys.filter((key) => key && Object.hasOwn(manifest, key));
+    if (!removable.length) return null;
+    const next = { ...manifest };
+    removable.forEach((key) => delete next[key]);
+    const blob = await draftRepository.createBlob(serializeMediaManifest(next));
+    return {
+      manifest: next,
+      entry: { path: mediaManifestPath, mode: "100644", type: "blob", sha: blob.sha },
+      expectedSha: state.mediaManifestSha || null
+    };
+  }
+
+  async function commitMediaManifestDelete(item) {
+    const change = await buildMediaManifestChange([mediaManifestKeyFor(item.path)]);
+    if (!change) return false;
+    await commitToDrafts(
+      [change.entry],
+      `Delete ${item.name || baseName(item.path)} from the media manifest`,
+      { [mediaManifestPath]: change.expectedSha }
+    );
+    state.mediaManifest = change.manifest;
+    state.mediaManifestSha = blobShaMap(state.tree).get(mediaManifestPath) || "";
+    return true;
+  }

@@ -1,6 +1,9 @@
 node_modules
 _site/
-.cache/
+# Without the trailing slash the rule also covers a symlinked cache, the way node_modules and
+# the media directories already do — a second checkout shares the build cache instead of
+# regenerating 1 GB of responsive images.
+.cache
 .env
 .env.*
 !.env.example

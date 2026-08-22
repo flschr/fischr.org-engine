@@ -121,7 +121,7 @@
     if (existing && existing.kind === "upsert") {
       await deleteChange(item.path, existing.sha);
       showStatus("Upload entfernt.");
-    } else {
+    } else if (item.sha) {
       await putChange({
         path: item.path,
         kind: "delete",
@@ -135,6 +135,13 @@
         summary: "Delete"
       });
       showStatus("Löschung vorgemerkt.");
+    } else if (await commitMediaManifestDelete(item)) {
+      // No blob anywhere: the file lives in R2 and its manifest entry is the thing that gets
+      // removed. It leaves the gallery immediately and travels to main with the next publish,
+      // which carries automation/media-manifest.json as a managed path.
+      showStatus("Löschung vorgemerkt.");
+    } else {
+      throw new Error(`${item.name} liegt weder im Repository noch im Medien-Manifest.`);
     }
     await refreshMedia(false);
   }

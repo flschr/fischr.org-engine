@@ -1,99 +1,67 @@
   async function refreshMedia(force) {
     if (!hasGithubAccess()) {
       const changes = await loadChanges();
-      state.media = changes
-        .filter((change) => change.collection === "media" && change.kind === "upsert" && change.mediaKind !== "gpx" && !isGpxPath(change.path) && isMediaLibraryPath(change.path))
-        .map((change) => {
-          const publicPath = change.publicPath || publicMediaPath(change.path);
-          const kind = change.mediaKind || (isVideoPath(change.path) ? "video" : "image");
-          return {
-            path: change.path,
-            publicPath,
-            name: fileName(change.path),
-            size: change.size || 0,
-            sha: "",
-            pending: true,
-            preview: change.preview || "",
-            mediaKind: kind,
-            entryDate: "",
-            entryPath: "",
-            entrySort: 0,
-            uploadSort: Date.parse(change.updatedAt || "") || 0,
-            poster: kind === "video" ? videoPosterPath(publicPath) : "",
-            references: [],
-            duplicate: false
-          };
-        })
-        .sort(collections.media.sort);
+      state.media = queuedMediaItems(changes, new Set()).sort(collections.media.sort);
       renderMedia();
       attachMediaReferences(null, changes);
       return;
     }
     const tree = await fetchTree(force);
     state.entryLookup = buildEntryLookup(tree.tree || []);
+    const manifest = await loadMediaManifest(force);
     const changes = await loadChanges();
     const deleted = new Set(changes.filter((change) => change.kind === "delete").map((change) => change.path));
     const pendingByPath = new Map(changes.filter((change) => change.collection === "media").map((change) => [change.path, change]));
 
-    const remote = tree.tree
-      .filter((item) => item.type === "blob")
-      .filter((item) => (item.path.startsWith(`${collections.media.dir}/`) || item.path.startsWith(`${collections.media.videoDir}/`)) && isMediaLibraryPath(item.path))
-      .filter((item) => !deleted.has(item.path))
-      .map((item) => {
-        const referencedEntry = referencedEntryFromMediaPath(item.path);
-        const publicPath = publicMediaPath(item.path);
-        const kind = isVideoPath(item.path) ? "video" : "image";
-        return {
-          path: item.path,
-          publicPath,
-          name: fileName(item.path),
-          size: item.size || 0,
-          sha: item.sha,
-          pending: pendingByPath.has(item.path),
-          preview: pendingByPath.get(item.path)?.preview || "",
-          mediaKind: kind,
-          entryDate: referencedEntry?.date || "",
-          entryPath: referencedEntry?.path || "",
-          entrySort: referencedEntry?.sortKey || 0,
-          uploadSort: mediaDateSortValue(item.path),
-          poster: kind === "video" ? videoPosterPath(publicPath) : ""
-        };
-      });
-    const remotePaths = new Set(remote.map((item) => item.path));
+    // Manifest first, tree second: a path that still has a blob (legacy media, or an upload
+    // GitHub has not normalized into R2 yet) must keep its blob sha, because that is what its
+    // deletion stages.
+    const published = new Map();
+    manifestMediaItems(manifest, pendingByPath).forEach((item) => published.set(item.path, item));
+    treeMediaItems(tree, deleted, pendingByPath).forEach((item) => published.set(item.path, item));
+    const media = [...published.values(), ...queuedMediaItems(changes, new Set(published.keys()))];
 
-    const local = changes
-      .filter((change) => change.collection === "media" && change.kind === "upsert" && change.mediaKind !== "gpx" && !isGpxPath(change.path) && isMediaLibraryPath(change.path) && !remotePaths.has(change.path))
-      .map((change) => {
-        const referencedEntry = referencedEntryFromMediaPath(change.path);
-        const publicPath = change.publicPath || publicMediaPath(change.path);
-        const kind = change.mediaKind || (isVideoPath(change.path) ? "video" : "image");
-        return {
-          path: change.path,
-          publicPath,
-          name: fileName(change.path),
-          size: change.size || 0,
-          sha: "",
-          pending: true,
-          preview: change.preview || "",
-          mediaKind: kind,
-          entryDate: referencedEntry?.date || "",
-          entryPath: referencedEntry?.path || "",
-          entrySort: referencedEntry?.sortKey || 0,
-          uploadSort: Date.parse(change.updatedAt || "") || mediaDateSortValue(change.path),
-          poster: kind === "video" ? videoPosterPath(publicPath) : ""
-        };
-      });
-
-    const media = [...remote, ...local]
-      .map((item) => ({ ...item, references: [] }))
+    const fingerprints = countValues(media.map(mediaFingerprint).filter(Boolean));
+    state.media = media
+      .map((item) => ({ ...item, duplicate: fingerprints.get(mediaFingerprint(item)) > 1 }))
       .sort(collections.media.sort);
-    const shaCounts = countValues(media.map((item) => item.sha).filter(Boolean));
-    state.media = media.map((item) => ({
-      ...item,
-      duplicate: Boolean(item.sha && shaCounts.get(item.sha) > 1)
-    }));
     renderMedia();
     attachMediaReferences(tree, changes);
+  }
+
+  function treeMediaItems(tree, deleted, pendingByPath) {
+    return (tree.tree || [])
+      .filter((item) => item.type === "blob")
+      .filter((item) => isRepositoryMediaPath(item.path) && isMediaLibraryPath(item.path))
+      .filter((item) => !deleted.has(item.path))
+      .map((item) => buildMediaItem(item.path, {
+        size: item.size || 0,
+        sha: item.sha,
+        pending: pendingByPath.has(item.path),
+        preview: pendingByPath.get(item.path)?.preview || ""
+      }));
+  }
+
+  // Uploads that are still only in the queue: they have no manifest entry yet (normalization
+  // writes it) and, without GitHub access, no tree either.
+  function queuedMediaItems(changes, knownPaths) {
+    return changes
+      .filter((change) => (
+        change.collection === "media" &&
+        change.kind === "upsert" &&
+        change.mediaKind !== "gpx" &&
+        !isGpxPath(change.path) &&
+        isMediaLibraryPath(change.path) &&
+        !knownPaths.has(change.path)
+      ))
+      .map((change) => buildMediaItem(change.path, {
+        publicPath: change.publicPath || publicMediaPath(change.path),
+        mediaKind: change.mediaKind || (isVideoPath(change.path) ? "video" : "image"),
+        size: change.size || 0,
+        pending: true,
+        preview: change.preview || "",
+        uploadSort: Date.parse(change.updatedAt || "") || mediaDateSortValue(change.path)
+      }));
   }
 
   // Reference info ("which post uses this image") needs the body of every post,

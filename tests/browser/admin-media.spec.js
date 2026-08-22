@@ -368,3 +368,104 @@ test("a queued video with metadata but no poster blob does not block publishing"
     .poll(() => requests.filter((request) => request.url.includes("admin-prepare-video.yml/dispatches")).length)
     .toBe(0);
 });
+
+// Since DB-1129 the media bytes live in R2 and blog/assets/images|videos hold no blobs at all.
+// The gallery kept listing the tree and therefore showed "No media yet." for the whole library.
+test("media gallery lists files that only exist in the R2 manifest", async ({ page }) => {
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const manifestContent = `${JSON.stringify({
+    "images/responsive/uploads/photo-abcdef123456-680.webp": { sha256: "variant-hash", size: 400 },
+    "images/uploads/copy.webp": { sha256: "photo-hash", size: 1200 },
+    "images/uploads/photo.webp": { sha256: "photo-hash", size: 1200 },
+    "images/video-posters/clip.webp": { sha256: "poster-hash", size: 600 },
+    "videos/uploads/clip.mp4": { sha256: "clip-hash", size: 2400 }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, [], [manifest], {
+    mainTree: [manifest],
+    blobs: { "manifest-sha": { content: manifestContent, encoding: "utf-8" } }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  const cards = page.locator(".media-item[data-media-path]");
+  await expect(cards).toHaveCount(3);
+  await expect(page.locator('.media-item[data-media-path="blog/assets/images/uploads/photo.webp"]')).toBeVisible();
+  await expect(page.locator('.media-item[data-media-path="blog/assets/videos/uploads/clip.mp4"] video'))
+    .toHaveAttribute("poster", "/assets/images/video-posters/clip.webp");
+  // Derived objects carry manifest entries too and must stay out of the library: the poster is
+  // hidden behind its video, the responsive variant only ever exists in _site and R2.
+  await expect(page.locator('.media-item[data-media-path*="video-posters"]')).toHaveCount(0);
+  await expect(page.locator('.media-item[data-media-path*="responsive"]')).toHaveCount(0);
+  // Duplicates are recognized through the manifest's sha256 now that no blob sha exists.
+  await expect(page.locator('.media-item[data-media-path="blog/assets/images/uploads/photo.webp"] .entry-meta'))
+    .toContainText("Duplikat");
+});
+
+test("deleting an image that only exists in R2 removes its manifest entry", async ({ page }) => {
+  const requests = [];
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const manifestContent = `${JSON.stringify({
+    "images/uploads/keep.webp": { sha256: "keep-hash", size: 900 },
+    "images/uploads/photo.webp": { sha256: "photo-hash", size: 1200 }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [manifest], {
+    mainTree: [manifest],
+    blobs: { "manifest-sha": { content: manifestContent, encoding: "utf-8" } }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  const card = page.locator('.media-item[data-media-path="blog/assets/images/uploads/photo.webp"]');
+  await card.getByRole("button", { name: "Löschen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Löschung vorgemerkt");
+
+  const blobRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
+  expect(JSON.parse(blobRequest.body.content)).toEqual({ "images/uploads/keep.webp": { sha256: "keep-hash", size: 900 } });
+  const treeRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  expect(treeRequest.body.tree).toEqual([
+    expect.objectContaining({ path: manifest.path, sha: expect.stringMatching(/^blob-sha-/) })
+  ]);
+  // Nothing may be staged for the image itself — the tree API would be asked to delete a path
+  // that does not exist.
+  expect(treeRequest.body.tree.some((entry) => entry.path.includes("uploads/photo.webp"))).toBe(false);
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(1);
+});
+
+test("deleting a video that only exists in R2 removes its manifest entry and metadata", async ({ page }) => {
+  const requests = [];
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const metadata = { path: "blog/_data/videoMetadata.json", type: "blob", sha: "metadata-sha", size: 300 };
+  const manifestContent = `${JSON.stringify({
+    "videos/uploads/clip.mp4": { sha256: "clip-hash", size: 2400 }
+  }, null, 2)}\n`;
+  const metadataContent = `${JSON.stringify({
+    "/assets/videos/uploads/clip.mp4": { poster: "/assets/images/video-posters/clip.webp", sourceHash: "source-hash" }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [manifest, metadata], {
+    mainTree: [manifest, metadata],
+    blobs: {
+      "manifest-sha": { content: manifestContent, encoding: "utf-8" },
+      "metadata-sha": { content: metadataContent, encoding: "utf-8" }
+    }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  const card = page.locator('.media-item[data-media-path="blog/assets/videos/uploads/clip.mp4"]');
+  await card.getByRole("button", { name: "Löschen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Löschung vorgemerkt");
+
+  const treeRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  expect(treeRequest.body.tree).toEqual(expect.arrayContaining([
+    expect.objectContaining({ path: manifest.path, sha: expect.stringMatching(/^blob-sha-/) }),
+    expect.objectContaining({ path: metadata.path, sha: expect.stringMatching(/^blob-sha-/) })
+  ]));
+  expect(treeRequest.body.tree.some((entry) => entry.path.includes("videos/uploads/clip.mp4"))).toBe(false);
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(0);
+});

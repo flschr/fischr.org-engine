@@ -76,6 +76,10 @@
   const altTextMaxImageSide = 1400;
   const altTextMaxDataUrlLength = 7 * 1024 * 1024;
   const gotosocialTextLimit = 500;
+  // Since DB-1129 the media bytes live in R2, not in Git. This manifest is their only
+  // record in the repository: scripts/admin-normalize-image.js writes an entry for every
+  // upload, the media library reads it as its index, and a deletion removes an entry from it.
+  const mediaManifestPath = "automation/media-manifest.json";
   const socialConfigPath = "automation/social-config.json";
   const gpxUploadService = window.RWGpxUpload.create({
     Parser: window.DOMParser,

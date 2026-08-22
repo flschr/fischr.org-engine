@@ -119,5 +119,7 @@ function blobMap(tree) {
 export function isAdminPath(entry = {}) {
   if (entry.type !== "blob") return false;
   return sourcePages.has(entry.path)
-    || /^(?:blog\/(?:posts|pages|assets\/images|assets\/videos|assets\/files\/gpx)\/|blog\/_data\/videoMetadata\.json$|automation\/(?:social-config|admin-rename-origins)\.json$)/.test(entry.path || "");
+    // media-manifest.json is the media library's index since DB-1129 — without it the gallery
+    // has nothing to list and the draft recovery cannot tell a migrated image from a lost one.
+    || /^(?:blog\/(?:posts|pages|assets\/images|assets\/videos|assets\/files\/gpx)\/|blog\/_data\/videoMetadata\.json$|automation\/(?:social-config|admin-rename-origins|media-manifest)\.json$)/.test(entry.path || "");
 }

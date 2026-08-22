@@ -124,8 +124,19 @@
     return String(path || "").startsWith(`${collections.media.dir}/video-posters/`);
   }
 
+  // Build output, never a source file: responsive variants are derived from an original during
+  // the build and only exist in _site and R2, but carry manifest entries like any other object.
+  function isGeneratedMediaVariantPath(path) {
+    return String(path || "").startsWith(`${collections.media.dir}/responsive/`);
+  }
+
+  function isRepositoryMediaPath(path) {
+    const value = String(path || "");
+    return value.startsWith(`${collections.media.dir}/`) || value.startsWith(`${collections.media.videoDir}/`);
+  }
+
   function isMediaLibraryPath(path) {
-    return isMediaPath(path) && !isVideoPosterPath(path);
+    return isMediaPath(path) && !isVideoPosterPath(path) && !isGeneratedMediaVariantPath(path);
   }
 
   function publicImagePath(path) {

@@ -22,6 +22,8 @@
     refreshPromise: null,
     entries: [],
     media: [],
+    mediaManifest: null,
+    mediaManifestSha: "",
     entryLookup: new Map(),
     changes: new Map(),
     current: null,

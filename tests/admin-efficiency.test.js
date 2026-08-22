@@ -35,8 +35,10 @@ test("media gallery avoids repeated lookup, eager video loading and redundant ca
   assert.match(source, /function visibleQueueChanges\(changes\)/);
   assert.match(source, /label: "Technische Video-Reparatur"/);
   assert.match(source, /async function commitMediaDiscardPlan\(videoOperations, fileChanges, message\)/);
-  assert.match(source, /const remotePaths = new Set\(remote\.map/);
-  assert.match(source, /!remotePaths\.has\(change\.path\)/);
+  // Queued uploads are deduped against the already-listed items through a Set, not a scan
+  // per change.
+  assert.match(source, /queuedMediaItems\(changes, new Set\(published\.keys\(\)\)\)/);
+  assert.match(source, /!knownPaths\.has\(change\.path\)/);
   assert.doesNotMatch(source, /!remote\.some\(\(item\) => item\.path === change\.path\)/);
   assert.match(source, /video\.preload = "none"/);
   assert.match(source, /const fragment = document\.createDocumentFragment\(\)/);
