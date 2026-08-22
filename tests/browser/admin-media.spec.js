@@ -321,3 +321,71 @@ test("discarding an unpublished video upload removes all generated derivatives",
   const metadataRequest = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
   expect(JSON.parse(metadataRequest.body.content)).toEqual({});
 });
+
+// Posters live in R2 since DB-1129 and are no longer blobs in the tree. The admin used to
+// demand one in both of these paths, which left every video permanently "unprepared" and every
+// deletion impossible.
+test("deleting a video whose poster lives only in R2 succeeds", async ({ page }) => {
+  const requests = [];
+  const video = { path: "blog/assets/videos/uploads/clip.mp4", type: "blob", sha: "video-sha", size: 2400 };
+  const metadata = { path: "blog/_data/videoMetadata.json", type: "blob", sha: "metadata-sha", size: 300 };
+  const metadataContent = `${JSON.stringify({
+    "/assets/videos/uploads/clip.mp4": {
+      poster: "/assets/images/video-posters/clip.webp",
+      sourceHash: "source-hash"
+    }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [video, metadata], {
+    mainTree: [video, metadata],
+    blobs: { "metadata-sha": { content: metadataContent, encoding: "utf-8" } }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  const videoCard = page.locator('.media-item[data-media-path="blog/assets/videos/uploads/clip.mp4"]');
+  await videoCard.getByRole("button", { name: "Löschen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Löschung vorgemerkt");
+  await expect(page.locator("#statusBar")).not.toContainText("Vorschaubild");
+
+  const treeRequest = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  expect(treeRequest.body.tree).toEqual(expect.arrayContaining([
+    expect.objectContaining({ path: video.path, sha: null }),
+    expect.objectContaining({ path: metadata.path, sha: expect.stringMatching(/^blob-sha-/) })
+  ]));
+  // Nothing may be staged for a poster that is not tracked — the tree API would be asked to
+  // delete a path that does not exist.
+  expect(treeRequest.body.tree.some((entry) => entry.path.includes("video-posters"))).toBe(false);
+  const metadataRequest = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
+  expect(JSON.parse(metadataRequest.body.content)).toEqual({});
+});
+
+test("a queued video with metadata but no poster blob does not block publishing", async ({ page }) => {
+  const requests = [];
+  const video = { path: "blog/assets/videos/uploads/clip.mp4", type: "blob", sha: "video-sha", size: 2400 };
+  const metadata = { path: "blog/_data/videoMetadata.json", type: "blob", sha: "metadata-sha", size: 300 };
+  const metadataContent = `${JSON.stringify({
+    "/assets/videos/uploads/clip.mp4": {
+      poster: "/assets/images/video-posters/clip.webp",
+      sourceHash: "source-hash"
+    }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [video, metadata], {
+    mainTree: [metadata],
+    blobs: { "metadata-sha": { content: metadataContent, encoding: "utf-8" } }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator("#syncButton").evaluate((button) => button.click());
+  await expect(page.locator(".queue-card")).toHaveCount(1);
+  await page.locator("#pushButton").evaluate((button) => button.click());
+
+  // The guard rejects with this message and then re-dispatches the preparation workflow; a
+  // video whose metadata is committed must pass both.
+  await expect(page.locator("#statusBar")).not.toContainText("wartet, bis GitHub alle Medien verarbeitet");
+  await expect
+    .poll(() => requests.filter((request) => request.url.includes("admin-prepare-video.yml/dispatches")).length)
+    .toBe(0);
+});

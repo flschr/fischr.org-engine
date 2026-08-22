@@ -78,8 +78,13 @@
     try {
       const metadata = parseVideoMetadata(await getBlobText(metadataEntry.sha), "Video-Metadaten");
       const item = metadata[publicMediaPath(change.path)];
-      const posterPath = videoPosterRepoPath(item?.poster);
-      return !item?.sourceHash || !(state.tree?.tree || []).some((entry) => entry.path === posterPath);
+      // Poster bytes never become blobs on `drafts` since media moved to R2 (DB-1129): the
+      // build renders them and publish-build-media.js uploads them after the deploy. Requiring
+      // one in the tree left every video permanently "unprepared", which blocked publishing
+      // and re-dispatched the preparation workflow on every admin load. What
+      // admin-prepare-video.js actually produces — a metadata entry naming a valid poster — is
+      // the completion signal.
+      return !item?.sourceHash || !videoPosterRepoPath(item?.poster);
     } catch {
       return true;
     }

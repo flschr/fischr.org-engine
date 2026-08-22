@@ -21,7 +21,10 @@ main();
 
 function main() {
   if (!fs.existsSync(videoRoot)) {
-    writeJsonIfChanged(metadataPath, {});
+    // No local video at all still means every migrated video keeps its entry: the sources are
+    // materialized from R2 on demand, and writing {} here is exactly the wipe this file must
+    // not perform.
+    writeJsonIfChanged(metadataPath, sortByKey(remoteOnlyMetadata(readJson(metadataPath), [])));
     return;
   }
 
@@ -91,8 +94,10 @@ function remoteOnlyMetadata(previousMetadata, localVideos) {
   );
 }
 
+// Byte order, not localeCompare: this file is committed, and an ICU- or locale-dependent
+// ordering would reshuffle it between the admin's GitHub job and a local build.
 function sortByKey(value) {
-  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0)));
 }
 
 function readJson(filePath) {

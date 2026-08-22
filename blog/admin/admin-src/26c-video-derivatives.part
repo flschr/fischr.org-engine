@@ -48,10 +48,11 @@
       const mainPosterPath = videoPosterRepoPath(mainVideoMetadata?.poster);
       const draftHasVideo = draftsMap.has(item.path);
       const requiredPosterPath = draftHasVideo ? draftPosterPath : mainPosterPath;
-      const requiredMap = draftHasVideo ? draftsMap : mainMap;
 
+      // Only the poster *path* can be verified here. The bytes live in R2 since DB-1129 and are
+      // no longer blobs in either tree, so demanding one made every deletion fail.
       const incompleteNewUpload = discardPendingUpload && !mainMap.has(item.path);
-      if ((!requiredPosterPath || !requiredMap.has(requiredPosterPath)) && !incompleteNewUpload) {
+      if (!requiredPosterPath && !incompleteNewUpload) {
         throw new Error(`Die Video-Metadaten für ${item.name || baseName(item.path)} enthalten kein gültiges Vorschaubild. Bitte die Medienverarbeitung reparieren.`);
       }
 
@@ -63,6 +64,10 @@
       const targetSha = (path) => discardPendingUpload ? (mainMap.get(path) || null) : null;
       addEntry(item.path, targetSha(item.path));
       for (const posterPath of new Set([draftPosterPath, mainPosterPath].filter(Boolean))) {
+        // A poster that is not tracked in either tree lives only in R2 — there is no blob to
+        // remove or restore, and staging one would ask the tree API to delete a path that does
+        // not exist. Legacy posters that are still committed keep their exact handling.
+        if (!draftsMap.has(posterPath) && !mainMap.has(posterPath)) continue;
         const otherOwners = new Set([
           ...posterOwners(draftMetadata, posterPath),
           ...posterOwners(mainMetadata, posterPath)
