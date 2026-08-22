@@ -11,7 +11,7 @@ test("admin preview cannot execute stored active HTML", async ({ page }) => {
   await page.locator("#newEntryButtonLib").click();
   const editor = page.locator(".cm-content");
   await editor.click();
-  await page.keyboard.insertText('<section class="footnotes"><ol><li id="fn-1"><p><img src=x onerror="window.__previewAttack=1">safe<a class="footnote" href="#fnref-1">↗︎</a></p></li></ol></section>');
+  await page.keyboard.insertText('<section class="footnotes"><ol><li id="fn-1"><p><img src=x onerror="window.__previewAttack=1">safe<a class="footnote" href="#fnref-1">↑︎</a></p></li></ol></section>');
   await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Vorschau" }).click();
   await expect(page.locator("#previewPanel")).toContainText("safe");
   await expect.poll(() => page.evaluate(() => window.__previewAttack)).toBe(0);

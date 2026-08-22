@@ -111,13 +111,26 @@
   margin-top: 1.05rem;
 }
 
+/* A short left-aligned mark, not a full-width rule. A rule spanning the column
+   is what separates two posts in the stream, so footnotes must not draw one. */
 .footnotes {
-  margin-top: 4rem;
-  padding-top: 1.6rem;
-  border-top: 1px solid var(--border);
+  position: relative;
+  margin-top: 2.75rem;
+  padding-top: 1.1rem;
   color: var(--muted);
   font-size: 0.92em;
   line-height: 1.6;
+}
+
+.footnotes::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 2px;
+  background-color: currentColor;
+  opacity: 0.45;
 }
 
 .footnotes ol {
@@ -137,4 +150,10 @@
 .footnote-ref a,
 .footnotes a.footnote {
   text-decoration: none;
+}
+
+/* The backlink is appended straight after the note text without markup between
+   them, so the gap has to come from CSS. */
+.footnotes a.footnote {
+  margin-left: 0.4em;
 }

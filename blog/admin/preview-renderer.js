@@ -94,7 +94,7 @@
       text = decodeHtmlEntities(text.replace(/<[^>]*>/g, ""));
       let rendered = inline(text);
       rendered = rendered.replace(/@@RW_FOOTNOTE_INLINE_(\d+)@@/g, (_value, index) => tokens[Number(index)] || "");
-      items.push(`<li id="fn-${number}"><p>${rendered}<a class="footnote" href="#fnref-${number}">↗︎</a></p></li>`);
+      items.push(`<li id="fn-${number}"><p>${rendered}<a class="footnote" href="#fnref-${number}">↑︎</a></p></li>`);
     }
     return items.length ? `<section class="footnotes"><ol>${items.join("")}</ol></section>` : `<p>${escapeHtml(raw)}</p>`;
   }

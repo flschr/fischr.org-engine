@@ -158,7 +158,7 @@ export function insertFootnote(view, text) {
   let number = 1;
   for (const match of doc.matchAll(/\b(?:id|href)=["']#?fn(?:ref)?-(\d+)["']/gi)) number = Math.max(number, (Number(match[1]) || 0) + 1);
   const ref = `<sup class="footnote-ref" id="fnref-${number}"><a href="#fn-${number}">${number}</a></sup>`;
-  const item = `<li id="fn-${number}"><p>${escapeText(text)}<a class="footnote" href="#fnref-${number}">↗︎</a></p></li>`;
+  const item = `<li id="fn-${number}"><p>${escapeText(text)}<a class="footnote" href="#fnref-${number}">↑︎</a></p></li>`;
   const section = doc.match(/<section class="footnotes">\s*<ol>[\s\S]*?<\/ol>\s*<\/section>\s*$/i);
   const changes = [];
   if (section) {

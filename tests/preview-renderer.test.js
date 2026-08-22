@@ -29,7 +29,7 @@ test("preview renders safe Markdown and footnotes", () => {
   const markdown = [
     "Text **strong** <sup class=\"footnote-ref\" id=\"fnref-1\"><a href=\"#fn-1\">1</a></sup>",
     "",
-    "<section class=\"footnotes\"><ol><li id=\"fn-1\"><p>Safe note<a class=\"footnote\" href=\"#fnref-1\">↗︎</a></p></li></ol></section>"
+    "<section class=\"footnotes\"><ol><li id=\"fn-1\"><p>Safe note<a class=\"footnote\" href=\"#fnref-1\">↑︎</a></p></li></ol></section>"
   ].join("\n");
   const html = preview.render(markdown);
   assert.match(html, /<strong>strong<\/strong>/);
@@ -41,7 +41,7 @@ test("preview decodes HTML entities in footnote text exactly once", () => {
   const markdown = [
     'Text<sup class="footnote-ref" id="fnref-1"><a href="#fn-1">1</a></sup>',
     "",
-    '<section class="footnotes"><ol><li id="fn-1"><p>&quot;Lage der Nation&quot; &amp; mehr<a class="footnote" href="#fnref-1">↗︎</a></p></li></ol></section>'
+    '<section class="footnotes"><ol><li id="fn-1"><p>&quot;Lage der Nation&quot; &amp; mehr<a class="footnote" href="#fnref-1">↑︎</a></p></li></ol></section>'
   ].join("\n");
   const html = preview.render(markdown);
   assert.match(html, /<sup class="footnote-ref"[^>]*><a href="#fn-1">1<\/a><\/sup>/);
@@ -53,7 +53,7 @@ test("preview supports the complete editor footnote inline format contract", () 
   const markdown = [
     'Text<sup class="footnote-ref" id="fnref-1"><a href="#fn-1">1</a></sup>',
     "",
-    '<section class="footnotes"><ol><li id="fn-1"><p><strong>bold</strong> <em>italic</em> <code>code</code> <del>strike</del> <mark>mark</mark> <a href="https://example.com/?a=1&amp;b=2">link</a><br>next<a class="footnote" href="#fnref-1">↗︎</a></p></li></ol></section>'
+    '<section class="footnotes"><ol><li id="fn-1"><p><strong>bold</strong> <em>italic</em> <code>code</code> <del>strike</del> <mark>mark</mark> <a href="https://example.com/?a=1&amp;b=2">link</a><br>next<a class="footnote" href="#fnref-1">↑︎</a></p></li></ol></section>'
   ].join("\n");
   const html = preview.render(markdown);
   for (const fragment of [
@@ -69,7 +69,7 @@ test("preview supports the complete editor footnote inline format contract", () 
 
 test("preview neutralizes active HTML and dangerous URLs", () => {
   const attacks = [
-    "<section class=\"footnotes\"><ol><li id=\"fn-1\"><p><img src=x onerror=alert(1)>note<script>alert(2)</script><a class=\"footnote\" href=\"#fnref-1\">↗︎</a></p></li></ol></section>",
+    "<section class=\"footnotes\"><ol><li id=\"fn-1\"><p><img src=x onerror=alert(1)>note<script>alert(2)</script><a class=\"footnote\" href=\"#fnref-1\">↑︎</a></p></li></ol></section>",
     "[bad](javascript:alert(3))",
     "![](data:text/html,<svg onload=alert(4)>)"
   ].join("\n\n");

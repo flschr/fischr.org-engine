@@ -125,9 +125,11 @@
 .editor-preview img,
 .editor-preview video { display: block; max-width: 100%; height: auto; border-radius: var(--radius); background: var(--panel-2); }
 .editor-preview figcaption, .preview-empty { color: var(--ink-faint); font-size: 0.9rem; }
-.editor-preview .footnotes { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 0.9em; }
+.editor-preview .footnotes { position: relative; margin-top: 2rem; padding-top: 0.75rem; color: var(--ink-soft); font-size: 0.9em; }
+.editor-preview .footnotes::before { content: ""; position: absolute; top: 0; left: 0; width: 56px; height: 2px; background-color: currentColor; opacity: 0.45; }
 .editor-preview .footnotes ol { padding-left: 1.25rem; }
 .editor-preview .footnotes p { margin: 0; }
 .editor-preview .footnote-ref { font-size: 0.72em; vertical-align: super; }
 .editor-preview .footnote-ref a,
 .editor-preview .footnotes a.footnote { text-decoration: none; }
+.editor-preview .footnotes a.footnote { margin-left: 0.4em; }

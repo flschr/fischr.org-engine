@@ -91,16 +91,6 @@ body.post .post-entry--thought .post-header .post-meta {
   background: none;
 }
 
-/* Footnotes already mark the end of the article. Avoid stacking a second
-   separator directly below them. */
-body.post .post-content:has(.footnotes) + .post-footer {
-  margin-top: 2.5rem;
-}
-
-body.post .post-content:has(.footnotes) + .post-footer .post-signature-separator {
-  display: none;
-}
-
 .post-adjacent {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
