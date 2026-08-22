@@ -35,11 +35,6 @@
       expectedBlobs[path] = draftsMap.get(path) || null;
     };
 
-    const operatedVideoPaths = new Set(videoOperations.map(({ item }) => item.publicPath));
-    const posterOwners = (metadata, posterPath) => Object.entries(metadata || {})
-      .filter(([videoPath, value]) => videoPosterRepoPath(value?.poster) === posterPath && !operatedVideoPaths.has(videoPath))
-      .map(([videoPath]) => videoPath);
-
     for (const { item, existing } of videoOperations) {
       const discardPendingUpload = existing?.kind === "upsert";
       const draftVideoMetadata = draftMetadata?.[item.publicPath] || null;
@@ -68,13 +63,13 @@
         // remove or restore, and staging one would ask the tree API to delete a path that does
         // not exist. Legacy posters that are still committed keep their exact handling.
         if (!draftsMap.has(posterPath) && !mainMap.has(posterPath)) continue;
-        const otherOwners = new Set([
-          ...posterOwners(draftMetadata, posterPath),
-          ...posterOwners(mainMetadata, posterPath)
-        ]);
-        if (otherOwners.size && targetSha(posterPath) !== (draftsMap.get(posterPath) || null)) {
-          throw new Error(`Das Vorschaubild von ${item.name || baseName(item.path)} wird auch von einem anderen Video verwendet.`);
-        }
+        // Bis hierher kommt nur ein noch getracktes Alt-Poster. Der frühere Schutz gegen das
+        // Entfernen eines von zwei Videos geteilten Posters ist entfallen: er konnte nur
+        // greifen, solange Poster als Blobs im Baum liegen, und seit der R2-Migration liegt
+        // dort keines mehr (null Dateien unter blog/assets/images/video-posters auf main und
+        // drafts) und es entsteht auch keines mehr — der Build erzeugt Poster und
+        // publish-build-media.js lädt sie nach R2. Ein Schutz, der nur noch für einen Zustand
+        // gilt, den nichts mehr herstellt, verdeckt mehr als er sichert.
         addEntry(posterPath, targetSha(posterPath));
       }
     }

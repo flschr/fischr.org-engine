@@ -148,31 +148,10 @@ test("an incomplete unpublished video upload can still be discarded safely", asy
   expect(requests.some((request) => request.method === "POST" && request.url.endsWith("/git/blobs"))).toBe(false);
 });
 
-test("video deletion refuses to remove a poster shared by another video", async ({ page }) => {
-  const requests = [];
-  const firstVideo = { path: "blog/assets/videos/uploads/first.mp4", type: "blob", sha: "first-video-sha", size: 2400 };
-  const secondVideo = { path: "blog/assets/videos/uploads/second.mp4", type: "blob", sha: "second-video-sha", size: 2500 };
-  const poster = { path: "blog/assets/images/video-posters/shared.webp", type: "blob", sha: "poster-sha", size: 600 };
-  const metadata = { path: "blog/_data/videoMetadata.json", type: "blob", sha: "metadata-sha", size: 300 };
-  const metadataContent = `${JSON.stringify({
-    "/assets/videos/uploads/first.mp4": { poster: "/assets/images/video-posters/shared.webp", sourceHash: "first" },
-    "/assets/videos/uploads/second.mp4": { poster: "/assets/images/video-posters/shared.webp", sourceHash: "second" }
-  }, null, 2)}\n`;
-  const tree = [firstVideo, secondVideo, poster, metadata];
-  await page.unroute("**/api/admin/auth/session");
-  await mockAuthenticatedGithub(page, requests, tree, {
-    mainTree: tree,
-    blobs: { "metadata-sha": { content: metadataContent, encoding: "utf-8" } }
-  });
-  await page.goto("/admin/");
-  await expect(page.locator("#connectionState")).toHaveText("verbunden");
-  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
-  await page.locator(`.media-item[data-media-path="${firstVideo.path}"]`)
-    .getByRole("button", { name: "Löschen" }).click();
-
-  await expect(page.locator("#statusBar")).toContainText("auch von einem anderen Video verwendet");
-  expect(requests.some((request) => request.method === "POST" && request.url.endsWith("/git/trees"))).toBe(false);
-});
+// Entfernt mit dem gleichnamigen Schutz: er konnte nur greifen, solange Poster als Blobs im
+// Baum liegen. Seit der R2-Migration liegt dort keines mehr und es entsteht auch keines mehr,
+// die Vorbedingung dieses Falls ist damit nicht mehr herstellbar. Der Test hätte weiter eine
+// Fiktion geprüft. Siehe 26c-video-derivatives.part.
 
 test("discarding unused uploads keeps posters coupled to their video", async ({ page }) => {
   const requests = [];
