@@ -6,6 +6,7 @@
   // are predictable enough for a remaining-time estimate.
   const phases = [
     ["Check out repository", "Geprüften Stand vorbereiten"],
+    ["Free disk space", "Speicherplatz für den Build freigeben"],
     ["Set up Node.js", "Build-Umgebung vorbereiten"],
     ["Install dependencies", "Abhängigkeiten installieren"],
     ["Prepare final publish commit", "Veröffentlichung prüfen"],
