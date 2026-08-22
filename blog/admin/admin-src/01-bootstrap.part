@@ -80,6 +80,9 @@
   // record in the repository: scripts/admin-normalize-image.js writes an entry for every
   // upload, the media library reads it as its index, and a deletion removes an entry from it.
   const mediaManifestPath = "automation/media-manifest.json";
+  // One small { key, entry } record per upload the next production build has not folded into
+  // the manifest yet. Mirrors pendingUploadsRelativeDir in lib/media-manifest.js.
+  const mediaUploadsDir = "automation/media-uploads";
   const socialConfigPath = "automation/social-config.json";
   const gpxUploadService = window.RWGpxUpload.create({
     Parser: window.DOMParser,

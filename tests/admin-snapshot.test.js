@@ -39,11 +39,13 @@ test("admin snapshot returns filtered main and drafts trees", async () => {
 });
 
 test("snapshot path filter retains every admin data family", () => {
-  for (const path of ["blog/posts/a.md", "blog/pages/a.md", "blog/about.njk", "blog/projects.njk", "blog/assets/images/a.webp", "blog/assets/videos/a.mp4", "blog/assets/files/gpx/a.gpx", "blog/_data/videoMetadata.json", "automation/social-config.json", "automation/admin-rename-origins.json", "automation/media-manifest.json"]) {
+  for (const path of ["blog/posts/a.md", "blog/pages/a.md", "blog/about.njk", "blog/projects.njk", "blog/assets/images/a.webp", "blog/assets/videos/a.mp4", "blog/assets/files/gpx/a.gpx", "blog/_data/videoMetadata.json", "automation/social-config.json", "automation/admin-rename-origins.json", "automation/media-manifest.json", "automation/media-uploads/images__uploads__a.webp.json"]) {
     assert.equal(snapshot.isAdminPath({ path, type: "blob" }), true, path);
   }
   assert.equal(snapshot.isAdminPath({ path: "README.md", type: "blob" }), false);
   assert.equal(snapshot.isAdminPath({ path: "blog/archive.njk", type: "blob" }), false);
+  assert.equal(snapshot.isAdminPath({ path: "automation/media-uploads/README.md", type: "blob" }), false);
+  assert.equal(snapshot.isAdminPath({ path: "automation/social-posts.json", type: "blob" }), false);
 });
 
 test("admin snapshot keeps working when one changed blob cannot be loaded", async () => {

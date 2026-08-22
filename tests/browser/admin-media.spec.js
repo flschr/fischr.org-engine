@@ -469,3 +469,111 @@ test("deleting a video that only exists in R2 removes its manifest entry and met
   expect(treeRequest.body.tree.some((entry) => entry.path.includes("videos/uploads/clip.mp4"))).toBe(false);
   await expect(page.locator(".media-item[data-media-path]")).toHaveCount(0);
 });
+
+// An upload is recorded as a small automation/media-uploads/ record and only folded into the
+// manifest by the next production build (lib/media-manifest.js). Until then the file has no
+// manifest entry, no blob and no queue change — a gallery that only reads the manifest cannot
+// see the image the writer just uploaded.
+test("media gallery lists an upload that is only recorded, not yet folded into the manifest", async ({ page }) => {
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const record = { path: "automation/media-uploads/images__uploads__fresh.webp.json", type: "blob", sha: "record-sha", size: 120 };
+  const manifestContent = `${JSON.stringify({
+    "images/uploads/old.webp": { sha256: "old-hash", size: 900 }
+  }, null, 2)}\n`;
+  const recordContent = `${JSON.stringify({
+    key: "images/uploads/fresh.webp",
+    entry: { sha256: "fresh-hash", size: 3072, contentType: "image/webp" }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, [], [manifest, record], {
+    mainTree: [manifest, record],
+    blobs: {
+      "manifest-sha": { content: manifestContent, encoding: "utf-8" },
+      "record-sha": { content: recordContent, encoding: "utf-8" }
+    }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(2);
+  await expect(page.locator('.media-item[data-media-path="blog/assets/images/uploads/fresh.webp"] .entry-meta'))
+    .toContainText("3 KB");
+});
+
+test("deleting a recorded upload removes its record instead of rewriting the manifest", async ({ page }) => {
+  const requests = [];
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const record = { path: "automation/media-uploads/images__uploads__fresh.webp.json", type: "blob", sha: "record-sha", size: 120 };
+  const manifestContent = `${JSON.stringify({
+    "images/uploads/old.webp": { sha256: "old-hash", size: 900 }
+  }, null, 2)}\n`;
+  const recordContent = `${JSON.stringify({
+    key: "images/uploads/fresh.webp",
+    entry: { sha256: "fresh-hash", size: 3072 }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [manifest, record], {
+    mainTree: [manifest, record],
+    blobs: {
+      "manifest-sha": { content: manifestContent, encoding: "utf-8" },
+      "record-sha": { content: recordContent, encoding: "utf-8" }
+    }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  await page.locator('.media-item[data-media-path="blog/assets/images/uploads/fresh.webp"]')
+    .getByRole("button", { name: "Löschen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Löschung vorgemerkt");
+
+  const treeRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  expect(treeRequest.body.tree).toEqual([expect.objectContaining({ path: record.path, sha: null })]);
+  // The key is not in the committed manifest, so rewriting 2.7 MB would be pure noise.
+  expect(treeRequest.body.tree.some((entry) => entry.path === manifest.path)).toBe(false);
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(1);
+});
+
+test("deleting a re-uploaded file removes manifest entry and record in one commit", async ({ page }) => {
+  const requests = [];
+  const manifest = { path: "automation/media-manifest.json", type: "blob", sha: "manifest-sha", size: 400 };
+  const record = { path: "automation/media-uploads/images__uploads__photo.webp.json", type: "blob", sha: "record-sha", size: 120 };
+  const manifestContent = `${JSON.stringify({
+    "images/uploads/photo.webp": { sha256: "old-hash", size: 900 }
+  }, null, 2)}\n`;
+  const recordContent = `${JSON.stringify({
+    key: "images/uploads/photo.webp",
+    entry: { sha256: "new-hash", size: 3072 }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [manifest, record], {
+    mainTree: [manifest, record],
+    blobs: {
+      "manifest-sha": { content: manifestContent, encoding: "utf-8" },
+      "record-sha": { content: recordContent, encoding: "utf-8" }
+    }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator('[data-collection="media"]').evaluate((button) => button.click());
+
+  // One file, one card: the record is the newer upload for that key and wins over the manifest.
+  const card = page.locator('.media-item[data-media-path="blog/assets/images/uploads/photo.webp"]');
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(1);
+  await expect(card.locator(".entry-meta")).toContainText("3 KB");
+
+  await card.getByRole("button", { name: "Löschen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Löschung vorgemerkt");
+
+  const treeRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  // Both halves in one commit — dropping only the manifest entry would let the next build fold
+  // the record back in and resurrect the file.
+  expect(treeRequest.body.tree).toEqual(expect.arrayContaining([
+    expect.objectContaining({ path: manifest.path, sha: expect.stringMatching(/^blob-sha-/) }),
+    expect.objectContaining({ path: record.path, sha: null })
+  ]));
+  const blobRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
+  expect(JSON.parse(blobRequest.body.content)).toEqual({});
+  await expect(page.locator(".media-item[data-media-path]")).toHaveCount(0);
+});

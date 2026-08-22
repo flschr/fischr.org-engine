@@ -89,14 +89,13 @@
       addEntry(metadataPath, metadataBlob.sha);
     }
 
+    // One key can produce two entries — the rewritten manifest and a not-yet-folded upload
+    // record — and both belong in this same commit as the metadata.
     const manifestChange = manifestKeys.length ? await buildMediaManifestChange(manifestKeys) : null;
-    if (manifestChange) addEntry(mediaManifestPath, manifestChange.entry.sha);
+    manifestChange?.entries.forEach((entry) => addEntry(entry.path, entry.sha));
 
     await commitToDrafts(Array.from(entries.values()), message, expectedBlobs);
-    if (manifestChange) {
-      state.mediaManifest = manifestChange.manifest;
-      state.mediaManifestSha = blobShaMap(state.tree).get(mediaManifestPath) || "";
-    }
+    if (manifestChange) adoptMediaManifestChange(manifestChange);
     await loadChanges();
   }
 
