@@ -9,8 +9,17 @@ import {
 } from "../../../_admin-auth.js";
 
 export async function onRequest(context) {
+  return handleSessionRequest(context);
+}
+
+// Same seam as handleSnapshotRequest in ../snapshot.js: the endpoint decides whether a temporary
+// GitHub failure signs the user out, and that decision is only worth anything if a test can drive
+// it with an actual 500 instead of asserting that the comparison is still spelled the same way.
+export async function handleSessionRequest(context, overrides = {}) {
+  const readSessionImpl = overrides.readSession || readSession;
+  const fetchImpl = overrides.fetch || fetch;
   const configured = oauthConfigured(context.env);
-  const session = await readSession(context.request, context.env);
+  const session = await readSessionImpl(context.request, context.env);
 
   if (!session) {
     return jsonResponse({
@@ -23,7 +32,7 @@ export async function onRequest(context) {
     });
   }
 
-  const verification = await verifyGitHubAccess(session, context.env);
+  const verification = await verifyGitHubAccess(session, context.env, fetchImpl);
 
   if (!verification.authorized) {
     const headers = verification.clearSession ? { "Set-Cookie": clearSessionCookie() } : {};
@@ -48,10 +57,10 @@ export async function onRequest(context) {
   });
 }
 
-async function verifyGitHubAccess(session, env = {}) {
+async function verifyGitHubAccess(session, env = {}, fetchImpl = fetch) {
   try {
     const repositoryName = adminRepository(env);
-    const response = await fetch(`https://api.github.com/repos/${repositoryName}`, {
+    const response = await fetchImpl(`https://api.github.com/repos/${repositoryName}`, {
       headers: githubHeaders(session.token)
     });
 

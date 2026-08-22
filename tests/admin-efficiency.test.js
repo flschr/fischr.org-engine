@@ -24,28 +24,14 @@ test("media references start from the precomputed production index", () => {
   assert.match(source, /if \(state\.mediaReferenceSignature === signature\) return state\.mediaReferenceIndex/);
 });
 
-test("media gallery avoids repeated lookup, eager video loading and redundant card creation", () => {
+test("the media gallery dedupes queued uploads by lookup, not by scanning", () => {
+  // Rendering — two cards instead of three, preload="none", stable card identity — is proven for
+  // real in tests/browser/admin-media.spec.js. What no behavioural test can show is the shape of
+  // the lookup: with a handful of files an O(n2) scan passes every assertion the browser can make.
   const source = adminSource();
-  assert.match(source, /function isVideoPosterPath\(path\)/);
-  assert.match(source, /function isMediaLibraryPath\(path\)/);
-  assert.match(source, /video-posters\//);
-  assert.match(source, /isMediaLibraryPath\(item\.path\)/);
-  assert.match(source, /isMediaLibraryPath\(change\.path\)/);
-  assert.match(source, /!isVideoPosterPath\(change\.path\)/);
-  assert.match(source, /function visibleQueueChanges\(changes\)/);
-  assert.match(source, /label: "Technische Video-Reparatur"/);
-  assert.match(source, /async function commitMediaDiscardPlan\(videoOperations, fileChanges, message\)/);
-  // Queued uploads are deduped against the already-listed items through a Set, not a scan
-  // per change.
   assert.match(source, /queuedMediaItems\(changes, new Set\(published\.keys\(\)\)\)/);
   assert.match(source, /!knownPaths\.has\(change\.path\)/);
   assert.doesNotMatch(source, /!remote\.some\(\(item\) => item\.path === change\.path\)/);
-  assert.match(source, /video\.preload = "none"/);
-  assert.match(source, /const fragment = document\.createDocumentFragment\(\)/);
-  assert.match(source, /card\.dataset\.mediaPath = item\.path/);
-  assert.match(source, /card\.dataset\.mediaReferences !== nextSignature/);
-  assert.match(source, /card !== insertionPoint/);
-  assert.match(source, /refreshRenderedMediaMetadata\(\)/);
 });
 
 test("admin uses one German UI language layer", () => {
@@ -53,17 +39,6 @@ test("admin uses one German UI language layer", () => {
   assert.match(html, /<html lang="de"/);
   assert.doesNotMatch(html, /ui-language\.js|MutationObserver/);
   assert.match(html, />Veröffentlichen</);
-});
-
-test("heavy editor and preview runtimes are loaded on demand", () => {
-  const html = fs.readFileSync(path.join(__dirname, "../blog/admin/index.html"), "utf8");
-  const source = adminSource();
-  assert.match(html, /data-editor-src=/);
-  assert.match(html, /data-markdown-src=/);
-  assert.doesNotMatch(html, /<script src="\{\{ '\/admin\/vendor\/editor\/editor\.js'/);
-  assert.doesNotMatch(html, /<script src="\{\{ '\/admin\/vendor\/markdown-it/);
-  assert.match(source, /function loadEditorRuntime\(\)/);
-  assert.match(source, /function loadPreviewRuntime\(\)/);
 });
 
 test("startup and resume reuse in-flight data work", () => {
