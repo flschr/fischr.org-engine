@@ -134,7 +134,11 @@ export function isAllowedImage(value = "") {
   if (/^data:image\/(?:avif|gif|jpeg|png|webp);base64,/i.test(value)) return true;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && ["raw.githubusercontent.com", "mysite.example"].includes(url.hostname);
+    // media.mysite.example is the R2 delivery domain (deliveryHost in scripts/lib/r2-media.js).
+    // Since DB-1129 a saved image is referenced from there, so without it every alt text for
+    // an already-committed image is rejected as an invalid source.
+    return url.protocol === "https:"
+      && ["raw.githubusercontent.com", "mysite.example", "media.mysite.example"].includes(url.hostname);
   } catch {
     return false;
   }

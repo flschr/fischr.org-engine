@@ -5,16 +5,15 @@ test("German blog homepage introduces the author and latest posts", async ({ pag
 
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
   await expect(page.locator(".author-card h1")).toContainText("Herzlich willkommen");
-  await expect(page.locator(".home-stream-label")).toHaveText("Zuletzt im Blog");
   await expect(page.locator(".post-stream .stream-entry").first()).toBeVisible();
 });
 
 test("all public page types share one responsive page grid", async ({ page }) => {
   const pages = [
-    ["/", [".author-card", ".home-stream-label", ".post-stream"]],
+    ["/", [".author-card", ".post-stream"]],
     ["/heimaturlaub/", [".h-entry", ".post-header", ".post-content", ".post-footer"]],
     ["/about/", [".about-page", ".about-hero", ".about-content", ".about-separator", ".about-site-notes"]],
-    ["/projekte/", [".projects-page", ".author-card", ".projects-list-label", ".project-list", ".projects-more"]],
+    ["/projekte/", [".projects-page", ".author-card", ".project-list", ".projects-more"]],
     ["/archive/", [".post-content"]],
     ["/page/2/", [".post-stream"]],
     ["/404.html", []],

@@ -28,7 +28,10 @@ function main() {
 
     git(["checkout", "--force", "-B", `admin-video-${process.pid}`, currentDraftSha]);
     run("node", ["scripts/generate-video-posters.js"]);
-    git(["add", "-A", "--", "blog/assets/images/video-posters", "blog/_data/videoMetadata.json"]);
+    // Poster bytes stay out of git: blog/assets/images/ is ignored since media moved to R2
+    // (DB-1129), and the Build workflow regenerates the posters and uploads them through
+    // scripts/publish-build-media.js. Only the metadata belongs in the drafts commit.
+    git(["add", "-A", "--", "blog/_data/videoMetadata.json"]);
     if (gitSucceeds(["diff", "--cached", "--quiet"])) {
       console.log(`${sourcePath} already has current poster metadata.`);
       return;

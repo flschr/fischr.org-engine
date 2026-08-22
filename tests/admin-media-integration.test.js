@@ -71,7 +71,13 @@ function setup(name) {
   git(source, "config", "user.name", "Test");
   git(source, "config", "user.email", "test@example.test");
   fs.mkdirSync(path.join(source, "scripts"), { recursive: true });
-  fs.writeFileSync(path.join(source, ".gitignore"), "node_modules\n");
+  // The production .gitignore is part of the contract here: media lives in R2 since DB-1129,
+  // so blog/assets/{images,videos}/ are ignored and `git add <ignored path>` fails. A fixture
+  // that ignored only node_modules hid exactly that failure from these tests.
+  fs.writeFileSync(
+    path.join(source, ".gitignore"),
+    `node_modules\n${fs.readFileSync(path.join(projectRoot, ".gitignore"), "utf8")}`
+  );
   fs.symlinkSync(path.join(projectRoot, "node_modules"), path.join(source, "node_modules"), "dir");
   return { temp, source, origin, runner };
 }
@@ -98,6 +104,9 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   copyRelative(projectRoot, fixture.source, "lib/eleventy/social.js");
   copyRelative(projectRoot, fixture.source, "lib/eleventy/html.js");
   git(fixture.source, "add", ".");
+  // The admin commits raw uploads through the GitHub contents API, which does not consult
+  // .gitignore — force-add here so the fixture's drafts branch matches production.
+  git(fixture.source, "add", "--force", "--", rawPath);
   git(fixture.source, "commit", "-m", "raw upload");
   const expectedSha = git(fixture.source, "rev-parse", "HEAD");
   fs.mkdirSync(path.join(fixture.source, "blog/posts"), { recursive: true });
@@ -113,8 +122,8 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
       SOURCE_PATH: rawPath,
       TARGET_PATH: targetPath,
       CLOUDFLARE_ACCOUNT_ID: "test-account",
-      CLOUDFLARE_R2_TOKEN_ID: "test-token-id",
-      CLOUDFLARE_R2_API_TOKEN: "test-token-secret",
+      CLOUDFLARE_R2_ACCESS_KEY_ID: "test-access-key-id",
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: "test-secret-access-key",
       R2_S3_ENDPOINT: fakeR2.endpoint
     });
   } finally {
@@ -137,6 +146,27 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   const metadata = await sharp(uploaded).metadata();
   assert.equal(metadata.format, "webp");
   assert.equal(metadata.width, 1600);
+
+  // The admin retries a failed upload with the drafts head its tab last saw. After a run has
+  // finished, that commit no longer carries the raw upload — the retry must report the work as
+  // done instead of failing, or the admin blocks saving on a media error that is already fixed.
+  const headAfterNormalization = git(fixture.runner, "rev-parse", "origin/drafts");
+  const retryR2 = await startFakeR2Server();
+  try {
+    await runAsync(fixture.runner, "node", ["scripts/admin-normalize-image.js"], {
+      DRAFT_SHA: headAfterNormalization,
+      SOURCE_PATH: rawPath,
+      TARGET_PATH: targetPath,
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      CLOUDFLARE_R2_ACCESS_KEY_ID: "test-access-key-id",
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: "test-secret-access-key",
+      R2_S3_ENDPOINT: retryR2.endpoint
+    });
+  } finally {
+    await retryR2.close();
+  }
+  git(fixture.runner, "fetch", "origin", "drafts");
+  assert.equal(git(fixture.runner, "rev-parse", "origin/drafts"), headAfterNormalization, "retry must not move drafts");
 });
 
 test("GitHub video preparation creates reviewed metadata and preserves a concurrent save", () => {
@@ -151,6 +181,7 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
     fs.copyFileSync(path.join(projectRoot, "scripts", script), path.join(fixture.source, "scripts", script));
   }
   git(fixture.source, "add", ".");
+  git(fixture.source, "add", "--force", "--", videoPath);
   git(fixture.source, "commit", "-m", "video upload");
   const expectedSha = git(fixture.source, "rev-parse", "HEAD");
   fs.mkdirSync(path.join(fixture.source, "blog/posts"), { recursive: true });
@@ -170,5 +201,8 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
   assert.equal(item.height, 180);
   assert.match(item.poster, /^\/assets\/images\/video-posters\/test\.webp$/);
   assert.equal(git(fixture.runner, "show", "origin/drafts:blog/posts/later.md"), "later save");
-  assert.doesNotThrow(() => git(fixture.runner, "show", `origin/drafts:blog${item.poster}`));
+  // The poster bytes belong to R2, not to drafts — the Build workflow regenerates and uploads
+  // them. Only the metadata that points at them is committed.
+  assert.throws(() => git(fixture.runner, "show", `origin/drafts:blog${item.poster}`));
+  assert.ok(fs.existsSync(path.join(fixture.runner, "blog", item.poster)), "expected the poster to be rendered locally");
 });

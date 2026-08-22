@@ -10,3 +10,8 @@ playwright-report/
 test-results/
 blog/admin/vendor/
 blog/assets/css/generated/
+# Media originals are no longer committed to Git (DB-1129) — canonically stored in R2 and
+# materialized here at build time by scripts/prepare-media-source.js from
+# automation/media-manifest.json.
+blog/assets/images/
+blog/assets/videos/

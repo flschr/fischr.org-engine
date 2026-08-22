@@ -18,23 +18,40 @@ const { loadManifest, downloadMediaFile } = require("./lib/r2-media");
 
 const root = process.cwd();
 const ephemeralSourcePrefix = "_site/";
+const concurrency = Number.parseInt(process.env.MEDIA_SOURCE_DOWNLOAD_CONCURRENCY || "16", 10);
+
+// Mirrors scripts/publish-build-media.js's worker pool: with well over a thousand manifest
+// entries, downloading them one at a time would make every cold build (a fresh CI runner, or
+// anyone re-cloning the repo) wait on over a thousand sequential HTTPS round-trips.
+async function runWithConcurrency(items, limit, worker) {
+  let next = 0;
+
+  async function runNext() {
+    const index = next;
+    next += 1;
+    if (index >= items.length) return;
+    await worker(items[index]);
+    await runNext();
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runNext));
+}
 
 async function main() {
   const manifest = loadManifest();
-  const entries = Object.entries(manifest).filter(
-    ([, entry]) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix)
+  const missing = Object.entries(manifest)
+    .filter(([, entry]) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix))
+    .map(([key, entry]) => ({ key, destinationPath: path.join(root, entry.sourcePath), sha256: entry.sha256 }))
+    .filter(({ destinationPath }) => !fs.existsSync(destinationPath));
+
+  await runWithConcurrency(missing, concurrency, ({ key, destinationPath, sha256 }) =>
+    downloadMediaFile({ key, destinationPath, expectedSha256: sha256 })
   );
 
-  let restored = 0;
-  for (const [key, entry] of entries) {
-    const destinationPath = path.join(root, entry.sourcePath);
-    if (fs.existsSync(destinationPath)) continue;
-
-    await downloadMediaFile({ key, destinationPath, expectedSha256: entry.sha256 });
-    restored += 1;
-  }
-
-  console.log(`Media source prepare: ${restored} file(s) restored from R2, ${entries.length - restored} already present.`);
+  const total = Object.values(manifest).filter(
+    (entry) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix)
+  ).length;
+  console.log(`Media source prepare: ${missing.length} file(s) restored from R2, ${total - missing.length} already present.`);
 }
 
 main().catch((error) => {

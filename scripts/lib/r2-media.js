@@ -61,25 +61,25 @@ async function rasterDimensions(localPath) {
   }
 }
 
-// R2's S3-compatible API derives S3 credentials from a Cloudflare R2 API token: the token's
-// id is the Access Key ID, and the SHA-256 hash of the token's secret value is the Secret
-// Access Key (https://developers.cloudflare.com/r2/api/tokens/#get-s3-api-credentials-from-an-api-token).
+// R2's dedicated "Manage R2 API Tokens" dashboard flow (the recommended way to create a
+// bucket-scoped token: https://developers.cloudflare.com/r2/api/tokens/) hands back a ready-to-
+// use Access Key ID and Secret Access Key pair directly — no separate hashing step needed, unlike
+// deriving S3 credentials from a generic Cloudflare API token's raw value.
 // The S3 API (unlike the simpler native object-PUT endpoint) is what Cloudflare recommends for
 // real workloads, is what accepts a bucket-scoped "R2 Storage Bucket Item" token in the first
 // place, and is the only way to set Cache-Control on the object.
 function credentialsFromEnv(env = process.env) {
   const accountId = env.CLOUDFLARE_ACCOUNT_ID;
-  const tokenId = env.CLOUDFLARE_R2_TOKEN_ID;
-  const apiToken = env.CLOUDFLARE_R2_API_TOKEN;
+  const accessKeyId = env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretAccessKey = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
   if (!accountId) throw new Error("CLOUDFLARE_ACCOUNT_ID is required to publish media to R2.");
-  if (!tokenId) throw new Error("CLOUDFLARE_R2_TOKEN_ID is required to publish media to R2.");
-  if (!apiToken) throw new Error("CLOUDFLARE_R2_API_TOKEN is required to publish media to R2.");
-  return { accountId, tokenId, apiToken };
+  if (!accessKeyId) throw new Error("CLOUDFLARE_R2_ACCESS_KEY_ID is required to publish media to R2.");
+  if (!secretAccessKey) throw new Error("CLOUDFLARE_R2_SECRET_ACCESS_KEY is required to publish media to R2.");
+  return { accountId, accessKeyId, secretAccessKey };
 }
 
-function s3Client({ accountId, tokenId, apiToken }) {
-  const secretAccessKey = crypto.createHash("sha256").update(apiToken).digest("hex");
-  return new AwsClient({ accessKeyId: tokenId, secretAccessKey, region: "auto", service: "s3" });
+function s3Client({ accessKeyId, secretAccessKey }) {
+  return new AwsClient({ accessKeyId, secretAccessKey, region: "auto", service: "s3" });
 }
 
 // R2_S3_ENDPOINT lets tests point this at a local stub server instead of the real Cloudflare
@@ -88,8 +88,8 @@ function s3Endpoint(accountId, env) {
   return env.R2_S3_ENDPOINT || `https://${accountId}.r2.cloudflarestorage.com`;
 }
 
-async function putObject({ accountId, tokenId, apiToken, key, buffer, contentType, env }) {
-  const client = s3Client({ accountId, tokenId, apiToken });
+async function putObject({ accountId, accessKeyId, secretAccessKey, key, buffer, contentType, env }) {
+  const client = s3Client({ accessKeyId, secretAccessKey });
   const url = `${s3Endpoint(accountId, env)}/${bucketName}/${key}`;
   const response = await client.fetch(url, {
     method: "PUT",
@@ -113,9 +113,9 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
 
   if (existing && existing.sha256 === hash) return "unchanged";
 
-  const { accountId, tokenId, apiToken } = credentialsFromEnv(env);
+  const { accountId, accessKeyId, secretAccessKey } = credentialsFromEnv(env);
   const contentType = contentTypeFor(localPath);
-  await putObject({ accountId, tokenId, apiToken, key, buffer, contentType, env });
+  await putObject({ accountId, accessKeyId, secretAccessKey, key, buffer, contentType, env });
 
   const dimensions = await rasterDimensions(localPath);
   manifest[key] = {

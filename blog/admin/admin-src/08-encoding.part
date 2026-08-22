@@ -7,11 +7,27 @@
     return new TextDecoder().decode(bytes);
   }
 
+  // Spell German characters out before the NFD pass strips diacritics. "ß" has no canonical
+  // decomposition, so without this it fell through to [^a-z0-9] and became a hyphen —
+  // "Bratwürste an den Füßen" produced the slug "bratwurste-an-den-fu-en". Umlauts follow the
+  // same convention so a slug reads the way the word is spelled out. NFC first, because a
+  // composed "ü" and a "u" plus combining diaeresis must map alike.
+  // Deliberately NOT shared with slugifyTag in lib/eleventy/content.js: tag URLs are live and
+  // must keep their current spelling (the "ernährung" tag stays /tags/ernahrung/).
+  function transliterateGerman(value) {
+    return String(value || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/ä/g, "ae")
+      .replace(/ö/g, "oe")
+      .replace(/ü/g, "ue")
+      .replace(/ß/g, "ss");
+  }
+
   function slugify(value) {
-    const normalized = String(value || "")
+    const normalized = transliterateGerman(value)
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
@@ -21,10 +37,9 @@
   // Like slugify but keeps a trailing "-" so it can sanitize the slug field
   // while the user is still typing (spaces become "-" live).
   function slugifyLive(value) {
-    return String(value || "")
+    return transliterateGerman(value)
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+/, "");

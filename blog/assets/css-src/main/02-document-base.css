@@ -62,7 +62,7 @@ hr {
   height: 40px;
   margin: 2.5rem 0;
   border: 0;
-  background: center / contain no-repeat url("/assets/images/fish-line.svg");
+  background: center / contain no-repeat url("https://media.mysite.example/images/fish-line.svg");
 }
 
 @media (prefers-color-scheme: dark) {

@@ -30,8 +30,8 @@
 
   .about-hero {
     display: flow-root;
-    margin-top: 1rem;
-    padding-bottom: 2.25rem;
+    margin: 1rem 0 3.25rem;
+    padding: 1.25rem;
   }
 
   .about-portrait {

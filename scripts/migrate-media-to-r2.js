@@ -187,6 +187,69 @@ function listAllMediaFiles() {
   return files;
 }
 
+// Video posters are never referenced directly from post content — they're looked up at render
+// time via blog/_data/videoMetadata.json's per-video `poster` field (lib/eleventy/media-assets.js
+// getLocalVideoMetadata). The post-content scan above has no reason to know about them, so
+// without this they'd all show up as false-positive "unreferenced" files on every run.
+function referencedPosterPaths() {
+  const metadataPath = path.join(root, "blog/_data/videoMetadata.json");
+  if (!fs.existsSync(metadataPath)) return [];
+  const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+  return Object.values(metadata)
+    .map((entry) => entry?.poster)
+    .filter(Boolean)
+    .map((posterPath) => path.resolve(root, `blog${posterPath}`));
+}
+
+// Assets referenced only from site-wide templates/CSS, never from post content — scanning
+// blog/posts and blog/pages (this script's actual job) will never find these, so they'd
+// otherwise show up as false-positive "unreferenced" files on every run. Extracted from the
+// actual template/CSS source at runtime (rather than a hand-typed list) so this doesn't embed
+// personal filenames as string literals in engine code — scripts/export-public-engine.js scans
+// exactly for that when building the public, personal-data-free version of this codebase.
+const templateSources = [
+  "blog/_includes/layouts/base.njk",
+  "blog/site.webmanifest.njk",
+  "blog/about.njk",
+  "blog/_includes/partials/author-card.njk",
+  "blog/projects.njk",
+  // Outside blog/posts and blog/pages (the roots this script's main scan covers), so its embedded
+  // <img> reference would otherwise never be picked up.
+  "blog/404.md",
+  "lib/eleventy/social.js",
+  "blog/assets/css-src/main/02-document-base.css",
+  // Passthrough-copy config: some site-wide assets (e.g. /favicon.ico) are referenced in HTML
+  // at their copied root-level destination, not their /assets/images/... source path — only
+  // this config file's addPassthroughCopy() call names the actual source path.
+  ".eleventy.js"
+];
+
+function templateReferencedAssetPaths() {
+  const found = [];
+  for (const relativePath of templateSources) {
+    const absolute = path.resolve(root, relativePath);
+    if (!fs.existsSync(absolute)) continue;
+    const text = fs.readFileSync(absolute, "utf8");
+    for (const match of text.matchAll(/\/?assets\/images\/[a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+/g)) {
+      found.push(path.resolve(root, `blog/${match[0].replace(/^\//, "")}`));
+    }
+  }
+  return found;
+}
+
+// Anything already recorded in the R2 manifest is, by definition, an intentionally migrated,
+// actively delivered file — never an orphan, regardless of whether templateReferencedAssetPaths()
+// can still find a local-style /assets/images/... reference for it. Once a template's reference
+// is itself rewritten to the absolute media.mysite.example delivery URL (as scripts/
+// migrate-chrome-media-to-r2.js does for site-wide chrome assets), that text-scanning approach
+// stops finding it entirely — this is the fallback that keeps such files off the orphan report.
+function manifestReferencedPaths(manifest) {
+  return Object.values(manifest)
+    .map((entry) => entry?.sourcePath)
+    .filter((sourcePath) => sourcePath && !sourcePath.startsWith("_site/"))
+    .map((sourcePath) => path.resolve(root, sourcePath));
+}
+
 async function main() {
   const manifest = loadManifest();
   const stats = { references: 0, filesChanged: 0, uploaded: 0, unchanged: 0 };
@@ -198,6 +261,10 @@ async function main() {
   for (const file of files) {
     await processFile(file, manifest, stats, referenced);
   }
+
+  for (const posterPath of referencedPosterPaths()) referenced.add(posterPath);
+  for (const templateAsset of templateReferencedAssetPaths()) referenced.add(templateAsset);
+  for (const manifestAsset of manifestReferencedPaths(manifest)) referenced.add(manifestAsset);
 
   if (!dryRun) saveManifest(manifest);
 

@@ -76,3 +76,17 @@ test("alt-text endpoint aborts an OpenAI request that takes too long", async () 
   assert.equal(response.status, 504);
   assert.deepEqual(await response.json(), { message: "Der Alt-Text-Dienst hat nicht rechtzeitig geantwortet." });
 });
+
+test("alt-text endpoint accepts the R2 delivery domain and still rejects foreign hosts", () => {
+  // Since DB-1129 a committed image is referenced from media.mysite.example; rejecting it made
+  // "Alt-Text erzeugen" fail with "Ungültige Bildquelle" for every saved image.
+  assert.ok(endpoint.isAllowedImage("https://media.mysite.example/images/uploads/photo.webp"));
+  assert.ok(endpoint.isAllowedImage("https://mysite.example/assets/images/photo.webp"));
+  assert.ok(endpoint.isAllowedImage("https://raw.githubusercontent.com/owner/repo/main/photo.webp"));
+  assert.ok(endpoint.isAllowedImage("data:image/webp;base64,AAAA"));
+
+  assert.equal(endpoint.isAllowedImage("http://media.mysite.example/images/photo.webp"), false);
+  assert.equal(endpoint.isAllowedImage("https://media.mysite.example.evil.example/photo.webp"), false);
+  assert.equal(endpoint.isAllowedImage("https://evil.example/photo.webp"), false);
+  assert.equal(endpoint.isAllowedImage("nonsense"), false);
+});

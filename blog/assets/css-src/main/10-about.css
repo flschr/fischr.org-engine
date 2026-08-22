@@ -4,8 +4,10 @@
   gap: 1rem 2rem;
   align-items: center;
   margin: 1.5rem 0 4rem;
-  padding-bottom: 3rem;
-  border-bottom: 1px solid var(--border);
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(127, 127, 127, 0.045);
 }
 
 .about-portrait {
@@ -15,15 +17,6 @@
   aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
-}
-
-.about-kicker {
-  margin: 0 0 0.35rem;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .about-hero h1 {

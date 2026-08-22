@@ -27,7 +27,15 @@ async function main() {
   git(["config", "user.name", "github-actions[bot]"]);
   git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
   git(["cat-file", "-e", `${expectedDraftSha}^{commit}`]);
-  const expectedBlob = git(["rev-parse", `${expectedDraftSha}:${sourcePath}`]);
+  const expectedBlob = gitOptional(["rev-parse", `${expectedDraftSha}:${sourcePath}`]);
+  if (!expectedBlob) {
+    // The admin retries a failed upload with whatever drafts head its tab last saw. Once an
+    // earlier run finished, the raw upload no longer exists in that commit — reporting the
+    // completed state keeps the retry idempotent instead of failing the workflow and
+    // resurfacing a media error for work that is already done.
+    reportAlreadyProcessed();
+    return;
+  }
   git(["checkout", "--force", expectedDraftSha]);
 
   const temporaryDir = fs.mkdtempSync(path.join(os.tmpdir(), "admin-image-"));
@@ -66,8 +74,12 @@ async function main() {
       await publishMediaFile({ localPath: normalizedFile, publicPath, sourcePath: targetPath, manifest });
       saveManifest(manifest);
 
-      fs.rmSync(path.join(root, sourcePath), { force: true });
-      git(["add", "-A", "--", sourcePath, manifestRelativePath]);
+      // `git add` refuses a pathspec that points into an ignored directory, and
+      // blog/assets/images/ has been ignored since media moved to R2 (DB-1129). Drop the raw
+      // upload with `git rm`, which only ever touches tracked files, and stage the manifest
+      // on its own.
+      git(["rm", "--quiet", "--ignore-unmatch", "--", sourcePath]);
+      git(["add", "-A", "--", manifestRelativePath]);
       if (gitSucceeds(["diff", "--cached", "--quiet"])) {
         console.log(`${sourcePath} already satisfies the normalization policy.`);
         return;
@@ -84,6 +96,15 @@ async function main() {
     fs.rmSync(temporaryDir, { recursive: true, force: true });
   }
   throw new Error(`Could not commit normalized image after ${attempts} attempts.`);
+}
+
+function reportAlreadyProcessed() {
+  git(["fetch", "--quiet", "origin", draftsBranch]);
+  git(["checkout", "--force", `origin/${draftsBranch}`]);
+  if (!loadManifest()[objectKeyForPublicPath(toPublicPath(targetPath))]) {
+    throw new Error(`${sourcePath} is missing from ${expectedDraftSha} and ${targetPath} never reached R2.`);
+  }
+  console.log(`${targetPath} is already normalized and in R2.`);
 }
 
 function validateRequest() {

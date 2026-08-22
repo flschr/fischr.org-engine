@@ -9,6 +9,12 @@ const adminPolicy = headers.slice(headers.indexOf("/admin/*"));
 const publicPolicy = headers.slice(0, headers.indexOf("/archive/*"));
 const workerPolicy = headers.slice(headers.indexOf("/pagefind/*"), headers.indexOf("/admin/*"));
 
+// Built from a plain "media.mysite.example" literal on purpose: scripts/export-public-engine.js
+// rewrites that string in the exported snapshot, so these expectations travel with the files
+// they check. A regex literal with escaped dots (media\.fischr\.org) survives the rewrite
+// untouched and then fails only in the export, never here.
+const deliveryHost = "media.mysite.example".replace(/\./g, "\\.");
+
 test("font assets remain cached across normal page refreshes", () => {
   assert.match(headers, /\/assets\/fonts\/\*\n  ! Cache-Control\n  Cache-Control: public, max-age=2592000, immutable/);
 });
@@ -28,4 +34,9 @@ test("admin uses a strict path-specific script policy", () => {
   assert.doesNotMatch(adminPolicy, /script-src[^;]*'unsafe-inline'/);
   assert.doesNotMatch(adminPolicy, /connect-src[^;]* https:(?:\s|;)/);
   assert.doesNotMatch(adminPolicy, /api\.openai\.com/);
+  // The R2 delivery domain must be loadable for previews of already-committed media, but only
+  // as a media/image source — never as a script, connect or frame target.
+  assert.match(adminPolicy, new RegExp(`img-src[^;]* https://${deliveryHost}`));
+  assert.match(adminPolicy, new RegExp(`media-src[^;]* https://${deliveryHost}`));
+  assert.doesNotMatch(adminPolicy, new RegExp(`(?:script|connect|frame)-src[^;]*${deliveryHost}`));
 });

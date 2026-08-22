@@ -111,6 +111,50 @@ test("restores a missing manifest-listed file from the delivery domain, leaves p
   assert.ok(!fs.existsSync(path.join(root, "_site")));
 });
 
+test("downloads multiple missing files concurrently instead of one at a time", async () => {
+  const root = setupProject();
+  const fileCount = 20;
+  const manifest = {};
+  const objects = {};
+
+  for (let i = 0; i < fileCount; i += 1) {
+    const key = `images/uploads/file-${i}.webp`;
+    const buffer = Buffer.from(`bytes-${i}`);
+    manifest[key] = { sourcePath: `blog/assets/images/uploads/file-${i}.webp`, sha256: hash(buffer) };
+    objects[key] = buffer;
+  }
+  writeManifest(root, manifest);
+
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const server = http.createServer((req, res) => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    const key = decodeURIComponent(req.url.replace(/^\//, ""));
+    // Hold the response briefly so overlapping requests actually overlap in time — proves real
+    // concurrency rather than requests that merely happen to be dispatched back-to-back.
+    setTimeout(() => {
+      inFlight -= 1;
+      res.writeHead(200, { "Content-Type": "application/octet-stream" });
+      res.end(objects[key]);
+    }, 20);
+  });
+  const baseUrl = await new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`));
+  });
+
+  try {
+    await runPrepare(root, { MEDIA_DELIVERY_BASE_URL: baseUrl });
+  } finally {
+    await new Promise((done) => server.close(done));
+  }
+
+  assert.ok(maxInFlight > 1, `expected overlapping requests, got a peak of ${maxInFlight}`);
+  for (let i = 0; i < fileCount; i += 1) {
+    assert.equal(fs.readFileSync(path.join(root, `blog/assets/images/uploads/file-${i}.webp`)).toString(), `bytes-${i}`);
+  }
+});
+
 test("refuses to write a download whose bytes don't match the manifest's recorded sha256", async () => {
   const root = setupProject();
 

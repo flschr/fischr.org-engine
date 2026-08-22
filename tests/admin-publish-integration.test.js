@@ -212,3 +212,104 @@ test("transactional publish refuses a main commit that changed after review", ()
     /changed in publish-relevant files after review/
   );
 });
+
+// Regression: video sources live in R2 since DB-1129, so the publish checkout has no
+// blog/assets/videos/ at all. The old gate regenerated posters here, which rewrote
+// videoMetadata.json from an empty directory and failed every publish — including
+// text-only ones.
+test("transactional publish succeeds when video sources live only in R2", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "admin-publish-r2-videos-"));
+  const source = path.join(temp, "source");
+  const origin = path.join(temp, "origin.git");
+  const runner = path.join(temp, "runner");
+  fs.mkdirSync(source);
+  git(source, "init", "-b", "main");
+  git(source, "config", "user.name", "Test");
+  git(source, "config", "user.email", "test@example.test");
+  write(source, "blog/posts/post.md", "published\n");
+  // Metadata for a migrated video whose bytes exist only in R2, never on disk here.
+  write(source, "blog/_data/videoMetadata.json", JSON.stringify({
+    "/assets/videos/imported/migrated.webm": {
+      width: 1920,
+      height: 1080,
+      posterWidth: 640,
+      posterHeight: 360,
+      poster: "/assets/images/video-posters/migrated.webp",
+      sourceHash: "abc123"
+    }
+  }, null, 2) + "\n");
+  write(source, "scripts/admin-publish.js", publishScript);
+  write(source, "blog/admin/source-pages.js", sourcePagesScript);
+  write(source, "blog/admin/publish-plan.js", publishPlanScript);
+  write(source, "scripts/lib/publish-validation.js", publishValidationScript);
+  write(source, "scripts/lib/publish-git.js", publishGitScript);
+  write(source, "scripts/lib/reconcile-drafts.js", reconcileDraftsScript);
+  git(source, "add", ".");
+  git(source, "commit", "-m", "main base");
+  const mainSha = git(source, "rev-parse", "HEAD");
+
+  git(source, "checkout", "-b", "drafts");
+  write(source, "blog/posts/new-post.md", "reviewed text-only post\n");
+  git(source, "add", ".");
+  git(source, "commit", "-m", "draft");
+  const draftSha = git(source, "rev-parse", "HEAD");
+  git(temp, "init", "--bare", origin);
+  git(source, "remote", "add", "origin", origin);
+  git(source, "push", "origin", "main", "drafts");
+  git(temp, "clone", "--branch", "main", origin, runner);
+
+  run(runner, "node", ["scripts/admin-publish.js"], {
+    PUBLISH_REQUEST_ID: "request-r2-videos",
+    MAIN_SHA: mainSha,
+    DRAFT_SHA: draftSha,
+    CHANGE_COUNT: "1",
+    GITHUB_OUTPUT: path.join(temp, "output.txt")
+  });
+  const finalSha = fs.readFileSync(path.join(temp, "output.txt"), "utf8").match(/^final_sha=(.+)$/m)[1];
+  assert.equal(git(runner, "show", `${finalSha}:blog/posts/new-post.md`), "reviewed text-only post");
+  // The metadata of the R2-only video must survive untouched.
+  const metadata = JSON.parse(git(runner, "show", `${finalSha}:blog/_data/videoMetadata.json`));
+  assert.ok(metadata["/assets/videos/imported/migrated.webm"]);
+});
+
+test("transactional publish refuses a reviewed video without prepared metadata", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "admin-publish-video-gate-"));
+  const source = path.join(temp, "source");
+  const origin = path.join(temp, "origin.git");
+  const runner = path.join(temp, "runner");
+  fs.mkdirSync(source);
+  git(source, "init", "-b", "main");
+  git(source, "config", "user.name", "Test");
+  git(source, "config", "user.email", "test@example.test");
+  write(source, "blog/posts/post.md", "published\n");
+  write(source, "blog/_data/videoMetadata.json", "{}\n");
+  write(source, "scripts/admin-publish.js", publishScript);
+  write(source, "blog/admin/source-pages.js", sourcePagesScript);
+  write(source, "blog/admin/publish-plan.js", publishPlanScript);
+  write(source, "scripts/lib/publish-validation.js", publishValidationScript);
+  write(source, "scripts/lib/publish-git.js", publishGitScript);
+  write(source, "scripts/lib/reconcile-drafts.js", reconcileDraftsScript);
+  git(source, "add", ".");
+  git(source, "commit", "-m", "main base");
+  const mainSha = git(source, "rev-parse", "HEAD");
+
+  git(source, "checkout", "-b", "drafts");
+  write(source, "blog/assets/videos/uploads/fresh.mp4", "not really a video\n");
+  git(source, "add", "--force", "--", "blog/assets/videos/uploads/fresh.mp4");
+  git(source, "commit", "-m", "video without metadata");
+  const draftSha = git(source, "rev-parse", "HEAD");
+  git(temp, "init", "--bare", origin);
+  git(source, "remote", "add", "origin", origin);
+  git(source, "push", "origin", "main", "drafts");
+  git(temp, "clone", "--branch", "main", origin, runner);
+
+  assert.throws(
+    () => run(runner, "node", ["scripts/admin-publish.js"], {
+      PUBLISH_REQUEST_ID: "request-video-gate",
+      MAIN_SHA: mainSha,
+      DRAFT_SHA: draftSha,
+      CHANGE_COUNT: "1"
+    }),
+    /Video metadata must be generated on drafts before review/
+  );
+});

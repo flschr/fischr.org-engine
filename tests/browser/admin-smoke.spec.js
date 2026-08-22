@@ -297,7 +297,7 @@ test("failed media cleanup updates its saved article after navigating away", asy
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" &&
     request.url.endsWith("/git/trees") &&
-    request.body.tree?.some((entry) => entry.path.endsWith("artikel-mit-spaterem-medienfehler.md")) &&
+    request.body.tree?.some((entry) => entry.path.endsWith("artikel-mit-spaeterem-medienfehler.md")) &&
     request.body.tree?.some((entry) => /blog\/assets\/images\/uploads\//.test(entry.path) && entry.sha === null)
   )).toBe(true);
   const cleanedArticleBlob = requests
