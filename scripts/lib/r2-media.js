@@ -10,6 +10,9 @@ const { imageMimeType, videoMimeType } = require("../../lib/eleventy/social");
 const root = process.cwd();
 const manifestPath = path.join(root, "automation/media-manifest.json");
 const bucketName = "fischr-media";
+// Single source of truth for the public delivery host — lib/eleventy/media-assets.js imports
+// this instead of redefining it, so the two can't drift apart.
+const deliveryHost = "media.mysite.example";
 const rasterExtensions = new Set([".jpeg", ".jpg", ".png", ".webp"]);
 // Media is optimized once on upload/normalize and rarely rewritten in place at the same key
 // (only a later re-normalization of an already-referenced file would do that) — a long TTL is
@@ -127,9 +130,41 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
   return "uploaded";
 }
 
+// MEDIA_DELIVERY_BASE_URL lets tests point this at a local stub server instead of the real
+// public delivery domain; production never sets it, so this always defaults to the live host.
+function deliveryUrlForKey(key, env = process.env) {
+  const base = env.MEDIA_DELIVERY_BASE_URL || `https://${deliveryHost}`;
+  return `${base}/${key}`;
+}
+
+// Restores a manifest-listed file that is missing from the local checkout (once Git no longer
+// carries migrated media) by fetching it back from the public delivery domain — R2 is a
+// publicly-readable bucket via its Custom Domain, so this needs no credentials, unlike
+// publishMediaFile's write path. Verifies the downloaded bytes against the manifest's recorded
+// hash before writing, since a corrupt or unexpected response must never silently become the
+// new "local original" for image-dimension reads / responsive-variant generation.
+async function downloadMediaFile({ key, destinationPath, expectedSha256, env = process.env }) {
+  const url = deliveryUrlForKey(key, env);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Media download failed for ${key}: ${response.status} ${url}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (expectedSha256 && hashBuffer(buffer) !== expectedSha256) {
+    throw new Error(`Downloaded content for ${key} does not match the manifest's sha256 — refusing to write ${destinationPath}`);
+  }
+
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.writeFileSync(destinationPath, buffer);
+}
+
 module.exports = {
   bucketName,
   contentTypeFor,
+  deliveryHost,
+  deliveryUrlForKey,
+  downloadMediaFile,
   hashBuffer,
   loadManifest,
   objectKeyForPublicPath,
