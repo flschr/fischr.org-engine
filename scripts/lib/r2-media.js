@@ -6,9 +6,23 @@ const { AwsClient } = require("aws4fetch");
 const sharp = require("sharp");
 
 const { imageMimeType, videoMimeType } = require("../../lib/eleventy/social");
+const {
+  pendingUploadFileName,
+  pendingUploadsRelativeDir,
+  readBaseManifest,
+  readMergedManifest,
+  readPendingUploads
+} = require("../../lib/media-manifest");
 
 const root = process.cwd();
 const manifestPath = path.join(root, "automation/media-manifest.json");
+// One small JSON record per freshly uploaded object, folded into the manifest by the next
+// production build (saveManifest + removePendingUploads). The manifest itself is ~2.7 MB across 6000+
+// entries, so anything that records an upload by rewriting the whole file has to read and
+// push those bytes every single time. A writer that only ever *creates* a small file — the
+// admin media endpoint, which runs inside a request rather than on a CI runner with a
+// checkout — pays a few hundred bytes instead.
+const pendingUploadsDir = path.join(root, pendingUploadsRelativeDir);
 const bucketName = "fischr-media";
 // Single source of truth for the public delivery host — lib/eleventy/media-assets.js imports
 // this instead of redefining it, so the two can't drift apart.
@@ -33,9 +47,39 @@ function contentTypeFor(localPath) {
   return imageMimeType(localPath) || videoMimeType(localPath) || "application/octet-stream";
 }
 
+// The committed manifest alone, without any not-yet-folded upload records. Only compaction
+// and the migration scripts want this; every reader that resolves a media reference wants
+// loadManifest(), or it will miss uploads that happened since the last production build.
+function loadBaseManifest() {
+  return readBaseManifest(root);
+}
+
+function loadPendingUploads() {
+  return readPendingUploads(root);
+}
+
 function loadManifest() {
-  if (!fs.existsSync(manifestPath)) return {};
-  return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  return readMergedManifest(root);
+}
+
+function savePendingUpload(key, entry) {
+  fs.mkdirSync(pendingUploadsDir, { recursive: true });
+  const file = path.join(pendingUploadsDir, pendingUploadFileName(key));
+  fs.writeFileSync(file, `${JSON.stringify({ key, entry }, null, 2)}\n`);
+  return `${pendingUploadsRelativeDir}/${pendingUploadFileName(key)}`;
+}
+
+// Deletes the upload records. Only correct once their entries are actually in the committed
+// manifest — loadManifest() already merges them in, so a `saveManifest(loadManifest())` is
+// the fold, and this is the second half of it. Returns the relative paths it removed so the
+// caller can stage the deletions: a fold committed without them resurrects the records.
+function removePendingUploads() {
+  const keys = Object.keys(loadPendingUploads());
+  return keys.map((key) => {
+    const name = pendingUploadFileName(key);
+    fs.rmSync(path.join(pendingUploadsDir, name), { force: true });
+    return `${pendingUploadsRelativeDir}/${name}`;
+  });
 }
 
 function saveManifest(manifest) {
@@ -161,13 +205,19 @@ async function downloadMediaFile({ key, destinationPath, expectedSha256, env = p
 
 module.exports = {
   bucketName,
+  removePendingUploads,
   contentTypeFor,
   deliveryHost,
   deliveryUrlForKey,
   downloadMediaFile,
   hashBuffer,
+  loadBaseManifest,
   loadManifest,
+  loadPendingUploads,
   objectKeyForPublicPath,
+  pendingUploadFileName,
+  pendingUploadsRelativeDir,
   publishMediaFile,
+  savePendingUpload,
   saveManifest
 };

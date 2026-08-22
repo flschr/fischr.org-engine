@@ -44,6 +44,7 @@ function setupProject() {
   fs.copyFileSync(path.join(projectRoot, "scripts/migrate-template-content-media-to-r2.js"), path.join(root, "scripts/migrate-template-content-media-to-r2.js"));
   fs.copyFileSync(path.join(projectRoot, "scripts/lib/r2-media.js"), path.join(root, "scripts/lib/r2-media.js"));
   fs.mkdirSync(path.join(root, "lib/eleventy"), { recursive: true });
+  fs.copyFileSync(path.join(projectRoot, "lib/media-manifest.js"), path.join(root, "lib/media-manifest.js"));
   for (const name of ["media-assets.js", "html.js", "social.js", "media-references.js"]) {
     fs.copyFileSync(path.join(projectRoot, "lib/eleventy", name), path.join(root, "lib/eleventy", name));
   }

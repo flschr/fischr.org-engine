@@ -67,7 +67,13 @@
     if (!isProcessableImage || (!force && !needsGithubImageNormalization(change))) return change;
     const targetPath = change.path.replace(/\.[^.\/]+$/, ".webp");
     showStatus(`GitHub verarbeitet ${change.label} …`);
-    await mediaService.normalizeImage(draftSha, change.path, targetPath);
+    const normalized = await mediaService.normalizeImage(draftSha, change.path, targetPath);
+    // The endpoint deliberately does not write to Git — it hands back the upload record and
+    // the raw upload's removal is ours to commit, through the same compare-and-swap path
+    // every other draft write uses. The workflow path already committed both itself.
+    if (normalized?.via === "endpoint" && normalized.status === "normalized") {
+      await commitNormalizedUpload(normalized, change, targetPath);
+    }
     state.tree = null;
     state.changeCache = null;
     await loadChanges();
@@ -79,6 +85,26 @@
       encoding: "",
       preview: change.preview
     };
+  }
+
+  // One commit, same shape the normalize workflow produces: add the upload record, drop the
+  // raw upload. Both in a single compare-and-swap commit so a concurrent draft save is
+  // rejected and retried rather than lost, and so drafts is never left holding a raw upload
+  // whose record has already been written.
+  // The raw upload's blob is pinned: on a ref race draftRepository.commit() retries against
+  // the newest drafts tree, and an unpinned delete would drop whatever sits at that path by
+  // then — a replacement upload included — while recording the R2 bytes of the older one.
+  // scripts/admin-normalize-image.js guards the same invariant ("refusing to process
+  // different bytes"); a mismatch has to surface as a draft conflict, not a silent loss.
+  async function commitNormalizedUpload(normalized, change, targetPath) {
+    const blob = await draftRepository.createBlob(`${JSON.stringify(normalized.record, null, 2)}\n`);
+    await commitToDrafts([
+      { path: normalized.recordPath, mode: "100644", type: "blob", sha: blob.sha },
+      { path: change.path, mode: "100644", type: "blob", sha: null }
+    ], `Normalize admin upload ${fileName(targetPath)} [skip ci]`,
+    // Only guard when the upload's blob sha is known. Passing a falsy sha would assert the
+    // path is *absent* and turn every normal run into a conflict.
+    change.sha ? { [change.path]: change.sha } : null);
   }
 
   async function prepareUploadedVideo(change, draftSha) {

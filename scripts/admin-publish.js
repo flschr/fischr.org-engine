@@ -14,9 +14,12 @@ const managedPaths = [
   "blog/assets/videos",
   "blog/assets/files/gpx",
   // Admin image uploads normalize straight to R2 (scripts/admin-normalize-image.js) instead of
-  // committing the WebP to `drafts` — this manifest entry is the only trace of that upload
-  // that needs to travel from `drafts` to `main` through the transactional publish.
-  "automation/media-manifest.json"
+  // committing the WebP to `drafts` — the upload record under automation/media-uploads/ is the
+  // only trace of that upload that needs to travel from `drafts` to `main` through the
+  // transactional publish. The manifest itself stays listed because the production build folds
+  // those records into it and a publish may carry that folded state.
+  "automation/media-manifest.json",
+  "automation/media-uploads"
 ];
 const publishBranch = process.env.PUBLISH_BRANCH || "main";
 const draftsBranch = process.env.DRAFTS_BRANCH || "drafts";

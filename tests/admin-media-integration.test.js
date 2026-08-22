@@ -101,6 +101,7 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   await sharp({ create: { width: 2000, height: 1000, channels: 3, background: "#663399" } }).png().toFile(absoluteRaw);
   copyRelative(projectRoot, fixture.source, "scripts/admin-normalize-image.js");
   copyRelative(projectRoot, fixture.source, "scripts/lib/r2-media.js");
+  copyRelative(projectRoot, fixture.source, "lib/media-manifest.js");
   copyRelative(projectRoot, fixture.source, "lib/eleventy/social.js");
   copyRelative(projectRoot, fixture.source, "lib/eleventy/html.js");
   git(fixture.source, "add", ".");
@@ -135,9 +136,18 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   assert.throws(() => git(fixture.runner, "show", `origin/drafts:${targetPath}`));
   assert.equal(git(fixture.runner, "show", "origin/drafts:blog/posts/later.md"), "later save");
 
-  const manifest = JSON.parse(git(fixture.runner, "show", "origin/drafts:automation/media-manifest.json"));
-  const entry = manifest["images/uploads/test.webp"];
-  assert.ok(entry, "expected a manifest entry for the uploaded image");
+  // The upload is recorded as a small automation/media-uploads/ record rather than a rewrite
+  // of the ~2.7 MB manifest; the next production build folds it in (publish-build-media.js).
+  assert.throws(
+    () => git(fixture.runner, "show", "origin/drafts:automation/media-manifest.json"),
+    "an image upload must not carry a full manifest rewrite into drafts"
+  );
+  const record = JSON.parse(git(
+    fixture.runner, "show", "origin/drafts:automation/media-uploads/images__uploads__test.webp.json"
+  ));
+  assert.equal(record.key, "images/uploads/test.webp");
+  const entry = record.entry;
+  assert.ok(entry, "expected an upload record for the uploaded image");
   assert.equal(entry.width, 1600);
   assert.equal(entry.contentType, "image/webp");
 
@@ -197,6 +207,7 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
     fs.copyFileSync(path.join(projectRoot, "scripts", script), path.join(fixture.source, "scripts", script));
   }
   copyRelative(projectRoot, fixture.source, "scripts/lib/r2-media.js");
+  copyRelative(projectRoot, fixture.source, "lib/media-manifest.js");
   copyRelative(projectRoot, fixture.source, "lib/eleventy/social.js");
   copyRelative(projectRoot, fixture.source, "lib/eleventy/html.js");
   git(fixture.source, "add", ".");

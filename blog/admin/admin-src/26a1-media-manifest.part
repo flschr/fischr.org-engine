@@ -17,6 +17,15 @@
     return "";
   }
 
+  // Path of the small per-upload record functions/api/admin/media/normalize.js (or
+  // scripts/admin-normalize-image.js) commits before the next production build folds it into
+  // automation/media-manifest.json — see lib/media-manifest.js's pendingUploadFileName, which
+  // this mirrors. Its presence in the current tree is proof an upload reached R2 even before
+  // that fold happens, which loadMediaManifest()/mediaManifestKeys() alone cannot see.
+  function pendingUploadPathFor(key) {
+    return key ? `automation/media-uploads/${key.replace(/[^a-zA-Z0-9._-]+/g, "__")}.json` : "";
+  }
+
   // DB-1129 moved the media bytes out of Git: an upload is normalized straight into R2 and
   // scripts/admin-normalize-image.js commits nothing but its manifest entry. The manifest is
   // therefore the media library's index — the tree only still holds legacy media and raw

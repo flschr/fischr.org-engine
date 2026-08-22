@@ -7,10 +7,9 @@ const { execFileSync } = require("child_process");
 const heicConvert = require("heic-convert");
 const sharp = require("sharp");
 
-const { loadManifest, objectKeyForPublicPath, publishMediaFile, saveManifest } = require("./lib/r2-media");
+const { loadManifest, objectKeyForPublicPath, publishMediaFile, savePendingUpload } = require("./lib/r2-media");
 
 const root = process.cwd();
-const manifestRelativePath = "automation/media-manifest.json";
 const sourcePath = normalize(process.env.SOURCE_PATH || "");
 const targetPath = normalize(process.env.TARGET_PATH || "");
 const expectedDraftSha = process.env.DRAFT_SHA || "";
@@ -69,17 +68,22 @@ async function main() {
       }
 
       // Uploads to R2 rather than committing the normalized bytes to `drafts` — only the
-      // manifest entry (bookkeeping) and the raw upload's removal need a git commit. Safe to
+      // upload record (bookkeeping) and the raw upload's removal need a git commit. Safe to
       // repeat on retry: publishMediaFile is a no-op once the content hash already matches.
+      const objectKey = objectKeyForPublicPath(publicPath);
       await publishMediaFile({ localPath: normalizedFile, publicPath, sourcePath: targetPath, manifest });
-      saveManifest(manifest);
+
+      // A small record under automation/media-uploads/ instead of a rewrite of the ~2.7 MB
+      // manifest, which every upload would otherwise carry into `drafts` and then through
+      // publish. The next production build folds it in (compactPendingUploads).
+      const recordPath = savePendingUpload(objectKey, manifest[objectKey]);
 
       // `git add` refuses a pathspec that points into an ignored directory, and
       // blog/assets/images/ has been ignored since media moved to R2 (DB-1129). Drop the raw
-      // upload with `git rm`, which only ever touches tracked files, and stage the manifest
-      // on its own.
+      // upload with `git rm`, which only ever touches tracked files, and stage the upload
+      // record on its own.
       git(["rm", "--quiet", "--ignore-unmatch", "--", sourcePath]);
-      git(["add", "-A", "--", manifestRelativePath]);
+      git(["add", "-A", "--", recordPath]);
       if (gitSucceeds(["diff", "--cached", "--quiet"])) {
         console.log(`${sourcePath} already satisfies the normalization policy.`);
         return;

@@ -4,7 +4,9 @@
 
   // A successfully R2-migrated image never gets a `drafts` blob at all (see
   // normalizeUploadedImage / scripts/admin-normalize-image.js), so its completion signal
-  // is an automation/media-manifest.json entry rather than a git tree path.
+  // is an automation/media-manifest.json entry rather than a git tree path. Reuses the
+  // media library's cached loader (blog/admin/admin-src/26a1-media-manifest.part) instead
+  // of reading the manifest blob a second way.
   async function mediaManifestKeys() {
     try {
       return new Set(Object.keys(await loadMediaManifest(false)));
@@ -110,7 +112,8 @@
           .filter((item) => (
             !treePaths.has(item.sourcePath) &&
             !treePaths.has(item.targetPath) &&
-            !manifestKeys.has(mediaManifestKeyFor(item.targetPath))
+            !manifestKeys.has(mediaManifestKeyFor(item.targetPath)) &&
+            !treePaths.has(pendingUploadPathFor(mediaManifestKeyFor(item.targetPath)))
           ))
           .map((item) => publicMediaPath(item.targetPath));
         const doc = splitDocument(removeMediaReferences(saved.content || "", missingPendingPaths));

@@ -15,10 +15,11 @@
     /^blog\/assets\/videos\/uploads\/.+\.(?:mp4|webm)$/,
     /^blog\/assets\/files\/gpx\/uploads\/.+\.gpx$/,
     // Since media moved to R2 (DB-1129) an image upload no longer adds a WebP to Git — its
-    // manifest entry is the whole trace. Without this the manifest forced every image publish
-    // into full validation, including the ten-minute browser suite, while the admin promised
-    // the fast path. The file is generated bookkeeping, not code.
-    /^automation\/media-manifest\.json$/
+    // upload record is the whole trace. Without these two the bookkeeping forced every image
+    // publish into full validation, including the ten-minute browser suite, while the admin
+    // promised the fast path. Both are generated bookkeeping, not code.
+    /^automation\/media-manifest\.json$/,
+    /^automation\/media-uploads\/[a-zA-Z0-9._-]+\.json$/
   ];
 
   function isContentOnlyPath(filePath) {

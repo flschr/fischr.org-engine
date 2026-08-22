@@ -493,6 +493,40 @@ test("only rewrites image/video src to the media delivery host once R2 confirms 
   assert.equal(media.toDeliveryUrl("/assets/images/not-migrated.webp"), "/assets/images/not-migrated.webp");
 });
 
+// An admin upload records itself as an automation/media-uploads/ record and is only folded
+// into the manifest by the next production build. Until then the build still has to resolve
+// it to the delivery host — otherwise the freshly uploaded image renders as an /assets/...
+// path that has not existed in Git since DB-1129, and 404s.
+test("resolves an upload that is recorded but not yet folded into the manifest", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-pending-upload-"));
+  const imageRoot = path.join(tmp, "blog/assets/images");
+  fs.mkdirSync(imageRoot, { recursive: true });
+  fs.mkdirSync(path.join(tmp, "automation/media-uploads"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(tmp, "automation/media-manifest.json"),
+    `${JSON.stringify({ "images/folded.webp": { sha256: "already-folded" } }, null, 2)}\n`
+  );
+  fs.writeFileSync(
+    path.join(tmp, "automation/media-uploads/images__uploads__fresh.webp.json"),
+    `${JSON.stringify({ key: "images/uploads/fresh.webp", entry: { sha256: "just-uploaded" } }, null, 2)}\n`
+  );
+
+  // No mediaManifest option: this must go through the on-disk read, which is where the merge
+  // of manifest and upload records lives.
+  const media = createMediaAssetHelpers({
+    root: tmp,
+    localImageRoot: imageRoot,
+    localVideoRoot: path.join(tmp, "blog/assets/videos"),
+    outputRoot: path.join(tmp, "_site"),
+    responsiveImageCacheRoot: path.join(tmp, ".cache/responsive-images")
+  });
+
+  assert.equal(media.toDeliveryUrl("/assets/images/uploads/fresh.webp"), "https://media.mysite.example/images/uploads/fresh.webp");
+  assert.equal(media.toDeliveryUrl("/assets/images/folded.webp"), "https://media.mysite.example/images/folded.webp");
+  assert.equal(media.toDeliveryUrl("/assets/images/unknown.webp"), "/assets/images/unknown.webp");
+});
+
 test("skips the blur-up placeholder for transparent images", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-alpha-"));
   const imageRoot = path.join(tmp, "blog/assets/images");

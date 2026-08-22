@@ -62,6 +62,7 @@ function setupProject() {
   fs.mkdirSync(path.join(root, "scripts/lib"), { recursive: true });
   fs.copyFileSync(path.join(projectRoot, "scripts/migrate-chrome-media-to-r2.js"), path.join(root, "scripts/migrate-chrome-media-to-r2.js"));
   fs.copyFileSync(path.join(projectRoot, "scripts/lib/r2-media.js"), path.join(root, "scripts/lib/r2-media.js"));
+  fs.copyFileSync(path.join(projectRoot, "lib/media-manifest.js"), path.join(root, "lib/media-manifest.js"));
   fs.mkdirSync(path.join(root, "blog/admin"), { recursive: true });
   fs.copyFileSync(path.join(projectRoot, "blog/admin/markdown-media.js"), path.join(root, "blog/admin/markdown-media.js"));
 

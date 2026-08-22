@@ -13,7 +13,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { loadManifest, saveManifest, publishMediaFile } = require("./lib/r2-media");
+const { loadManifest, publishMediaFile, removePendingUploads, saveManifest } = require("./lib/r2-media");
 
 const root = process.cwd();
 const responsiveRoot = path.join(root, "_site/assets/images/responsive");
@@ -71,8 +71,15 @@ async function main() {
   const uploaded = results.filter((result) => result === "uploaded").length;
   const unchanged = results.length - uploaded;
 
+  // loadManifest() merged in any automation/media-uploads/ records the admin created since
+  // the last production build, so writing it back is the fold; removing the records is the
+  // other half. Both must land in the same commit (see the workflow's commit step), or the
+  // records come back on the next build.
   saveManifest(manifest);
-  console.log(`Build media publish: ${candidates.length} candidates, ${uploaded} uploaded, ${unchanged} already up to date.`);
+  const foldedRecords = removePendingUploads();
+
+  const folded = foldedRecords.length ? `, ${foldedRecords.length} upload record(s) folded into the manifest` : "";
+  console.log(`Build media publish: ${candidates.length} candidates, ${uploaded} uploaded, ${unchanged} already up to date${folded}.`);
 }
 
 main().catch((error) => {

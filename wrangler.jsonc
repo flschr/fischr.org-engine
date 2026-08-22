@@ -1,5 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "fischr-org",
-  "pages_build_output_dir": "./_site"
+  "pages_build_output_dir": "./_site",
+  // Because this file exists, Cloudflare manages the Pages project's bindings from here and
+  // greys out the dashboard's "Add binding" — this is the only place a binding can be
+  // declared. Top-level entries apply to both the preview and the production environment.
+  //
+  // MEDIA_BUCKET lets functions/api/admin/media/normalize.js write the normalized WebP and
+  // stage the original. Without it that endpoint answers 503 and the admin falls back to the
+  // admin-normalize-image.yml workflow, so removing this degrades speed, not correctness.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "fischr-media"
+    }
+  ]
 }

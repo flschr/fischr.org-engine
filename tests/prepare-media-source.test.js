@@ -53,6 +53,7 @@ function setupProject() {
   for (const relative of [
     "scripts/prepare-media-source.js",
     "scripts/lib/r2-media.js",
+    "lib/media-manifest.js",
     "lib/eleventy/social.js",
     "lib/eleventy/html.js"
   ]) {

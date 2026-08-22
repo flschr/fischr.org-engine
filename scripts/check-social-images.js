@@ -3,11 +3,12 @@
 const fs = require("fs");
 const path = require("path");
 
+const { readMergedManifest } = require("../lib/media-manifest");
+
 const siteRoot = path.resolve(process.cwd(), "_site");
 const siteUrl = "https://mysite.example";
 const mediaUrl = "https://media.mysite.example";
-const manifestPath = path.resolve(process.cwd(), "automation/media-manifest.json");
-const mediaManifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, "utf8")) : {};
+const mediaManifest = readMergedManifest(process.cwd());
 
 if (!fs.existsSync(siteRoot)) {
   console.error("Missing _site. Run npm run build first.");
