@@ -31,6 +31,7 @@ const {
   normalizePath
 } = require("./lib/eleventy/aliases");
 const { createAssetHelpers } = require("./lib/eleventy/assets");
+const { formatSiteDate, siteHtmlDate, siteYear } = require("./lib/eleventy/dates");
 const {
   buildMetaDescription,
   removeDuplicateTitleParagraph,
@@ -306,17 +307,9 @@ module.exports = function (eleventyConfig) {
     publishAdmin ? collectionApi.getFilteredByGlob("blog/posts/**/*.md").sort(sortNewestFirst) : []);
   eleventyConfig.addCollection("aliases", getAliasCollection);
 
-  eleventyConfig.addFilter("date", (date, locale = "de-DE") => {
-    return new Intl.DateTimeFormat(locale, {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }).format(new Date(date));
-  });
+  eleventyConfig.addFilter("date", (date, locale = "de-DE") => formatSiteDate(date, locale));
 
-  eleventyConfig.addFilter("htmlDate", (date) => {
-    return new Date(date).toISOString().slice(0, 10);
-  });
+  eleventyConfig.addFilter("htmlDate", (date) => siteHtmlDate(date));
 
   eleventyConfig.addFilter("isoDate", (date) => {
     return new Date(date).toISOString();
@@ -360,7 +353,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("groupByYear", (items) => {
     const grouped = new Map();
     (items || []).forEach((item) => {
-      const year = new Date(item.date).getFullYear();
+      const year = siteYear(item.date);
       if (!grouped.has(year)) grouped.set(year, []);
       grouped.get(year).push(item);
     });
@@ -434,7 +427,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("adminAssetUrl", adminAssetUrl);
   eleventyConfig.addFilter("adminBundleVersion", adminBundleVersion);
 
-  eleventyConfig.addShortcode("year", () => String(new Date().getFullYear()));
+  eleventyConfig.addShortcode("year", () => String(siteYear(new Date())));
 
   eleventyConfig.addTransform("mediaEmbeds", function (content) {
     if (!onlyHtmlPage(this.page)) return content;
