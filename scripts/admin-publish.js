@@ -72,7 +72,7 @@ function preparePublishCommit() {
   // reviewed main..drafts delta. Newer drafts commits are intentionally absent.
   checkoutBranch(workBranch, currentMainSha);
   applyPathDelta(expectedMainSha, expectedDraftSha, managedPaths);
-  assertReviewedImagesNormalized(expectedMainSha);
+  assertReviewedImagesNormalized();
   assertVideoDerivativesPrepared();
   git(["add", "-A", "--", "."]);
 
@@ -183,11 +183,17 @@ function assertReviewedDraftExists() {
   git(["cat-file", "-e", `${expectedDraftSha}^{commit}`]);
 }
 
-function assertReviewedImagesNormalized(baseSha) {
+// Compares the two reviewed commits directly. Diffing against HEAD looked equivalent but was
+// not: applyPathDelta only fills index and working tree, so HEAD is still the untouched main
+// commit and the comparison covered concurrent main movement instead of the reviewed delta —
+// an unnormalized upload passed straight through into the published tree.
+function assertReviewedImagesNormalized() {
   const rasterExtensions = /\.(?:avif|hei[cf]|jpe?g|png|tiff?|webp)$/i;
-  const changedImages = diffPaths(baseSha, "HEAD", ["blog/assets/images"]);
+  const changedImages = diffPaths(expectedMainSha, expectedDraftSha, ["blog/assets/images"]);
   const unnormalized = changedImages.filter(
-    (imagePath) => rasterExtensions.test(imagePath) && !imagePath.toLowerCase().endsWith(".webp")
+    (imagePath) => rasterExtensions.test(imagePath)
+      && !imagePath.toLowerCase().endsWith(".webp")
+      && blobAt(expectedDraftSha, imagePath)
   );
   if (unnormalized.length) {
     throw new Error(

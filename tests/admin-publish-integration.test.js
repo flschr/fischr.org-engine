@@ -313,3 +313,96 @@ test("transactional publish refuses a reviewed video without prepared metadata",
     /Video metadata must be generated on drafts before review/
   );
 });
+
+// Regression: the gate compared the reviewed main against HEAD, but applyPathDelta only fills
+// index and working tree — HEAD was still the untouched main commit, so the comparison never
+// saw the reviewed delta and a raw upload travelled into the published tree.
+test("transactional publish refuses an unnormalized image in the reviewed delta", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "admin-publish-raw-image-"));
+  const source = path.join(temp, "source");
+  const origin = path.join(temp, "origin.git");
+  const runner = path.join(temp, "runner");
+  fs.mkdirSync(source);
+  git(source, "init", "-b", "main");
+  git(source, "config", "user.name", "Test");
+  git(source, "config", "user.email", "test@example.test");
+  write(source, "blog/posts/post.md", "published\n");
+  write(source, "blog/_data/videoMetadata.json", "{}\n");
+  write(source, "scripts/admin-publish.js", publishScript);
+  write(source, "blog/admin/source-pages.js", sourcePagesScript);
+  write(source, "blog/admin/publish-plan.js", publishPlanScript);
+  write(source, "scripts/lib/publish-validation.js", publishValidationScript);
+  write(source, "scripts/lib/publish-git.js", publishGitScript);
+  write(source, "scripts/lib/reconcile-drafts.js", reconcileDraftsScript);
+  git(source, "add", ".");
+  git(source, "commit", "-m", "main base");
+  const mainSha = git(source, "rev-parse", "HEAD");
+
+  git(source, "checkout", "-b", "drafts");
+  write(source, "blog/assets/images/uploads/raw.jpg", "raw upload that never reached R2\n");
+  git(source, "add", "--force", "--", "blog/assets/images/uploads/raw.jpg");
+  git(source, "commit", "-m", "raw upload");
+  const draftSha = git(source, "rev-parse", "HEAD");
+  git(temp, "init", "--bare", origin);
+  git(source, "remote", "add", "origin", origin);
+  git(source, "push", "origin", "main", "drafts");
+  git(temp, "clone", "--branch", "main", origin, runner);
+
+  assert.throws(
+    () => run(runner, "node", ["scripts/admin-publish.js"], {
+      PUBLISH_REQUEST_ID: "request-raw-image",
+      MAIN_SHA: mainSha,
+      DRAFT_SHA: draftSha,
+      CHANGE_COUNT: "1"
+    }),
+    /Images must be normalized before review/
+  );
+});
+
+test("transactional publish accepts a delta that only removes a raw upload", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "admin-publish-raw-removed-"));
+  const source = path.join(temp, "source");
+  const origin = path.join(temp, "origin.git");
+  const runner = path.join(temp, "runner");
+  fs.mkdirSync(source);
+  git(source, "init", "-b", "main");
+  git(source, "config", "user.name", "Test");
+  git(source, "config", "user.email", "test@example.test");
+  write(source, "blog/posts/post.md", "published\n");
+  write(source, "blog/_data/videoMetadata.json", "{}\n");
+  write(source, "blog/assets/images/uploads/raw.jpg", "leftover raw upload\n");
+  write(source, "scripts/admin-publish.js", publishScript);
+  write(source, "blog/admin/source-pages.js", sourcePagesScript);
+  write(source, "blog/admin/publish-plan.js", publishPlanScript);
+  write(source, "scripts/lib/publish-validation.js", publishValidationScript);
+  write(source, "scripts/lib/publish-git.js", publishGitScript);
+  write(source, "scripts/lib/reconcile-drafts.js", reconcileDraftsScript);
+  git(source, "add", ".");
+  git(source, "add", "--force", "--", "blog/assets/images/uploads/raw.jpg");
+  git(source, "commit", "-m", "main base with a leftover raw upload");
+  const mainSha = git(source, "rev-parse", "HEAD");
+
+  git(source, "checkout", "-b", "drafts");
+  // Normalization removes the raw upload; the WebP itself never enters Git, it goes to R2.
+  git(source, "rm", "-q", "--", "blog/assets/images/uploads/raw.jpg");
+  write(source, "automation/media-manifest.json", JSON.stringify({
+    "images/uploads/raw.webp": { sourcePath: "blog/assets/images/uploads/raw.webp", sha256: "abc" }
+  }, null, 2) + "\n");
+  git(source, "add", ".");
+  git(source, "commit", "-m", "normalized upload");
+  const draftSha = git(source, "rev-parse", "HEAD");
+  git(temp, "init", "--bare", origin);
+  git(source, "remote", "add", "origin", origin);
+  git(source, "push", "origin", "main", "drafts");
+  git(temp, "clone", "--branch", "main", origin, runner);
+
+  run(runner, "node", ["scripts/admin-publish.js"], {
+    PUBLISH_REQUEST_ID: "request-raw-removed",
+    MAIN_SHA: mainSha,
+    DRAFT_SHA: draftSha,
+    CHANGE_COUNT: "1",
+    GITHUB_OUTPUT: path.join(temp, "output.txt")
+  });
+  const finalSha = fs.readFileSync(path.join(temp, "output.txt"), "utf8").match(/^final_sha=(.+)$/m)[1];
+  assert.throws(() => git(runner, "show", `${finalSha}:blog/assets/images/uploads/raw.jpg`));
+});

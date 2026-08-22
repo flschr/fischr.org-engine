@@ -8,6 +8,8 @@ const { execFileSync } = require("child_process");
 const ffmpeg = require("ffmpeg-static");
 const ffprobe = require("ffprobe-static").path;
 
+const { loadManifest, objectKeyForPublicPath } = require("./lib/r2-media");
+
 const root = process.cwd();
 const videoRoot = path.join(root, "blog/assets/videos");
 const posterRoot = path.join(root, "blog/assets/images/video-posters");
@@ -31,6 +33,16 @@ function main() {
     .sort();
   const metadata = {};
   const usedPosterPaths = new Set();
+
+  // A video that lives only in R2 is invisible here — scripts/prepare-media-source.js
+  // materializes those on demand, and a job that skips that step (the admin's video
+  // preparation) sees just the one upload it is about to process. Rebuilding this file from
+  // the local directory alone would silently drop every other video's entry, and the admin
+  // reads exactly this file to find a video's poster. Carry those entries over instead.
+  for (const [publicPath, entry] of Object.entries(remoteOnlyMetadata(previousMetadata, videos))) {
+    metadata[publicPath] = entry;
+    if (entry.poster) usedPosterPaths.add(path.join(root, "blog", entry.poster));
+  }
 
   for (const videoPath of videos) {
     const publicVideoPath = toPublicPath(videoPath);
@@ -64,7 +76,23 @@ function main() {
     };
   }
 
-  writeJsonIfChanged(metadataPath, metadata);
+  writeJsonIfChanged(metadataPath, sortByKey(metadata));
+}
+
+// Entries whose video is absent from disk but recorded in the R2 media manifest. An entry that
+// is in neither place refers to a genuinely deleted video and is dropped, as before.
+function remoteOnlyMetadata(previousMetadata, localVideos) {
+  const localPublicPaths = new Set(localVideos.map((videoPath) => toPublicPath(videoPath)));
+  const manifest = loadManifest();
+  return Object.fromEntries(
+    Object.entries(previousMetadata).filter(([publicPath]) => (
+      !localPublicPaths.has(publicPath) && Boolean(manifest[objectKeyForPublicPath(publicPath)])
+    ))
+  );
+}
+
+function sortByKey(value) {
+  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function readJson(filePath) {

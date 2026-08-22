@@ -175,11 +175,30 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
   const absoluteVideo = path.join(fixture.source, videoPath);
   fs.mkdirSync(path.dirname(absoluteVideo), { recursive: true });
   fs.mkdirSync(path.join(fixture.source, "blog/_data"), { recursive: true });
-  fs.writeFileSync(path.join(fixture.source, "blog/_data/videoMetadata.json"), "{}\n");
+  // A video that was migrated to R2 and is no longer in Git: its entry must survive a
+  // preparation run that only sees the freshly uploaded file.
+  const migratedVideo = "/assets/videos/imported/migrated.webm";
+  fs.writeFileSync(path.join(fixture.source, "blog/_data/videoMetadata.json"), `${JSON.stringify({
+    [migratedVideo]: {
+      width: 1920,
+      height: 1080,
+      posterWidth: 640,
+      posterHeight: 360,
+      poster: "/assets/images/video-posters/migrated.webp",
+      sourceHash: "abc123"
+    }
+  }, null, 2)}\n`);
+  fs.mkdirSync(path.join(fixture.source, "automation"), { recursive: true });
+  fs.writeFileSync(path.join(fixture.source, "automation/media-manifest.json"), `${JSON.stringify({
+    "videos/imported/migrated.webm": { sourcePath: "blog/assets/videos/imported/migrated.webm", sha256: "abc123" }
+  }, null, 2)}\n`);
   run(fixture.source, ffmpeg, ["-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=1", "-pix_fmt", "yuv420p", absoluteVideo]);
   for (const script of ["admin-prepare-video.js", "generate-video-posters.js"]) {
     fs.copyFileSync(path.join(projectRoot, "scripts", script), path.join(fixture.source, "scripts", script));
   }
+  copyRelative(projectRoot, fixture.source, "scripts/lib/r2-media.js");
+  copyRelative(projectRoot, fixture.source, "lib/eleventy/social.js");
+  copyRelative(projectRoot, fixture.source, "lib/eleventy/html.js");
   git(fixture.source, "add", ".");
   git(fixture.source, "add", "--force", "--", videoPath);
   git(fixture.source, "commit", "-m", "video upload");
@@ -205,4 +224,7 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
   // them. Only the metadata that points at them is committed.
   assert.throws(() => git(fixture.runner, "show", `origin/drafts:blog${item.poster}`));
   assert.ok(fs.existsSync(path.join(fixture.runner, "blog", item.poster)), "expected the poster to be rendered locally");
+  // The R2-only video keeps its entry: it is absent from this checkout, not deleted.
+  assert.ok(metadata[migratedVideo], "expected the migrated video's metadata to survive");
+  assert.equal(metadata[migratedVideo].poster, "/assets/images/video-posters/migrated.webp");
 });

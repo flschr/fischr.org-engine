@@ -14,6 +14,7 @@
     ["Validate production site", "Website bauen und prüfen"],
     ["Push published commit to main", "Geprüfte Website übernehmen"],
     ["Publish build media to R2", "Medien zu R2 übertragen"],
+    ["Return to the main branch before persisting automation state", "Veröffentlichten Stand übernehmen"],
     ["Commit updated media manifest", "Medien-Manifest aktualisieren"],
     ["Deploy to Cloudflare Pages", "Website zu Cloudflare übertragen"],
     ["Sync drafts to deployed commit", "Neuere Entwürfe erhalten und Warteschlange abgleichen"],
