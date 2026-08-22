@@ -329,3 +329,52 @@ test("a failed cleanup surfaces to the endpoint as a 502", async () => {
   assert.equal(response.status, 502);
   assert.equal((await response.json()).code, "STAGING_CLEANUP_FAILED");
 });
+
+// GitHub answers the raw media type with its own Content-Type, which says nothing about the
+// image. Passing that through would stage the original under a non-image type, and Cloudflare
+// Images may refuse such a source — which the RIFF/WEBP guard then reports as "Transformations
+// not active", sending the reader after the wrong cause. Derive it from the extension instead.
+test("the staged original is typed from the upload extension, not from GitHub's response", async () => {
+  const seen = [];
+  const ctx = context({ ...VALID, sourcePath: "blog/assets/images/uploads/2026-08-22-photo.heic" });
+  await endpoint.handleNormalizeRequest(ctx, deps({
+    fetch: githubReturning(new Response(new Uint8Array([1, 2, 3]).buffer, {
+      status: 200,
+      headers: { "Content-Type": "application/vnd.github.raw; charset=utf-8" }
+    })),
+    transformToWebp: async (bytes, options) => {
+      seen.push(options.contentType);
+      return webpBytes();
+    }
+  }));
+  assert.deepEqual(seen, ["image/heic"]);
+});
+
+test("upload content types cover what a phone actually sends", () => {
+  assert.equal(endpoint.uploadContentType("blog/assets/images/uploads/a.HEIC"), "image/heic");
+  assert.equal(endpoint.uploadContentType("blog/assets/images/uploads/a.heif"), "image/heif");
+  assert.equal(endpoint.uploadContentType("blog/assets/images/uploads/a.JPG"), "image/jpeg");
+  assert.equal(endpoint.uploadContentType("blog/assets/images/uploads/a.png"), "image/png");
+  assert.equal(endpoint.uploadContentType("blog/assets/images/uploads/a.bin"), "application/octet-stream");
+});
+
+// An uncaught throw here would leave Pages to answer with an opaque HTML 500: the admin
+// cannot parse it, does not treat it as a fallback status, and the writer gets an
+// unexplained failure instead of one that names GitHub.
+test("a failed GitHub read is a structured 502, not an uncaught throw", async () => {
+  const response = await endpoint.handleNormalizeRequest(context(VALID), deps({
+    fetch: githubReturning(new Response("upstream boom", { status: 500 }))
+  }));
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.code, "GITHUB_READ_FAILED");
+  assert.match(body.message, /GitHub/);
+});
+
+test("nothing is written to R2 when the raw upload cannot be read", async () => {
+  const ctx = context(VALID);
+  await endpoint.handleNormalizeRequest(ctx, deps({
+    fetch: githubReturning(new Response("", { status: 403 }))
+  }));
+  assert.equal(ctx.env.MEDIA_BUCKET.objects.size, 0);
+});

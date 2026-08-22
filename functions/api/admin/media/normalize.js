@@ -54,7 +54,18 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
   if (invalid) return jsonResponse({ message: invalid }, { status: 400 });
 
   const objectKey = objectKeyForUploadPath(request.targetPath);
-  const raw = await readUploadBlob(context.env, session.token, request, fetchFn);
+  let raw;
+  try {
+    raw = await readUploadBlob(context.env, session.token, request, fetchFn);
+  } catch (error) {
+    // Without this the throw escapes as an opaque 500 (an HTML error page), which the admin
+    // cannot parse and does not treat as a fallback status — the upload would just fail with
+    // an unexplained message instead of naming GitHub as the source.
+    return jsonResponse(
+      { message: `Roh-Upload konnte nicht von GitHub gelesen werden: ${error?.message || "unbekannt"}`, code: "GITHUB_READ_FAILED" },
+      { status: 502 }
+    );
+  }
 
   // The admin retries a failed upload with whatever drafts head its tab last saw. Once an
   // earlier attempt finished, the raw upload is no longer in that commit — the same
@@ -76,7 +87,7 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
     webp = await transform(raw.bytes, {
       bucket,
       deliveryBaseUrl: context.env.MEDIA_DELIVERY_BASE_URL || DEFAULT_DELIVERY_BASE_URL,
-      contentType: raw.contentType,
+      contentType: uploadContentType(request.sourcePath),
       fetchImpl: fetchFn
     });
   } catch (error) {
@@ -141,6 +152,30 @@ function publicPathFor(targetPath) {
 
 function directoryOf(value) {
   return value.slice(0, value.lastIndexOf("/"));
+}
+
+// The Content-Type the staged original is served under, derived from the upload's extension
+// rather than taken from GitHub's response. GitHub answers the raw media type with its own
+// Content-Type, which says nothing about the image — and the staged object is served to
+// Cloudflare Images through the delivery domain, which is entitled to refuse a source that
+// does not announce itself as an image. Guessing from the extension is deterministic; the
+// upload path regex already bounds what an extension can be.
+//
+// Covers HEIC/HEIF, which lib/eleventy/social.js's imageMimeType does not: that helper only
+// ever sees files that are already normalized, whereas this sees what the phone sent.
+const UPLOAD_CONTENT_TYPES = {
+  heic: "image/heic",
+  heif: "image/heif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif"
+};
+
+export function uploadContentType(sourcePath) {
+  const extension = String(sourcePath).split(".").pop().toLowerCase();
+  return UPLOAD_CONTENT_TYPES[extension] || "application/octet-stream";
 }
 
 // Returns null when the blob is not in that commit — the caller treats it as "already

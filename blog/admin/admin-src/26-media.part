@@ -66,8 +66,12 @@
     const isProcessableImage = change?.mediaKind === "image" && !["gif", "svg"].includes(extension(change.path));
     if (!isProcessableImage || (!force && !needsGithubImageNormalization(change))) return change;
     const targetPath = change.path.replace(/\.[^.\/]+$/, ".webp");
-    showStatus(`GitHub verarbeitet ${change.label} …`);
-    const normalized = await mediaService.normalizeImage(draftSha, change.path, targetPath);
+    // Two distinct messages, because the two paths differ by a factor of ~20 in waiting time
+    // and the writer should be able to tell from the status bar alone which one is running.
+    showStatus(`Bild wird verarbeitet: ${change.label} …`);
+    const normalized = await mediaService.normalizeImage(draftSha, change.path, targetPath, {
+      onFallback: () => showStatus(`GitHub verarbeitet ${change.label} … (langsamer Rückfallweg)`)
+    });
     // The endpoint deliberately does not write to Git — it hands back the upload record and
     // the raw upload's removal is ours to commit, through the same compare-and-swap path
     // every other draft write uses. The workflow path already committed both itself.

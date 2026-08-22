@@ -61,9 +61,14 @@
     return {
       // Seconds in a request instead of a whole GitHub Actions run (measured 34–82 s per
       // image). The workflow stays as the fallback for what the endpoint cannot take.
-      async normalizeImage(draftSha, sourcePath, targetPath) {
+      //
+      // onFallback fires before the dispatch, not after it: which path runs is only known
+      // once the endpoint has answered, and the difference is a second versus a minute of
+      // waiting — so the caller needs it while the wait is happening, not once it is over.
+      async normalizeImage(draftSha, sourcePath, targetPath, { onFallback } = {}) {
         const result = await normalizeViaEndpoint(draftSha, sourcePath, targetPath);
         if (result) return result;
+        if (onFallback) onFallback();
         await dispatch("admin-normalize-image.yml", "Normalize", draftSha, sourcePath, targetPath);
         return { via: "workflow" };
       },

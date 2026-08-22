@@ -138,13 +138,17 @@
         if ((!pendingImages.length && !pendingVideos.length) || !state.treeHeadSha) return;
         showStatus(`${pendingImages.length + pendingVideos.length} unterbrochene Medienverarbeitung wird auf GitHub fortgesetzt …`);
         let expectedRecoveryStatus = els.statusBar.textContent;
+        // Read back what was actually shown instead of predicting it. normalizeUploadedImage
+        // now picks between a fast-path and a fallback message depending on which path ran,
+        // and a duplicated guess here would quietly stop matching — swallowing the completion
+        // notice below for no visible reason.
         for (const change of pendingImages) {
-          expectedRecoveryStatus = `GitHub verarbeitet ${change.label} …`;
           await normalizeUploadedImage(change, state.treeHeadSha);
+          expectedRecoveryStatus = els.statusBar.textContent;
         }
         for (const change of pendingVideos) {
-          expectedRecoveryStatus = `GitHub erstellt Videometadaten für ${change.label} …`;
           await prepareUploadedVideo(change, state.treeHeadSha);
+          expectedRecoveryStatus = els.statusBar.textContent;
         }
         await refreshCurrentSilent();
         if (els.statusBar.textContent === expectedRecoveryStatus) {

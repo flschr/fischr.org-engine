@@ -125,3 +125,69 @@ test("media service surfaces a genuine endpoint failure instead of falling back"
   );
   assert.deepEqual(dispatched, []);
 });
+
+// The two paths differ by ~20x in waiting time, so the caller has to be able to tell them
+// apart while the wait is happening — which is why onFallback fires before the dispatch,
+// not after it.
+test("media service signals the fallback before it starts the slow workflow", async () => {
+  const order = [];
+  const service = loadService().create({
+    publishBranch: "main",
+    createRequestId: () => "request-1",
+    delay: async () => {},
+    github: async (path) => {
+      order.push(path.includes("/dispatches") ? "dispatch" : "poll");
+      if (path.includes("/runs?")) {
+        return { workflow_runs: [{ display_title: "Normalize request-1", status: "completed", conclusion: "success" }] };
+      }
+      return {};
+    },
+    fetchImpl: async () => ({ status: 404, ok: false })
+  });
+
+  const result = await service.normalizeImage(
+    "draft-sha", "blog/assets/images/uploads/raw.png", "blog/assets/images/uploads/raw.webp",
+    { onFallback: () => order.push("onFallback") }
+  );
+
+  assert.equal(result.via, "workflow");
+  assert.equal(order[0], "onFallback", "the caller must learn about the fallback before the wait, not after");
+  assert.equal(order[1], "dispatch");
+});
+
+test("media service does not signal a fallback when the endpoint handles the image", async () => {
+  let fallbacks = 0;
+  const service = loadService().create({
+    publishBranch: "main",
+    createRequestId: () => "request-1",
+    delay: async () => {},
+    github: async () => ({}),
+    fetchImpl: async () => ({ status: 200, ok: true, json: async () => ({ status: "normalized" }) })
+  });
+
+  await service.normalizeImage(
+    "draft-sha", "blog/assets/images/uploads/raw.png", "blog/assets/images/uploads/raw.webp",
+    { onFallback: () => { fallbacks += 1; } }
+  );
+  assert.equal(fallbacks, 0);
+});
+
+test("media service works without an onFallback callback", async () => {
+  const service = loadService().create({
+    publishBranch: "main",
+    createRequestId: () => "request-1",
+    delay: async () => {},
+    github: async (path) => {
+      if (path.includes("/runs?")) {
+        return { workflow_runs: [{ display_title: "Normalize request-1", status: "completed", conclusion: "success" }] };
+      }
+      return {};
+    },
+    fetchImpl: async () => ({ status: 503, ok: false })
+  });
+
+  const result = await service.normalizeImage(
+    "draft-sha", "blog/assets/images/uploads/raw.png", "blog/assets/images/uploads/raw.webp"
+  );
+  assert.equal(result.via, "workflow");
+});
