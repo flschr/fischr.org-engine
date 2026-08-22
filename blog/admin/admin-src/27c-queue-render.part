@@ -164,6 +164,9 @@
           }
           if (confirmedChange.technicalPosterChanges) await discardTechnicalPosterChanges(confirmedChange.technicalPosterChanges);
           else if (isVideoPath(confirmedChange.path)) await queueVideoDelete(confirmedChange, { kind: "upsert" });
+          // An upload that reached R2 has no blob at its path: discarding it removes the
+          // record that stands in for one, not a tree entry that does not exist.
+          else if (confirmedChange.recordPath) await commitMediaManifestDelete(confirmedChange);
           else await deleteChange(confirmedChange.path, confirmedChange.sha);
           await refreshCurrentSilent();
           renderQueue();

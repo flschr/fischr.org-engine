@@ -142,6 +142,7 @@
       if (!isManagedPath(path) || draftsMap.has(path)) continue;
       changes.push(diffChange(path, "delete", sha, false));
     }
+    changes.push(...await pendingUploadChanges(draftsMap, mainMap));
 
     // Pending posts/pages aren't in the published index, so pull their real
     // title/date/draft straight from the drafts blob (few files, then cached).

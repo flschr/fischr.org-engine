@@ -30,6 +30,28 @@
     return String(path || "").startsWith(`${mediaUploadsDir}/`) && String(path).endsWith(".json");
   }
 
+  // An upload that reached R2 leaves no blob at its media path — its only trace on drafts is
+  // the small record here. Without turning that back into a media change, an upload is
+  // invisible in the publish queue and "unbenutzte Uploads verwerfen" cannot see a photo that
+  // never made it into an article: it would travel to main and stay in the bucket forever.
+  async function pendingUploadChanges(draftsMap, mainMap) {
+    const records = Array.from(draftsMap).filter(([path, sha]) => isPendingUploadPath(path) && mainMap.get(path) !== sha);
+    const changes = await Promise.all(records.map(async ([path, sha]) => {
+      let mediaPath = "";
+      try {
+        mediaPath = repositoryPathForMediaManifestKey(validMediaUploadRecord(await getBlobText(sha), path).key);
+      } catch (error) {
+        // A malformed record must not take the whole queue down with it; the media library
+        // reports it loudly enough (loadMediaManifest).
+        return null;
+      }
+      // A raw upload that is still a blob already produced its own change above.
+      if (!mediaPath || !isMediaLibraryPath(mediaPath) || draftsMap.has(mediaPath)) return null;
+      return { ...diffChange(mediaPath, "upsert", "", !mainMap.has(mediaPath)), recordPath: path, recordSha: sha };
+    }));
+    return changes.filter(Boolean);
+  }
+
   // DB-1129 moved the media bytes out of Git, and the effective manifest is two files: the
   // committed manifest plus one small record per upload the next production build has not
   // folded in yet. Both together are the media library's index — the tree only still holds

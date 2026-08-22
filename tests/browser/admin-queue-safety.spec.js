@@ -146,3 +146,36 @@ test("a refresh failure after discard confirmation is reported without writing",
   expect(requests.some((request) => request.method === "POST" && request.url.endsWith("/git/trees"))).toBe(false);
 });
 
+
+// An upload that reached R2 leaves no blob at its media path — only an automation/media-uploads/
+// record. Without turning that back into a queue change, a photo that never made it into an
+// article was invisible: not in the queue, and not in "unbenutzte Uploads verwerfen", so it
+// travelled to main and stayed in the bucket forever.
+test("an upload that only exists as a record is queued and can be discarded as unused", async ({ page }) => {
+  const requests = [];
+  const record = { path: "automation/media-uploads/images__uploads__orphan.webp.json", type: "blob", sha: "record-sha", size: 120 };
+  const recordContent = `${JSON.stringify({
+    key: "images/uploads/orphan.webp",
+    entry: { sha256: "orphan-hash", size: 2048 }
+  }, null, 2)}\n`;
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, [record], {
+    blobs: { "record-sha": { content: recordContent, encoding: "utf-8" } }
+  });
+
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator("#syncButton").evaluate((button) => button.click());
+  await expect(page.locator(".queue-card")).toHaveCount(1);
+  await expect(page.locator(".queue-card")).toContainText("orphan");
+  await expect(page.locator("#cleanupOrphansCount")).toHaveText("1");
+
+  await page.locator("#cleanupOrphansButton").click();
+  await page.locator("#discardDialogAction").click();
+  await expect(page.locator("#statusBar")).toContainText("1 unbenutzter Upload entfernt");
+
+  const treeRequest = requests.findLast((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
+  // The record is the thing that gets removed; nothing may be staged for the media path, which
+  // has no blob in either tree.
+  expect(treeRequest.body.tree).toEqual([expect.objectContaining({ path: record.path, sha: null })]);
+});

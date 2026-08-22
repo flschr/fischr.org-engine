@@ -78,7 +78,15 @@
       }
     }
 
-    for (const change of fileChanges) addEntry(change.path, mainMap.get(change.path) || null);
+    for (const change of fileChanges) {
+      // Same split as the videos above: an upload that already reached R2 has no blob to
+      // restore or remove, only its record and manifest entry.
+      if (change.recordPath || (!draftsMap.has(change.path) && !mainMap.has(change.path))) {
+        manifestKeys.push(mediaManifestKeyFor(change.path));
+        continue;
+      }
+      addEntry(change.path, mainMap.get(change.path) || null);
+    }
 
     if (draftMetadata) {
       const metadataBlob = await github("git/blobs", {
