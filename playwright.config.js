@@ -1,5 +1,30 @@
 const { defineConfig, devices } = require("@playwright/test");
 
+// Which engine and viewport a spec needs is a property of the spec, not of the suite. Running every
+// spec in all four projects made the smoke suite 293 tests and 12 of the 16 minutes a deploy takes,
+// and 232 of those tests were admin flows that drive the app against stubbed GitHub responses and
+// assert the resulting git-tree requests — those cannot fail differently in WebKit or at 390px.
+// Each group below therefore names the projects where its specs can actually fail; tests/browser-
+// matrix.test.js fails the build if a spec file ends up in no project at all.
+
+// Public pages assert computed styles, grid tracks and responsive behaviour, so they keep the full
+// matrix — this is the coverage that a CSS change needs and the only coverage it can break.
+const siteSpecs = /site-.*\.spec\.js$/;
+
+// Admin specs that depend on the engine's own input handling: CodeMirror selection, formatting and
+// undo (admin-footnotes), select-all scope and preview sanitizing (admin-editor), and the
+// DataTransfer and protected-drag semantics that differ between Chromium and WebKit
+// (admin-media-drag-drop). These run in both desktop engines. Hardware-keyboard behaviour is not
+// meaningful under touch emulation, which is why they no longer run in the mobile projects.
+const engineSensitiveAdminSpecs = /admin-(footnotes|editor|media-drag-drop)\.spec\.js$/;
+
+// The admin shell's viewport behaviour — collapsed sidebar, mobile navigation, history — runs in
+// the viewport projects, including real iOS WebKit, since that is the browser the admin is used
+// from on a phone. The tests inside skip the projects they do not target.
+const responsiveAdminSpecs = /admin-shell-responsive\.spec\.js$/;
+
+const serviceWorkerSpec = /service-worker\.spec\.js$/;
+
 module.exports = defineConfig({
   testDir: "./tests/browser",
   fullyParallel: true,
@@ -13,13 +38,15 @@ module.exports = defineConfig({
     trace: "retain-on-failure"
   },
   projects: [
-    { name: "desktop", testIgnore: /service-worker\.spec\.js/, use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", testIgnore: /service-worker\.spec\.js/, use: { ...devices["iPhone 13"], browserName: "chromium" } },
-    { name: "mobile-webkit", testIgnore: /service-worker\.spec\.js/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
-    { name: "webkit", testIgnore: /service-worker\.spec\.js/, use: { ...devices["Desktop Safari"] } },
+    // Every spec runs here at least once: this project is the behavioural baseline, the other
+    // projects only add the engine and viewport dimensions on top of it.
+    { name: "desktop", testIgnore: serviceWorkerSpec, use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile", testMatch: [siteSpecs, responsiveAdminSpecs], use: { ...devices["iPhone 13"], browserName: "chromium" } },
+    { name: "mobile-webkit", testMatch: [siteSpecs, responsiveAdminSpecs], use: { ...devices["iPhone 13"], browserName: "webkit" } },
+    { name: "webkit", testMatch: [siteSpecs, engineSensitiveAdminSpecs], use: { ...devices["Desktop Safari"] } },
     {
       name: "service-worker",
-      testMatch: /service-worker\.spec\.js/,
+      testMatch: serviceWorkerSpec,
       use: { ...devices["Desktop Chrome"], serviceWorkers: "allow" }
     }
   ],

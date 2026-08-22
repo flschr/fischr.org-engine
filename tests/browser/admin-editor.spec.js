@@ -46,8 +46,7 @@ test("admonition toolbar wraps selected text and previews the chosen type", asyn
   await expect(admonition.locator(".admonition-icon")).toBeVisible();
 });
 
-test("select all in the article editor stays inside the article text", async ({ page }, testInfo) => {
-  test.skip(Boolean(testInfo.project.use.isMobile), "Hardware keyboard select-all is covered by desktop browsers.");
+test("select all in the article editor stays inside the article text", async ({ page }) => {
   await page.unroute("**/api/admin/auth/session");
   await mockAuthenticatedGithub(page);
   await page.goto("/admin/");

@@ -51,52 +51,6 @@ test("editor runtime can be retried after a failed download", async ({ page }) =
   expect(attempts).toBe(2);
 });
 
-test("mobile navigation opens and exposes the primary sections", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile", "Mobile-only interaction");
-  await page.goto("/admin/");
-
-  const toggle = page.getByRole("button", { name: "Seitenleiste ausklappen" });
-  await expect(toggle).toBeVisible();
-  await toggle.click();
-
-  await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Einstellungen", exact: true })).toBeVisible();
-
-  await page.goBack();
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.locator("body")).toHaveClass(/is-sidebar-collapsed/);
-});
-
-test("desktop sidebar stays open and browser back navigates immediately", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name.startsWith("mobile"), "Desktop-only interaction");
-  await page.goto("/admin/");
-
-  await expect(page.locator("#sidebarToggle")).toBeHidden();
-  await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Pages", exact: true })).toBeVisible();
-
-  await page.goBack();
-  await expect(page.getByRole("heading", { name: "Articles", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
-});
-
-test("mobile sidebar is hidden before startup requests finish", async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only startup regression");
-  const htmlResponse = await page.request.get("/admin/");
-  expect(await htmlResponse.text()).toContain('<body class="admin-body is-sidebar-collapsed is-sidebar-initializing">');
-  await page.unroute("**/api/admin/auth/session");
-  await page.route("**/api/admin/auth/session", () => {});
-
-  await page.goto("/admin/", { waitUntil: "domcontentloaded" });
-
-  await expect(page.locator("body")).toHaveClass(/is-sidebar-collapsed/);
-  await expect(page.locator("#sidebar")).toHaveCSS("transform", /matrix\(1, 0, 0, 1, -/);
-  await expect(page.getByRole("button", { name: "Seitenleiste ausklappen" })).toBeVisible();
-});
-
 test("authenticated admin opens the editor and publish dialog", async ({ page }) => {
   await page.unroute("**/api/admin/auth/session");
   await mockAuthenticatedGithub(page);
@@ -134,8 +88,7 @@ test("authenticated startup falls back when the compact snapshot fails", async (
   await expect(page.locator("#newEntryButtonLib")).toBeVisible();
 });
 
-test("source pages open as raw templates and save without Markdown controls", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === "webkit", "Chromium covers the source-editor contract");
+test("source pages open as raw templates and save without Markdown controls", async ({ page }) => {
   const requests = [];
   const source = `---\ntitle: "Über mich"\npermalink: /about/\n---\n<article>{{ site.title }}</article>\n`;
   await page.unroute("**/api/admin/auth/session");
