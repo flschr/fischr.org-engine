@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: 9rem minmax(0, 1fr);
   gap: 1rem 2rem;
-  align-items: center;
+  align-items: start;
   margin: 1.5rem 0 4rem;
   padding: 1.75rem;
   border: 1px solid var(--border);
