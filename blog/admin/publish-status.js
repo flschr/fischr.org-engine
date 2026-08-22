@@ -19,6 +19,7 @@
     ["Commit updated media manifest", "Medien-Manifest aktualisieren"],
     ["Deploy to Cloudflare Pages", "Website zu Cloudflare übertragen"],
     ["Sync drafts to deployed commit", "Neuere Entwürfe erhalten und Warteschlange abgleichen"],
+    ["Pull the manifest fold across to drafts", "Medien-Manifest in die Entwürfe nachziehen"],
     ["Publish pending social posts and wait", "Social-Post veröffentlichen und bestätigen"],
     ["Kick off remaining post-publish workflows", "Weitere Verteilung und Backups starten"]
   ];
