@@ -36,7 +36,6 @@
     "social:post": "node scripts/social-post.js",
     "atproto:publish": "node scripts/atproto-publish.js",
     "indexnow:submit": "node scripts/submit-indexnow.js",
-    "webarchive:submit": "node scripts/submit-webarchive.js",
     "webmentions:submit": "node scripts/submit-webmentions.js",
     "engine:export": "node scripts/export-public-engine.js",
     "engine:check": "node --test tests/public-engine-export.test.js",
