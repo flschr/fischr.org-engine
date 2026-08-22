@@ -314,6 +314,54 @@ test("transactional publish refuses a reviewed video without prepared metadata",
   );
 });
 
+// A prepared video is no longer a blob in the reviewed delta — admin-prepare-video.js uploads
+// it to R2 and leaves an upload record. The gate has to recognize that shape too, or the only
+// remaining video path stops being checked at all.
+test("transactional publish refuses a reviewed video upload record without prepared metadata", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "admin-publish-video-record-gate-"));
+  const source = path.join(temp, "source");
+  const origin = path.join(temp, "origin.git");
+  const runner = path.join(temp, "runner");
+  fs.mkdirSync(source);
+  git(source, "init", "-b", "main");
+  git(source, "config", "user.name", "Test");
+  git(source, "config", "user.email", "test@example.test");
+  write(source, "blog/posts/post.md", "published\n");
+  write(source, "blog/_data/videoMetadata.json", "{}\n");
+  write(source, "scripts/admin-publish.js", publishScript);
+  write(source, "blog/admin/source-pages.js", sourcePagesScript);
+  write(source, "blog/admin/publish-plan.js", publishPlanScript);
+  write(source, "scripts/lib/publish-validation.js", publishValidationScript);
+  write(source, "scripts/lib/publish-git.js", publishGitScript);
+  write(source, "scripts/lib/reconcile-drafts.js", reconcileDraftsScript);
+  git(source, "add", ".");
+  git(source, "commit", "-m", "main base");
+  const mainSha = git(source, "rev-parse", "HEAD");
+
+  git(source, "checkout", "-b", "drafts");
+  write(source, "automation/media-uploads/videos__uploads__fresh.mp4.json", `${JSON.stringify({
+    key: "videos/uploads/fresh.mp4",
+    entry: { sha256: "abc", size: 10, contentType: "video/mp4" }
+  }, null, 2)}\n`);
+  git(source, "add", ".");
+  git(source, "commit", "-m", "video record without metadata");
+  const draftSha = git(source, "rev-parse", "HEAD");
+  git(temp, "init", "--bare", origin);
+  git(source, "remote", "add", "origin", origin);
+  git(source, "push", "origin", "main", "drafts");
+  git(temp, "clone", "--branch", "main", origin, runner);
+
+  assert.throws(
+    () => run(runner, "node", ["scripts/admin-publish.js"], {
+      PUBLISH_REQUEST_ID: "request-video-record-gate",
+      MAIN_SHA: mainSha,
+      DRAFT_SHA: draftSha,
+      CHANGE_COUNT: "1"
+    }),
+    /Video metadata must be generated on drafts before review: \/assets\/videos\/uploads\/fresh\.mp4/
+  );
+});
+
 // Regression: the gate compared the reviewed main against HEAD, but applyPathDelta only fills
 // index and working tree — HEAD was still the untouched main commit, so the comparison never
 // saw the reviewed delta and a raw upload travelled into the published tree.

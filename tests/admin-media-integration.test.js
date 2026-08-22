@@ -179,7 +179,7 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   assert.equal(git(fixture.runner, "rev-parse", "origin/drafts"), headAfterNormalization, "retry must not move drafts");
 });
 
-test("GitHub video preparation creates reviewed metadata and preserves a concurrent save", () => {
+test("GitHub video preparation uploads to R2, drops the blob and preserves a concurrent save", async () => {
   const fixture = setup("admin-video-real");
   const videoPath = "blog/assets/videos/uploads/test.mp4";
   const absoluteVideo = path.join(fixture.source, videoPath);
@@ -220,10 +220,19 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
   git(fixture.source, "commit", "-m", "later save");
   publishFixture(fixture);
 
-  run(fixture.runner, "node", ["scripts/admin-prepare-video.js"], {
-    DRAFT_SHA: expectedSha,
-    SOURCE_PATH: videoPath
-  });
+  const fakeR2 = await startFakeR2Server();
+  try {
+    await runAsync(fixture.runner, "node", ["scripts/admin-prepare-video.js"], {
+      DRAFT_SHA: expectedSha,
+      SOURCE_PATH: videoPath,
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      CLOUDFLARE_R2_ACCESS_KEY_ID: "test-access-key-id",
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: "test-secret-access-key",
+      R2_S3_ENDPOINT: fakeR2.endpoint
+    });
+  } finally {
+    await fakeR2.close();
+  }
   git(fixture.runner, "fetch", "origin", "drafts");
   const metadata = JSON.parse(git(fixture.runner, "show", "origin/drafts:blog/_data/videoMetadata.json"));
   const item = metadata["/assets/videos/uploads/test.mp4"];
@@ -238,4 +247,44 @@ test("GitHub video preparation creates reviewed metadata and preserves a concurr
   // The R2-only video keeps its entry: it is absent from this checkout, not deleted.
   assert.ok(metadata[migratedVideo], "expected the migrated video's metadata to survive");
   assert.equal(metadata[migratedVideo].poster, "/assets/images/video-posters/migrated.webp");
+
+  // The video source itself now lives in R2 like every image: uploaded here, recorded as a
+  // small upload record, and no longer a blob on drafts. Leaving it in Git was the last way
+  // media could still re-grow the repository after DB-1129.
+  const uploaded = fakeR2.uploads.get("/fischr-media/videos/uploads/test.mp4");
+  assert.ok(uploaded, "expected the video to have been PUT to R2");
+  assert.equal(uploaded.length, fs.statSync(absoluteVideo).size);
+  assert.throws(
+    () => git(fixture.runner, "show", `origin/drafts:${videoPath}`),
+    "the prepared video must not stay a blob on drafts"
+  );
+  const record = JSON.parse(git(
+    fixture.runner, "show", "origin/drafts:automation/media-uploads/videos__uploads__test.mp4.json"
+  ));
+  assert.equal(record.key, "videos/uploads/test.mp4");
+  assert.equal(record.entry.contentType, "video/mp4");
+  assert.equal(record.entry.size, uploaded.length);
+  // The upload is recorded, not folded in: a video upload must not carry a full rewrite of the
+  // ~2.7 MB manifest through drafts and the transactional publish either.
+  const manifestOnDrafts = JSON.parse(git(fixture.runner, "show", "origin/drafts:automation/media-manifest.json"));
+  assert.deepEqual(Object.keys(manifestOnDrafts), ["videos/imported/migrated.webm"]);
+
+  // Same retry contract as the image path: the admin re-dispatches with the drafts head its
+  // tab last saw, which no longer carries the video.
+  const headAfterPreparation = git(fixture.runner, "rev-parse", "origin/drafts");
+  const retryR2 = await startFakeR2Server();
+  try {
+    await runAsync(fixture.runner, "node", ["scripts/admin-prepare-video.js"], {
+      DRAFT_SHA: headAfterPreparation,
+      SOURCE_PATH: videoPath,
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      CLOUDFLARE_R2_ACCESS_KEY_ID: "test-access-key-id",
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: "test-secret-access-key",
+      R2_S3_ENDPOINT: retryR2.endpoint
+    });
+  } finally {
+    await retryR2.close();
+  }
+  git(fixture.runner, "fetch", "origin", "drafts");
+  assert.equal(git(fixture.runner, "rev-parse", "origin/drafts"), headAfterPreparation, "retry must not move drafts");
 });
