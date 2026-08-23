@@ -248,9 +248,22 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
 
 // MEDIA_DELIVERY_BASE_URL lets tests point this at a local stub server instead of the real
 // public delivery domain; production never sets it, so this always defaults to the live host.
-function deliveryUrlForKey(key, env = process.env) {
+//
+// `sha256` appends the same content-hash query the pages use for replaceable assets
+// (`?v=<first eight hex>`). The delivery domain serves media with `max-age=31536000`, and the
+// edge cache learns nothing from an R2 PUT: replacing an object under an existing key leaves
+// the old bytes being served for up to a year. The build downloads through this domain and
+// verifies against the manifest's hash, so on 2026-08-23 a replaced apple-touch-icon.png made
+// every push to main fail with "does not match the manifest's sha256" — and because validation
+// runs before the deploy step, nothing shipped at all until the URL was purged by hand.
+//
+// Keying the request on the content moves the cache entry whenever the bytes move, so a
+// replacement can no longer strand the build on a stale copy. It also means the build checks
+// the very URL visitors are sent to, rather than one nobody requests.
+function deliveryUrlForKey(key, env = process.env, sha256 = null) {
   const base = env.MEDIA_DELIVERY_BASE_URL || `https://${deliveryHost}`;
-  return `${base}/${key}`;
+  const version = sha256 ? `?v=${sha256.slice(0, 8)}` : "";
+  return `${base}/${key}${version}`;
 }
 
 // Restores a manifest-listed file that is missing from the local checkout (once Git no longer
@@ -260,7 +273,7 @@ function deliveryUrlForKey(key, env = process.env) {
 // hash before writing, since a corrupt or unexpected response must never silently become the
 // new "local original" for image-dimension reads / responsive-variant generation.
 async function downloadMediaFile({ key, destinationPath, expectedSha256, env = process.env }) {
-  const url = deliveryUrlForKey(key, env);
+  const url = deliveryUrlForKey(key, env, expectedSha256);
 
   const buffer = await withRetry(`Media download ${key}`, async () => {
     const response = await fetch(url, { signal: AbortSignal.timeout(downloadTimeoutMs) });

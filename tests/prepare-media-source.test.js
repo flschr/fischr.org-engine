@@ -19,7 +19,9 @@ function startFakeDeliveryServer(objects) {
   const requests = [];
   const server = http.createServer((req, res) => {
     requests.push(req.url);
-    const key = decodeURIComponent(req.url.replace(/^\//, ""));
+    // Der Abruf trägt den Inhalts-Hash als ?v=, damit ein ersetztes Bild eine eigene
+    // Cache-Adresse bekommt. Der Schlüssel ist der Pfad davor.
+    const key = decodeURIComponent(req.url.replace(/^\//, "").split("?")[0]);
     const body = objects[key];
     if (!body) {
       res.writeHead(404);
@@ -106,7 +108,7 @@ test("restores a missing manifest-listed file from the delivery domain, leaves p
     await fakeServer.close();
   }
 
-  assert.deepEqual(fakeServer.requests, ["/images/uploads/missing.webp"]);
+  assert.deepEqual(fakeServer.requests, [`/images/uploads/missing.webp?v=${hash(missingBuffer).slice(0, 8)}`]);
   assert.equal(fs.readFileSync(path.join(root, "blog/assets/images/uploads/missing.webp")).toString(), missingBuffer.toString());
   assert.equal(fs.readFileSync(path.join(root, "blog/assets/images/uploads/present.webp")).toString(), presentBuffer.toString());
   assert.ok(!fs.existsSync(path.join(root, "_site")));
@@ -131,7 +133,9 @@ test("downloads multiple missing files concurrently instead of one at a time", a
   const server = http.createServer((req, res) => {
     inFlight += 1;
     maxInFlight = Math.max(maxInFlight, inFlight);
-    const key = decodeURIComponent(req.url.replace(/^\//, ""));
+    // Der Abruf trägt den Inhalts-Hash als ?v=, damit ein ersetztes Bild eine eigene
+    // Cache-Adresse bekommt. Der Schlüssel ist der Pfad davor.
+    const key = decodeURIComponent(req.url.replace(/^\//, "").split("?")[0]);
     // Hold the response briefly so overlapping requests actually overlap in time — proves real
     // concurrency rather than requests that merely happen to be dispatched back-to-back.
     setTimeout(() => {
@@ -218,6 +222,36 @@ test("retries a transient delivery failure instead of failing the build", async 
 
 // The mirror image: a 404 means the manifest and the bucket disagree. Repeating the request
 // cannot fix that, and burning the full retry budget on it only delays the report.
+// Der Auslieferungsdomain-Cache erfährt von einem R2-PUT nichts: Wird ein Bild unter seinem
+// alten Schlüssel ersetzt, liefert sie bis zu ein Jahr die alten Bytes weiter. Der Build prüft
+// gegen den Hash im Manifest und scheiterte deshalb am 2026-08-23 bei jedem Push auf main —
+// und weil die Prüfung vor dem Deploy läuft, ging gar nichts mehr live. Hängt die Adresse am
+// Inhalt, zieht der Cache-Eintrag mit den Bytes um.
+test("ein ersetztes Bild wird unter einer eigenen Adresse geholt, nicht unter der alten", async () => {
+  const root = setupProject();
+  const alt = Buffer.from("erste-fassung");
+  const neu = Buffer.from("zweite-fassung");
+  const key = "images/uploads/ersetzt.webp";
+  const ziel = path.join(root, "blog/assets/images/uploads/ersetzt.webp");
+
+  const holen = async (bytes) => {
+    writeManifest(root, { [key]: { sourcePath: "blog/assets/images/uploads/ersetzt.webp", sha256: hash(bytes) } });
+    fs.rmSync(ziel, { force: true });
+    const server = await startFakeDeliveryServer({ [key]: bytes });
+    try {
+      await runPrepare(root, { MEDIA_DELIVERY_BASE_URL: server.baseUrl });
+    } finally {
+      await server.close();
+    }
+    return server.requests[0];
+  };
+
+  const vorher = await holen(alt);
+  const nachher = await holen(neu);
+  assert.notEqual(vorher, nachher, "gleiche Adresse hieße: der Cache liefert weiter die alten Bytes");
+  assert.equal(fs.readFileSync(ziel).toString(), neu.toString());
+});
+
 test("does not retry a delivery 404, which means the manifest and the bucket disagree", async () => {
   const root = setupProject();
 
@@ -232,7 +266,7 @@ test("does not retry a delivery 404, which means the manifest and the bucket dis
     await fakeServer.close();
   }
 
-  assert.deepEqual(fakeServer.requests, ["/images/uploads/gone.webp"]);
+  assert.deepEqual(fakeServer.requests, [`/images/uploads/gone.webp?v=${hash(Buffer.from("x")).slice(0, 8)}`]);
   assert.ok(!fs.existsSync(path.join(root, "blog/assets/images/uploads/gone.webp")));
 });
 
