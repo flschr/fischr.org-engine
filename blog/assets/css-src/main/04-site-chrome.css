@@ -151,16 +151,12 @@
 }
 
 .site-nav-icon--mastodon:hover,
-.site-nav-icon--mastodon:focus-visible,
-.about-social-link--mastodon:hover,
-.about-social-link--mastodon:focus-visible {
+.site-nav-icon--mastodon:focus-visible {
   color: #6364ff;
 }
 
 .site-nav-icon--bluesky:hover,
-.site-nav-icon--bluesky:focus-visible,
-.about-social-link--bluesky:hover,
-.about-social-link--bluesky:focus-visible {
+.site-nav-icon--bluesky:focus-visible {
   color: #1185fe;
 }
 

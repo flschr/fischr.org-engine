@@ -143,62 +143,29 @@ test("narrow author cards wrap around the portrait and leave social links to the
   await expect(page.locator(".author-card-connect")).toHaveCount(0);
 
   await page.goto("/about/");
-  await expect(page.locator(".about-social-links a")).toHaveCount(6);
-  const socialGrid = page.locator(".about-social-links");
-  const columns = await socialGrid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" "));
-  const bounds = await socialGrid.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const itemBounds = [...element.children].map((item) => item.getBoundingClientRect());
-    return {
-      left: Math.min(...itemBounds.map((item) => item.left)),
-      right: Math.max(...itemBounds.map((item) => item.right)),
-      viewport: document.documentElement.clientWidth,
-      gridWidth: rect.width,
-    };
-  });
-  expect(columns).toHaveLength(3);
-  expect(bounds.left).toBeGreaterThanOrEqual(0);
-  expect(bounds.right).toBeLessThanOrEqual(bounds.viewport);
+  await expect(page.locator(".about-hero a")).toHaveCount(0);
 });
 
-test("about social links form a three-column desktop grid", async ({ page }) => {
-  await page.setViewportSize({ width: 900, height: 800 });
+test("about page keeps its profiles as text links next to the mail address", async ({ page }) => {
   await page.goto("/about/");
 
-  const columns = await page.locator(".about-social-links").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" "));
-  await expect(columns).toHaveLength(3);
-  await expect(page.locator(".about-social-links li").nth(4)).toContainText("YouTube");
-  await expect(page.locator(".about-social-links li").nth(5)).toContainText("OpenStreetMap");
-});
+  const contact = page.locator(".about-site-notes p").last();
+  await expect(contact).toContainText("Alternativ findest du mich auch bei");
 
-test("about social links align with the text at intermediate widths", async ({ page }) => {
-  await page.setViewportSize({ width: 600, height: 900 });
-  await page.goto("/about/");
-
-  const positions = await page.evaluate(() => ({
-    textLeft: document.querySelector(".about-hero > div").getBoundingClientRect().left,
-    linksLeft: document.querySelector(".about-social-links").getBoundingClientRect().left,
-  }));
-
-  expect(positions.linksLeft).toBeCloseTo(positions.textLeft, 0);
-});
-
-test("about social links reveal their service colors on hover", async ({ page }) => {
-  await page.goto("/about/");
-
-  const colors = [
-    ["Mastodon", "rgb(99, 100, 255)"],
-    ["Bluesky", "rgb(17, 133, 254)"],
-    ["GitHub", "rgb(17, 17, 17)"],
-    ["LinkedIn", "rgb(10, 102, 194)"],
-    ["OpenStreetMap", "rgb(71, 122, 54)"],
-    ["YouTube", "rgb(255, 0, 51)"],
+  const profiles = [
+    ["Mastodon", "https://mysite.example/@example"],
+    ["Bluesky", "https://bsky.app/profile/mysite.example"],
+    ["GitHub", "https://github.com/example"],
+    ["LinkedIn", "https://www.linkedin.com/in/fischr/"],
+    ["YouTube", "https://www.youtube.com/@flschr"],
+    ["OpenStreetMap", "https://www.openstreetmap.org/user/fischr"],
   ];
 
-  for (const [name, color] of colors) {
-    const link = page.getByRole("list", { name: "Example Author im Netz" }).getByRole("link", { name });
-    await link.hover();
-    await expect(link).toHaveCSS("color", color);
+  await expect(contact.getByRole("link")).toHaveCount(profiles.length);
+  for (const [name, href] of profiles) {
+    const link = contact.getByRole("link", { name, exact: true });
+    await expect(link).toHaveAttribute("href", href);
+    await expect(link).toHaveAttribute("rel", "me");
   }
 });
 

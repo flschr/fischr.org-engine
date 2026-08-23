@@ -48,14 +48,6 @@
     font-size: 1em;
   }
 
-  .about-social-links {
-    clear: both;
-    grid-template-columns: repeat(3, max-content);
-    gap: 0.6rem 0.75rem;
-    padding-top: 0.85rem;
-    font-size: clamp(0.68rem, 3.3vw, 0.86rem);
-  }
-
   .about-gallery {
     gap: 0.45rem;
     margin: 2.75rem 0;
@@ -102,10 +94,6 @@
 @media (max-width: 32rem) {
   :root {
     --font-scale: 1.0625rem;
-  }
-
-  .about-social-links {
-    grid-column: 1 / -1;
   }
 }
 
