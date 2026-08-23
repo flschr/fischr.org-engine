@@ -16,7 +16,11 @@ const siteSpecs = /site-.*\.spec\.js$/;
 // DataTransfer and protected-drag semantics that differ between Chromium and WebKit
 // (admin-media-drag-drop). These run in both desktop engines. Hardware-keyboard behaviour is not
 // meaningful under touch emulation, which is why they no longer run in the mobile projects.
-const engineSensitiveAdminSpecs = /admin-(footnotes|editor|media-drag-drop)\.spec\.js$/;
+// admin-dialogs steht dabei, weil `<dialog>.returnValue` sich zwischen den Engines
+// unterschiedlich verhält: Nach dem Schliessen per Escape leert Chromium ihn, WebKit lässt ihn
+// stehen. Nur der WebKit-Lauf kann belegen, dass ein weggewischter Dialog nicht die vorige Wahl
+// wiederholt — und WebKit ist die Engine des Geräts, auf dem geschrieben wird.
+const engineSensitiveAdminSpecs = /admin-(footnotes|editor|media-drag-drop|dialogs)\.spec\.js$/;
 
 // The admin shell's viewport behaviour — collapsed sidebar, mobile navigation, history — runs in
 // the viewport projects, including real iOS WebKit, since that is the browser the admin is used

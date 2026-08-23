@@ -8,7 +8,7 @@ import { formatEditorDate } from "./08-encoding.js";
 import { socialConfigDirty } from "./14a-social-controls.js";
 import { syncEditorFromVisible } from "./17-editor.js";
 import { editorSnapshot } from "./18-snapshots.js";
-import { askDiscardAction } from "./19a-editor-dialogs.js";
+import { askDiscardAction, askUnsavedAction } from "./19a-editor-dialogs.js";
 import { fillEditor } from "./20-editor-fields.js";
 import { collectEditorFields } from "./20a-editor-field-actions.js";
 import { fillSourceEditor } from "./20b-source-pages.js";
@@ -178,14 +178,6 @@ export function editorIsDirty() {
   if (!editorIsLive()) return false;
   syncEditorFromVisible();
   return state.savedSnapshot !== editorSnapshot();
-}
-
-function askUnsavedAction() {
-  return new Promise((resolve) => {
-    const resolveWithValue = () => resolve(els.unsavedDialog.returnValue || "cancel");
-    els.unsavedDialog.addEventListener("close", resolveWithValue, { once: true });
-    els.unsavedDialog.showModal();
-  });
 }
 
 export async function confirmLeaveEditor() {
