@@ -12,11 +12,24 @@ test.before(async () => {
 
 // Standardmässig antwortet die Standprüfung mit genau dem Stand, den die Anfrage mitbringt —
 // sonst müsste jeder Test, der die Prüfung gar nicht meint, sie trotzdem bedienen.
-function kopfStub(sha) {
+// `dateien` sagt, was sich zwischen dem freigegebenen und dem aktuellen Stand bewegt hat —
+// die Prüfung fragt das über die Compare-API nach, sobald die SHAs auseinandergehen.
+function kopfStub(sha, dateien = ["blog/pages/etwas.md"]) {
   return async (url) => {
-    if (!/git\/ref\/heads\/main$/.test(String(url))) throw new Error(`Unerwarteter Aufruf: ${url}`);
-    if (sha === null) return new Response("nope", { status: 500 });
-    return new Response(JSON.stringify({ object: { sha } }), { status: 200 });
+    const adresse = String(url);
+    if (/git\/ref\/heads\/main$/.test(adresse)) {
+      if (sha === null) return new Response("nope", { status: 500 });
+      return new Response(JSON.stringify({ object: { sha } }), { status: 200 });
+    }
+    if (/\/compare\//.test(adresse)) {
+      if (dateien === null) return new Response("nope", { status: 500 });
+      return new Response(JSON.stringify({
+        status: "ahead",
+        total_commits: 1,
+        files: dateien.map((filename) => ({ filename }))
+      }), { status: 200 });
+    }
+    throw new Error(`Unerwarteter Aufruf: ${adresse}`);
   };
 }
 
@@ -134,7 +147,8 @@ test("ein veralteter Stand wird sofort abgelehnt, nicht angestossen", async () =
     message: "Der geprüfte Stand ist nicht mehr aktuell. Bitte neu laden und die Änderungen prüfen.",
     code: "STAND_VERALTET",
     erwartet: "aaa",
-    gefunden: "ccc"
+    gefunden: "ccc",
+    grund: "geprüfte Dateien haben sich bewegt"
   });
   assert.equal(erzeugt.length, 0, "eine abgelehnte Anfrage darf keine Instanz hinterlassen");
 });
@@ -149,6 +163,43 @@ test("ein unlesbarer Stand blockiert die Veröffentlichung nicht", async () => {
       env: { PUBLISH: binding }
     },
     { readSession: async () => ({ token: "gh-token" }), fetch: kopfStub(null) }
+  );
+
+  assert.equal(antwort.status, 202);
+  assert.equal(erzeugt.length, 1);
+});
+
+// Der wichtigste Fall im Alltag: Nach fast jeder Veröffentlichung landet der R2-Manifest-Fold
+// auf main. Eine Prüfung, die daraufhin ablehnt, wäre strenger als der Schritt, den sie
+// vorwegnimmt — sie verhinderte Veröffentlichungen, die durchgelaufen wären.
+test("ein Manifest-Fold auf main hält die Veröffentlichung nicht auf", async () => {
+  const { binding, erzeugt } = workflowStub();
+  const antwort = await start.handlePublishStart(
+    {
+      request: anfrage({ requestId: "r1", mainSha: "aaa", draftSha: "bbb", changeCount: 3 }),
+      env: { PUBLISH: binding }
+    },
+    {
+      readSession: async () => ({ token: "gh-token" }),
+      fetch: kopfStub("ccc", ["automation/media-manifest.json"])
+    }
+  );
+
+  assert.equal(antwort.status, 202);
+  assert.equal(erzeugt.length, 1);
+  assert.equal(erzeugt[0].params.mainSha, "aaa", "veröffentlicht wird der freigegebene Stand");
+});
+
+// Scheitert der Vergleich selbst, ist das kein Befund. Der Workflow prüft gleich noch einmal;
+// dort kostet ein Irrtum eine Runde, hier eine Veröffentlichung.
+test("ein gescheiterter Vergleich blockiert nicht", async () => {
+  const { binding, erzeugt } = workflowStub();
+  const antwort = await start.handlePublishStart(
+    {
+      request: anfrage({ requestId: "r1", mainSha: "aaa", draftSha: "bbb", changeCount: 3 }),
+      env: { PUBLISH: binding }
+    },
+    { readSession: async () => ({ token: "gh-token" }), fetch: kopfStub("ccc", null) }
   );
 
   assert.equal(antwort.status, 202);

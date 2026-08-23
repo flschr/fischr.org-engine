@@ -9,6 +9,7 @@
 // brauchen einen.
 
 import { jsonResponse, readSession } from "../../../_admin-auth.js";
+import { freigabeGiltNoch } from "../../../../worker/publish-stand.js";
 
 export function onRequestPost(context) {
   return handlePublishStart(context, { readSession, fetch });
@@ -59,7 +60,8 @@ export async function handlePublishStart(context, { readSession: sitzungLesen, f
         message: "Der geprüfte Stand ist nicht mehr aktuell. Bitte neu laden und die Änderungen prüfen.",
         code: "STAND_VERALTET",
         erwartet: anfrage.mainSha,
-        gefunden: kopf.sha
+        gefunden: kopf.sha,
+        grund: kopf.grund
       },
       { status: 409 }
     );
@@ -100,7 +102,38 @@ async function aktuellerKopf(context, token, erwartet, holen) {
 
   const kopf = await antwort.json();
   const sha = kopf?.object?.sha || null;
-  return { veraltet: Boolean(sha) && sha !== erwartet, sha };
+  if (!sha || sha === erwartet) return { veraltet: false, sha };
+
+  // Eine andere SHA heisst nicht, dass sich Geprüftes bewegt hat: Nach fast jeder
+  // Veröffentlichung landet der R2-Manifest-Fold auf main. scripts/admin-publish.js
+  // veröffentlicht darüber hinweg — diese Prüfung darf nicht strenger sein als der Schritt,
+  // den sie vorwegnimmt, sonst lehnt sie ab, was durchgelaufen wäre.
+  try {
+    const urteil = await freigabeGiltNoch({
+      repository: adminRepository(context.env),
+      erwartet,
+      aktuell: sha,
+      github: (pfad) => githubJson(pfad, token, holen)
+    });
+    return { veraltet: !urteil.gilt, sha, grund: urteil.grund };
+  } catch {
+    // Lässt sich der Vergleich nicht führen, wird nicht geraten. Der Workflow prüft gleich
+    // noch einmal — und dort kostet ein Irrtum nur eine Runde, hier eine Veröffentlichung.
+    return { veraltet: false, sha, grund: "Vergleich nicht möglich" };
+  }
+}
+
+async function githubJson(pfad, token, holen) {
+  const antwort = await holen(`https://api.github.com/${pfad}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "mysite.example admin",
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+  if (!antwort.ok) throw new Error(`GitHub ${antwort.status} für ${pfad}`);
+  return antwort.json();
 }
 
 function adminRepository(env) {

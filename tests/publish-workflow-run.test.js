@@ -47,12 +47,19 @@ function ereignis(extra = {}) {
 
 // Baut ein GitHub, das der Reihe nach antwortet. `laeufe` ist die Folge von Zuständen, die
 // /actions/runs/<id> liefern soll.
-function githubStub({ mainSha = "aaa", titel = "Publish r-1", laeufe = [{ status: "completed", conclusion: "success" }] } = {}) {
+function githubStub({ mainSha = "aaa", titel = "Publish r-1", laeufe = [{ status: "completed", conclusion: "success" }], bewegteDateien = ["blog/pages/etwas.md"] } = {}) {
   const aufrufe = [];
   let index = 0;
   const holen = async (url, optionen = {}) => {
     aufrufe.push(`${optionen.method || "GET"} ${url.replace("https://api.github.com/", "")}`);
     if (url.includes("/git/ref/heads/main")) return Response.json({ object: { sha: mainSha } });
+    if (url.includes("/compare/")) {
+      return Response.json({
+        status: "ahead",
+        total_commits: 1,
+        files: bewegteDateien.map((filename) => ({ filename }))
+      });
+    }
     if (url.includes("/dispatches")) return new Response(null, { status: 204 });
     if (url.includes("/runs?event=")) {
       return Response.json({ workflow_runs: titel ? [{ id: 77, html_url: "https://x/77", display_title: titel }] : [] });
@@ -73,7 +80,12 @@ test("ein überholter Stand wird gemeldet, bevor irgendetwas angestossen wird", 
 
   const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen });
 
-  assert.deepEqual(ergebnis, { status: "veraltet", erwartet: "aaa", gefunden: "inzwischen-anders" });
+  assert.deepEqual(ergebnis, {
+    status: "veraltet",
+    erwartet: "aaa",
+    gefunden: "inzwischen-anders",
+    grund: "geprüfte Dateien haben sich bewegt"
+  });
   assert.deepEqual(schritte, ["stand prüfen"], "nach dem Befund darf nichts weiter passieren");
   assert.equal(aufrufe.filter((a) => a.includes("dispatches")).length, 0, "kein Bau bei überholtem Stand");
 });
@@ -149,4 +161,21 @@ test("das Wartefenster deckt auch die längsten bisher gemessenen Läufe ab", as
 
   // Jede Pause sind zehn Sekunden; die längste gemessene Veröffentlichung lief 736.
   assert.ok(pausen.length * 10 >= 900, `Fenster zu klein: ${pausen.length * 10} s`);
+});
+
+// Zwischen der Freigabe und diesem Schritt liegen Sekunden bis Minuten — genug für den
+// R2-Manifest-Fold der vorherigen Veröffentlichung. Der darf hier nichts aufhalten, sonst wäre
+// diese Prüfung strenger als scripts/admin-publish.js, das gleich darauf entscheidet.
+test("ein Manifest-Fold auf main hält den Workflow nicht auf", async () => {
+  const { step, schritte } = stepStub();
+  const { holen, aufrufe } = githubStub({
+    mainSha: "inzwischen-anders",
+    bewegteDateien: ["automation/media-manifest.json"]
+  });
+
+  const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen });
+
+  assert.equal(ergebnis.status, "fertig");
+  assert.equal(aufrufe.filter((a) => a.includes("dispatches")).length, 1, "der Bau läuft an");
+  assert.deepEqual(schritte.slice(0, 3), ["stand prüfen", "bau anstossen", "lauf finden"]);
 });

@@ -14,6 +14,8 @@
 // Ohne Cloudflare-Import, damit der Ablauf in Node prüfbar ist; die Laufzeit-Hülle steht in
 // publish-workflow.js.
 
+import { freigabeGiltNoch } from "./publish-stand.js";
+
 const API = "https://api.github.com";
 
 // Wie lange auf den Bau gewartet wird.
@@ -38,16 +40,23 @@ export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {
   const { repository, requestId, mainSha, draftSha, changeCount, token } = event.payload;
   const github = (pfad, optionen) => anfrage(pfad, token, optionen, holen);
 
-  // Zuerst der Stand: Ist main weitergewandert, gilt die Freigabe nicht mehr. Ohne diese Prüfung
-  // veröffentlichte ein verzögerter Anlauf etwas anderes als das, was jemand geprüft hat.
+  // Zuerst der Stand: Hat sich auf main etwas bewegt, das jemand geprüft hat, gilt die Freigabe
+  // nicht mehr. Ohne diese Prüfung veröffentlichte ein verzögerter Anlauf etwas anderes als das,
+  // was freigegeben wurde.
+  //
+  // Eine andere SHA allein reicht dafür nicht: Der R2-Manifest-Fold landet nach fast jeder
+  // Veröffentlichung auf main und berührt nichts aus der Queue. Die Regel dafür steht in
+  // publish-stand.js und ist dieselbe, nach der scripts/admin-publish.js später entscheidet.
   const kopf = await step.do("stand prüfen", async () => {
     const jetzt = await github(`repos/${repository}/git/ref/heads/main`);
-    return { main: jetzt.object.sha };
+    const aktuell = jetzt.object.sha;
+    const urteil = await freigabeGiltNoch({ repository, erwartet: mainSha, aktuell, github });
+    return { main: aktuell, gilt: urteil.gilt, grund: urteil.grund };
   });
 
-  if (kopf.main !== mainSha) {
+  if (!kopf.gilt) {
     // Kein Fehler, ein Befund. Der Admin bekommt ihn als Zustand zurück und kann neu prüfen.
-    return { status: "veraltet", erwartet: mainSha, gefunden: kopf.main };
+    return { status: "veraltet", erwartet: mainSha, gefunden: kopf.main, grund: kopf.grund };
   }
 
   await step.do("bau anstossen", async () => {

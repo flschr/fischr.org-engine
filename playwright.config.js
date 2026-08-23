@@ -25,6 +25,13 @@ const responsiveAdminSpecs = /admin-shell-responsive\.spec\.js$/;
 
 const serviceWorkerSpec = /service-worker\.spec\.js$/;
 
+// Der Port kommt aus der Umgebung, damit zwei Sitzungen im selben Repo nebeneinander testen
+// können. Ohne das teilen sie sich 4173: Die zweite bekommt ERR_CONNECTION_REFUSED über die
+// ganze Suite — oder, schlimmer, der Server der ersten antwortet mit deren Bytes, und die
+// Gegenprobe wird grün, obwohl sie rot sein müsste.
+const port = Number(process.env.PLAYWRIGHT_PORT || 4173);
+const origin = `http://127.0.0.1:${port}`;
+
 module.exports = defineConfig({
   testDir: "./tests/browser",
   fullyParallel: true,
@@ -33,7 +40,7 @@ module.exports = defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: origin,
     serviceWorkers: "block",
     trace: "retain-on-failure"
   },
@@ -54,7 +61,8 @@ module.exports = defineConfig({
     command: process.env.PLAYWRIGHT_PREPARED_SITE === "1"
       ? "node scripts/serve-built-site.js"
       : "npm run build && node scripts/serve-built-site.js",
-    url: "http://127.0.0.1:4173/admin/",
+    env: { PORT: String(port) },
+    url: `${origin}/admin/`,
     reuseExistingServer: false
   }
 });
