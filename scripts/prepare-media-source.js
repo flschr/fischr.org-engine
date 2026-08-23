@@ -62,7 +62,9 @@ async function main() {
   // object that has since been replaced. If this ever reads "public delivery domain" in a
   // production build, the credentials stopped reaching the gate — see
   // .github/actions/validate-site/action.yml.
-  const route = optionalCredentialsFromEnv() ? "R2 bucket (signed S3 API)" : "public delivery domain";
+  // Dieselbe Umgebung, die downloadMediaFile gelesen hat — sonst könnte die Zeile einen anderen
+  // Weg melden als den tatsächlich genommenen.
+  const route = optionalCredentialsFromEnv(process.env) ? "R2 bucket (signed S3 API)" : "public delivery domain";
   console.log(
     `Media source prepare: ${missing.length} file(s) restored from ${route}, ${total - missing.length} already present.`
   );

@@ -205,3 +205,53 @@ test("a second replacement keeps every address the entry was ever served from", 
     await server.close();
   }
 });
+
+// Ohne diese Bewahrung schreibt ein Aufrufer, dessen lokale Datei ausserhalb des Repositories
+// liegt, den eingetragenen sourcePath mit einer Kette von "../" nach /var/folders/… um. Kein
+// heutiger Aufrufer tut das — admin-normalize-image.js und admin-prepare-video.js geben den Pfad
+// ausdrücklich an, publish-build-media.js und migrate-media-to-r2.js arbeiten aus dem
+// Repository heraus. Der Test hält fest, dass der nächste es auch nicht kaputtmachen kann.
+test("replacing an entry keeps the source path it was recorded under", async () => {
+  const server = await startAcceptingEndpoint();
+  const manifest = {
+    "images/sample.webp": {
+      sourcePath: "blog/assets/images/sample.webp",
+      sha256: "0".repeat(64),
+      contentType: "image/webp"
+    }
+  };
+
+  try {
+    await publishMediaFile({
+      // Absichtlich ohne sourcePath, und die Datei liegt in einem Temp-Verzeichnis.
+      localPath: stagedFile(),
+      publicPath: "/assets/images/sample.webp",
+      manifest,
+      env: envFor(server.endpoint)
+    });
+
+    assert.equal(manifest["images/sample.webp"].sourcePath, "blog/assets/images/sample.webp");
+  } finally {
+    await server.close();
+  }
+});
+
+// Ein neuer Eintrag hat nichts zu bewahren und leitet weiterhin ab.
+test("a new entry still derives its source path from the local file", async () => {
+  const server = await startAcceptingEndpoint();
+  const manifest = {};
+
+  try {
+    await publishMediaFile({
+      localPath: stagedFile(),
+      publicPath: "/assets/images/fresh.webp",
+      sourcePath: "blog/assets/images/fresh.webp",
+      manifest,
+      env: envFor(server.endpoint)
+    });
+
+    assert.equal(manifest["images/fresh.webp"].sourcePath, "blog/assets/images/fresh.webp");
+  } finally {
+    await server.close();
+  }
+});

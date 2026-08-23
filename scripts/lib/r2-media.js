@@ -291,7 +291,13 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
 
   const dimensions = await rasterDimensions(localPath);
   manifest[key] = {
-    sourcePath: sourcePath || path.relative(root, localPath).split(path.sep).join("/"),
+    // Reihenfolge mit Absicht: ausdrückliche Angabe, dann der bereits eingetragene Wert, dann
+    // die Ableitung aus dem lokalen Pfad. Ohne die mittlere Stufe überschreibt ein Aufrufer, der
+    // aus einem Arbeitsverzeichnis ausserhalb des Repositories heraus hochlädt, einen richtigen
+    // Eintrag mit einer Kette von "../". Für die beiden Aufrufer ohne ausdrückliche Angabe
+    // (publish-build-media.js, migrate-media-to-r2.js) ändert sich nichts: ihre lokalen Pfade
+    // liegen im Repository, die Ableitung ergibt dort denselben Wert, der schon eingetragen ist.
+    sourcePath: sourcePath || existing?.sourcePath || path.relative(root, localPath).split(path.sep).join("/"),
     objectKey,
     sha256: hash,
     size: buffer.length,
