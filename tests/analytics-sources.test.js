@@ -234,7 +234,11 @@ test("alte Rohzeilen verschwinden, die Tagesaggregate bleiben", async () => {
 // als alles andere zusammen. Gekürzt wird in der Darstellung, nicht in der
 // Abfrage: Die restlichen Zeilen stehen im Markup und brauchen keine zweite
 // Anfrage, wenn jemand sie sehen will.
-function panelAusQuelle() {
+//
+// Ein Baustein wird im Quelltext ausgewertet, nicht nachgebaut: Die Ansicht
+// entsteht aus Zeichenketten, und genau daran, wie sie zusammengesetzt sind,
+// hängt, ob ein Link im Knopf landet oder daneben.
+function statsBausteine(...namen) {
   // Nur die Statistik-Bausteine: Der vollständige Admin-Quelltext führt beim
   // Auswerten seinen Startcode aus und verlangt Dinge, die es hier nicht gibt.
   const verzeichnis = path.join(__dirname, "../blog/admin/admin-src");
@@ -246,12 +250,20 @@ function panelAusQuelle() {
     els: { statsBody: { innerHTML: "" } },
     escapeHtml: (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])),
     window: { RWIcons: null },
-    state: { statsPeriod: { preset: "week", from: "", to: "" }, statsCache: new Map(), statsPromises: new Map(), statsControllers: new Map(), statsRequest: 0 },
+    state: {
+      statsPeriod: { preset: "week", from: "", to: "" },
+      statsCache: new Map(), statsPromises: new Map(), statsControllers: new Map(), statsRequest: 0,
+      socialConfig: { siteUrl: "https://example.com" }
+    },
     fetch: () => Promise.reject(new Error("nicht benutzt")),
     showView: () => {}, pushNav: () => {}, setCollection: () => {}, document: { querySelector: () => null }
   };
-  const fn = new Function(...Object.keys(kontext), `${quelle}\nreturn statsBreakdownPanel;`);
+  const fn = new Function(...Object.keys(kontext), `${quelle}\nreturn { ${namen.join(", ")} };`);
   return fn(...Object.values(kontext));
+}
+
+function panelAusQuelle() {
+  return statsBausteine("statsBreakdownPanel").statsBreakdownPanel;
 }
 
 const zeilen = (n) => Array.from({ length: n }, (_, i) => ({ name: `/seite-${i}/`, count: n - i }));
@@ -386,18 +398,7 @@ test("die Besucherzeile nennt nur die Besucher, ohne Verhältnis", () => {
   // erst ab der eigenen Messung, Aufrufe schon davor — "48 Aufrufe von 10
   // Besuchern" behauptete deshalb ein Verhältnis aus zwei Zeiträumen. Die Zahl
   // allein behauptet nichts.
-  const quelle = fs.readdirSync(path.join(__dirname, "../blog/admin/admin-src"))
-    .filter((name) => /^21/.test(name)).sort()
-    .map((name) => fs.readFileSync(path.join(__dirname, "../blog/admin/admin-src", name), "utf8")).join("\n");
-  const kontext = {
-    els: { statsBody: { innerHTML: "" } },
-    escapeHtml: (v) => String(v ?? ""),
-    window: { RWIcons: null },
-    state: { statsPeriod: {}, statsCache: new Map(), statsPromises: new Map(), statsControllers: new Map(), statsRequest: 0 },
-    fetch: () => Promise.reject(new Error("nicht benutzt")),
-    showView: () => {}, pushNav: () => {}, setCollection: () => {}, document: { querySelector: () => null }
-  };
-  const zeile = new Function(...Object.keys(kontext), `${quelle}\nreturn statsBesucherZeile;`)(...Object.values(kontext));
+  const { statsBesucherZeile: zeile } = statsBausteine("statsBesucherZeile");
   const text = (b) => zeile(b).replace(/<[^>]+>/g, "");
 
   assert.equal(text(31), "31 Besucher");
@@ -406,4 +407,184 @@ test("die Besucherzeile nennt nur die Besucher, ohne Verhältnis", () => {
   // Ohne gemessene Besucher bleibt die Zeile weg, statt eine Null zu behaupten.
   assert.equal(zeile(0), "");
   assert.equal(zeile(undefined), "");
+});
+
+// --- Woher gelesen wird ------------------------------------------------------
+//
+// Dieselbe Fehlerfamilie wie bei der Beitragsliste: Eine Liste, die eine Zahl
+// aufschlüsselt, muss diese Zahl auch ergeben. Ein Treffer ohne erkanntes Land
+// bekommt deshalb eine Zeile und nicht keine.
+test("die Länderliste ergibt die Aufrufe, die sie aufschlüsselt", async () => {
+  const db = datenbank();
+  const treffer = (country, kind = "page") => analyticsModul.recordHit(d1(db), {
+    day: "2026-08-24", kind, path: kind === "page" ? "/beitrag/" : "/feed.xml", refHost: "",
+    country, verdict: { class: kind === "page" ? "human" : "feed" }, visitor: null, raw: false
+  });
+  await treffer("DE");
+  await treffer("DE");
+  await treffer("US");
+  await treffer(null);
+  // Ein Feed-Abruf trägt kein Land in diese Liste: Sie gehört zu den
+  // Seitenaufrufen, und beim Feed wäre es das Land eines Rechenzentrums.
+  await treffer("FR", "feed");
+
+  const laender = db.prepare("SELECT country, hits FROM daily_country ORDER BY country").all()
+    .map((z) => ({ country: z.country, hits: z.hits }));
+  assert.deepEqual(laender, [{ country: "", hits: 1 }, { country: "DE", hits: 2 }, { country: "US", hits: 1 }]);
+  assert.equal(laender.reduce((s, l) => s + l.hits, 0), aufrufe(db, "page", "2026-08-24"),
+    "die Summe der Länder muss die Aufrufe des Tages ergeben");
+});
+
+// --- Quellen aufklappen ------------------------------------------------------
+test("eine Quelle klappt zu ihren Seiten auf, die direkte eingeschlossen", () => {
+  const db = datenbank();
+  const setze = db.prepare("INSERT INTO daily_page_ref (day, path, ref_host, source, hits) VALUES (?, ?, ?, ?, ?)");
+  setze.run("2026-08-24", "/a/", "example.org", "live", 5);
+  setze.run("2026-08-24", "/b/", "example.org", "live", 2);
+  setze.run("2026-08-24", "/a/", "", "live", 9);
+
+  const seiten = (host) => db.prepare(
+    `SELECT path, SUM(hits) AS hits FROM daily_page_ref
+     WHERE ref_host = ? AND day BETWEEN ? AND ? ${eineQuelle("page")}
+     GROUP BY path ORDER BY hits DESC`
+  ).all(host, "2026-08-24", "2026-08-24").map((z) => ({ path: z.path, hits: z.hits }));
+
+  assert.deepEqual(seiten("example.org"), [{ path: "/a/", hits: 5 }, { path: "/b/", hits: 2 }]);
+  // Die leere Quelle ist ein Schlüssel und keine fehlende Angabe: Dahinter
+  // stehen die Direktzugriffe, und das ist die größte Zeile der Quellenliste.
+  assert.deepEqual(seiten(""), [{ path: "/a/", hits: 9 }]);
+
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /searchParams\.has\("ref"\)/,
+    "eine Wahrheitsprüfung ließe ausgerechnet die direkte Quelle durchfallen");
+});
+
+// --- Öffnen-Links ------------------------------------------------------------
+test("Zeilen mit einer Seite dahinter lassen sich öffnen, die anderen nicht", () => {
+  const { statsSeitenUrl, statsQuellenUrl, statsBreakdownPanel, statsExpandablePanel } =
+    statsBausteine("statsSeitenUrl", "statsQuellenUrl", "statsBreakdownPanel", "statsExpandablePanel");
+
+  assert.equal(statsSeitenUrl("/heimaturlaub/"), "https://example.com/heimaturlaub/");
+  // Kein Ort: der Sammelname der Beitragsliste, und nichts, was aus einem
+  // fremden Wert eine fremde Adresse machen würde.
+  assert.equal(statsSeitenUrl("ohne Beitragszuordnung"), null);
+  assert.equal(statsSeitenUrl("//example.org/"), null);
+  assert.equal(statsQuellenUrl("example.org"), "https://example.org/");
+  assert.equal(statsQuellenUrl("(direkt)"), null);
+
+  const ohne = statsBreakdownPanel("Probe", [{ name: "ohne Beitragszuordnung", count: 21 }]);
+  assert.doesNotMatch(ohne, /stats-row-open/);
+  const mit = statsBreakdownPanel("Probe", [{ name: "/x/", count: 3, href: statsSeitenUrl("/x/") }]);
+  assert.match(mit, /href="https:\/\/example\.com\/x\/"/);
+
+  const seiten = statsExpandablePanel("Seiten", [
+    { name: "/x/", count: 3, href: statsSeitenUrl("/x/"), drill: { key: "path", id: "/x/" } }
+  ]);
+  // Der Link gehört neben den Aufklapp-Knopf, nicht hinein: Ein Link in einem
+  // Knopf ist ungültiges Markup, und der Browser klappt dann beides auf einmal.
+  assert.match(seiten, /stats-row-open/);
+  assert.doesNotMatch(seiten.slice(seiten.indexOf("<button"), seiten.indexOf("</button>")), /<a /);
+});
+
+// --- Besucher und ihr Zeitraum -----------------------------------------------
+test("die Besucherzahl sagt, ab wann sie gilt", () => {
+  const { statsWebsiteKennzahlen } = statsBausteine("statsWebsiteKennzahlen");
+  const besucher = (range) => statsWebsiteKennzahlen({ hits: 3377, visitors: 17 }, "2026-08-23", range)[1];
+
+  // Ein Jahr voller Aufrufe neben den Besuchern weniger Tage: ohne Vermerk
+  // sieht die Zahl in jedem Zeitraum gleich und damit kaputt aus.
+  const jahr = besucher({ start: "2026-01-01", end: "2026-12-31" });
+  assert.equal(jahr.value, "17");
+  assert.match(jahr.hint, /gezählt seit/);
+
+  // Liegt der Zeitraum ganz in der eigenen Messung, erklärt der Vermerk nichts
+  // mehr und verschwindet.
+  assert.equal(besucher({ start: "2026-08-23", end: "2026-08-29" }).hint, "");
+
+  // Davor wurde niemand gezählt. Eine Null behauptete, es sei niemand da gewesen.
+  assert.equal(besucher({ start: "2026-01-01", end: "2026-02-01" }).value, "–");
+});
+
+test("die unbekannten Kennungen hängen an der Zeile, die sie zusammenfasst", () => {
+  // Vorher standen sie als eigene Liste am Ende der Ansicht, ohne sichtbaren
+  // Zusammenhang zu der Zeile, die sie auflösen.
+  const { statsFeedPanel, statsSubList } = statsBausteine("statsFeedPanel", "statsSubList");
+  const html = statsFeedPanel([
+    { reader: "unbekannt", subscribers: null, hits: 146 },
+    { reader: "freshrss", subscribers: null, hits: 63 }
+  ], 209);
+  const zeilen = html.split("<li ").slice(1);
+  assert.match(zeilen[0], /data-drill-key="reader" data-drill-id="unbekannt"/);
+  // Ein erkanntes Leseprogramm ist bereits das Ergebnis der Zuordnung.
+  assert.doesNotMatch(zeilen[1], /data-drill-key/);
+
+  const unter = statsSubList([{ name: "Mozilla/5.0 (compatible; Beispiel/1.0)", count: 3 }], "reader");
+  assert.match(unter, /Kennungen ohne erkanntes Leseprogramm/);
+  // Eine Programmkennung ist kein Ort — hier gibt es nichts zu öffnen.
+  assert.doesNotMatch(unter, /stats-row-open/);
+
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /reader !== "unbekannt"/,
+    "ein benanntes Leseprogramm darf keine zweite Liste seiner selbst bekommen");
+});
+
+// --- Abonnenten je Leseprogramm ----------------------------------------------
+//
+// Die Leserliste ist nach Abonnenten sortiert und zeigt deshalb Abonnenten.
+// Damit steht sie unter der geschätzten Gesamtzahl und muss sie ergeben —
+// dieselbe Regel wie bei der Beitrags- und der Länderliste. Je Programm den
+// höchsten Tageswert zu nehmen, läge höher: Programme haben ihre stärksten Tage
+// nicht gemeinsam.
+test("die Leserliste ergibt die geschätzte Abonnentenzahl über ihr", async () => {
+  const { ABOS_JE_LESER } = await import("../functions/api/admin/analytics.js");
+  const db = datenbank();
+  const setze = db.prepare("INSERT INTO feed_fetchers (day, fetcher, reader, subscribers) VALUES (?, ?, ?, ?)");
+  // Zwei Tage. freshrss hat seinen stärksten Tag am 24., miniflux am 25. —
+  // je Programm gerechnet wären es zusammen mehr, als je an einem Tag da waren.
+  setze.run("2026-08-24", "a", "freshrss", null);
+  setze.run("2026-08-24", "b", "freshrss", null);
+  setze.run("2026-08-24", "c", "miniflux", null);
+  setze.run("2026-08-25", "d", "freshrss", null);
+  setze.run("2026-08-25", "e", "miniflux", null);
+  setze.run("2026-08-25", "f", "miniflux", null);
+  // Ein Dienst meldet seine Zahl selbst und zählt für sich.
+  setze.run("2026-08-24", "g", "feedbin", 40);
+  setze.run("2026-08-25", "h", "feedbin", 41);
+
+  const zeitraum = ["2026-08-24", "2026-08-25"];
+  const liste = db.prepare(ABOS_JE_LESER).all(...zeitraum)
+    .map((z) => ({ reader: z.reader, abos: z.gemeldet + z.eigen }))
+    .sort((a, b) => b.abos - a.abos);
+  const kopf = db.prepare(
+    `SELECT
+       (SELECT COALESCE(SUM(gemeldet), 0) FROM (
+          SELECT MAX(subscribers) AS gemeldet FROM feed_fetchers
+          WHERE day BETWEEN ? AND ? AND subscribers IS NOT NULL GROUP BY reader)) AS gemeldet,
+       (SELECT COALESCE(MAX(anzahl), 0) FROM (
+          SELECT COUNT(*) AS anzahl FROM feed_fetchers
+          WHERE day BETWEEN ? AND ? AND subscribers IS NULL GROUP BY day)) AS installationen`
+  ).get(...zeitraum, ...zeitraum);
+
+  assert.deepEqual(liste, [{ reader: "feedbin", abos: 41 }, { reader: "freshrss", abos: 2 }, { reader: "miniflux", abos: 1 }]);
+  assert.equal(liste.reduce((s, l) => s + l.abos, 0), kopf.gemeldet + kopf.installationen,
+    "die Summe der Liste muss die geschätzte Abonnentenzahl ergeben");
+});
+
+test("die Leserliste steht nach Abonnenten, nicht nach Abrufen", () => {
+  const { statsFeedPanel } = statsBausteine("statsFeedPanel");
+  const html = statsFeedPanel([
+    { reader: "feedbin", subscribers: 40, abos: 40, hits: 39 },
+    { reader: "freshrss", subscribers: null, abos: 7, hits: 630 },
+    // Am stärksten Tag nicht dabei: keine Schätzung, aber Abrufe.
+    { reader: "netnewswire", subscribers: null, abos: 0, hits: 9 }
+  ], 678);
+  const zeilen = html.split("<li ").slice(1);
+  assert.match(zeilen[0], /feedbin/);
+  assert.match(zeilen[1], /freshrss/);
+  // Ein Programm ohne Schätzung fällt nicht aus der Liste — und bekommt einen
+  // Strich statt einer Null, die behauptete, niemand nutze es.
+  assert.match(zeilen[2], /netnewswire/);
+  assert.match(zeilen[2], /stats-row-count">–</);
+  // Die Abrufe bleiben sichtbar, sie waren die alte Zahl.
+  assert.match(zeilen[1], /630 Abrufe/);
 });

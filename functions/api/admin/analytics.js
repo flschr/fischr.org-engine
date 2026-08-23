@@ -48,6 +48,31 @@ export const eineQuelle = (kind) =>
      SELECT day FROM daily_page WHERE source = 'live' AND kind = '${kind}' GROUP BY day
    ))`;
 
+// Abonnenten je Leseprogramm. Steht als Konstante hier, damit der Test dieselbe
+// Abfrage prüft, die das Dashboard stellt — die Regel darin ist der Grund, dass
+// die Liste die Zahl über ihr ergibt, und eine Kopie im Test hielte davon nichts.
+export const ABOS_JE_LESER = `
+  WITH spitzentag AS (
+    SELECT day FROM feed_fetchers
+    WHERE day BETWEEN ?1 AND ?2 AND subscribers IS NULL
+    GROUP BY day ORDER BY COUNT(*) DESC LIMIT 1
+  ),
+  eigen AS (
+    SELECT reader, COUNT(*) AS abos FROM feed_fetchers
+    WHERE subscribers IS NULL AND day = (SELECT day FROM spitzentag)
+    GROUP BY reader
+  ),
+  gemeldet AS (
+    SELECT reader, MAX(subscribers) AS abos FROM feed_fetchers
+    WHERE day BETWEEN ?1 AND ?2 AND subscribers IS NOT NULL
+    GROUP BY reader
+  ),
+  leser AS (SELECT reader FROM eigen UNION SELECT reader FROM gemeldet)
+  SELECT l.reader, COALESCE(g.abos, 0) AS gemeldet, COALESCE(e.abos, 0) AS eigen
+  FROM leser l
+  LEFT JOIN gemeldet g ON g.reader = l.reader
+  LEFT JOIN eigen e ON e.reader = l.reader`;
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -101,7 +126,60 @@ export async function onRequest(context) {
     });
   }
 
-  const [series, totals, visitors, pages, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents] = await Promise.all([
+  // Die Gegenrichtung: Welche Seiten hat diese Quelle gebracht?
+  //
+  // Dieselbe Tabelle, andere Achse — daily_page_ref trägt beide Richtungen,
+  // eine eigene Tabelle braucht es dafür nicht. Die leere Quelle ist ein
+  // gültiger Schlüssel und keine fehlende Angabe: Sie steht für Direktzugriffe.
+  // Deshalb has() statt get(), sonst fiele ausgerechnet die größte Zeile der
+  // Quellenliste durch.
+  //
+  // Eine Besucherzahl gibt es hier nicht. Besucher werden je Tag und Seite
+  // festgehalten, nicht je Quelle; eine Zahl an dieser Stelle müsste erfunden
+  // oder eine dritte Tabelle geführt werden.
+  if (url.searchParams.has("ref")) {
+    const host = url.searchParams.get("ref");
+    const rows = await all(
+      `SELECT path, SUM(hits) AS hits FROM daily_page_ref
+       WHERE ref_host = ?1 AND day BETWEEN ?2 AND ?3 ${eineQuelle("page")}
+       GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`,
+      host, start, end
+    );
+    return jsonResponse({
+      rows: rows.map((row) => ({ name: row.path, count: Number(row.hits) || 0 }))
+    });
+  }
+
+  // Die Kennungen hinter "unbekannt" in der Leserliste.
+  //
+  // Sie hingen vorher als eigene Liste am Ende der Ansicht, ohne sichtbaren
+  // Zusammenhang zu der Zeile, die sie auflösen. Jetzt kommen sie beim
+  // Aufklappen dieser Zeile — und damit auch erst dann, statt bei jedem Laden
+  // des Dashboards mitgeliefert zu werden.
+  //
+  // Eine Kennung bleibt in feed_agents stehen, auch nachdem sie zugeordnet
+  // wurde: Die Zeilen von gestern wissen nichts vom Muster von heute. Ohne die
+  // Prüfung beim Lesen führte die Arbeitsliste dauerhaft Namen, die längst
+  // erkannt sind, und jemand ordnet sie ein zweites Mal zu.
+  const reader = url.searchParams.get("reader");
+  if (reader) {
+    // Nur "unbekannt" hat eine Auflösung. Ein erkanntes Leseprogramm ist bereits
+    // das Ergebnis der Zuordnung; darunter stünde dieselbe Zeile noch einmal.
+    if (reader !== "unbekannt") return jsonResponse({ rows: [] });
+    const rows = await all(
+      `SELECT agent, SUM(hits) AS hits FROM feed_agents
+       WHERE day BETWEEN ?1 AND ?2 GROUP BY agent ORDER BY hits DESC LIMIT 50`,
+      start, end
+    );
+    return jsonResponse({
+      rows: rows
+        .filter((row) => feedReader(row.agent).reader === "unbekannt" && classifyFeed(row.agent).kind !== "feedbot")
+        .slice(0, LIMIT)
+        .map((row) => ({ name: row.agent, count: Number(row.hits) || 0 }))
+    });
+  }
+
+  const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedReads, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -116,6 +194,10 @@ export async function onRequest(context) {
     // Über visitor_days, nicht als Summe der Tageswerte: Wer an drei Tagen
     // liest, ist ein Besucher, nicht drei.
     one(`SELECT COUNT(DISTINCT visitor) AS besucher FROM visitor_days WHERE day BETWEEN ?1 AND ?2`, start, end),
+    // Der erste Tag, an dem überhaupt Besucher gezählt wurden. Ohne ihn behauptet
+    // die Kennzahl für jeden längeren Zeitraum eine Zahl, die nur die Tage seit
+    // der Umstellung umfasst — neben Aufrufen, die weit davor beginnen.
+    one("SELECT MIN(day) AS tag FROM visitor_days"),
     all(
       `SELECT path, MAX(title) AS title, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -126,6 +208,19 @@ export async function onRequest(context) {
       `SELECT ref_host, SUM(hits) AS hits FROM daily_ref
        WHERE day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
        GROUP BY ref_host ORDER BY hits DESC LIMIT ${LIMIT}`,
+      start, end
+    ),
+    // Woher gelesen wird. Aufrufe je Land, dieselbe Einheit wie die Listen
+    // daneben — und anders als beim Feed keine Schätzung über Personen.
+    //
+    // Ohne eineQuelle-Regel: Die Tabelle kennt nur eigene Messung, der Import
+    // trägt keine Länder. Für Zeiträume, die weiter zurückreichen, ergibt die
+    // Liste deshalb weniger als die Aufrufe darüber; das Dashboard sagt das an
+    // der Liste, statt hier eine Vollständigkeit zu behaupten, die es nicht gibt.
+    all(
+      `SELECT country, SUM(hits) AS hits FROM daily_country
+       WHERE day BETWEEN ?1 AND ?2
+       GROUP BY country ORDER BY hits DESC LIMIT ${LIMIT}`,
       start, end
     ),
     one(
@@ -144,6 +239,21 @@ export async function onRequest(context) {
     all(
       `SELECT reader, MAX(subscribers) AS subscribers, SUM(hits) AS hits FROM feed_readers
        WHERE day BETWEEN ?1 AND ?2 GROUP BY reader ORDER BY hits DESC LIMIT ${LIMIT}`,
+      start, end
+    ),
+    // Abonnenten je Leseprogramm — dieselbe Schätzung wie die Zahl über der
+    // Liste, nur aufgeteilt. Sie ist es, wonach die Liste sortiert wird: Wie
+    // oft ein Programm abruft, sagt nichts über seine Reichweite; ein
+    // selbstgehosteter Leser fragt stündlich für einen Menschen, ein Dienst
+    // einmal für hundert.
+    //
+    // Beide Hälften rechnen wie die Kopfzahl, sonst ergäbe die Liste nicht die
+    // Zahl, die sie aufschlüsselt: gemeldete Zahlen je Dienst als höchster Wert
+    // des Zeitraums, selbstgehostete Installationen gezählt am stärksten Tag.
+    // Je Programm den höchsten Tageswert zu nehmen, läge höher als die Kopfzahl
+    // — Programme haben ihre stärksten Tage nicht gemeinsam.
+    all(
+      ABOS_JE_LESER,
       start, end
     ),
     // Crawler getrennt, damit die Feed-Zahl Reichweite bedeutet und nicht
@@ -205,14 +315,6 @@ export async function onRequest(context) {
        ) GROUP BY country ORDER BY n DESC LIMIT ${LIMIT}`,
       start, end
     ),
-    // Die Kennungen hinter "unbekannt" — der größte Posten der Leserliste.
-    // Mehr als die Anzeige braucht, weil unten aussortiert wird, was das Muster
-    // inzwischen kennt.
-    all(
-      `SELECT agent, SUM(hits) AS hits FROM feed_agents
-       WHERE day BETWEEN ?1 AND ?2 GROUP BY agent ORDER BY hits DESC LIMIT 50`,
-      start, end
-    ),
   ]);
 
   return jsonResponse({
@@ -236,24 +338,32 @@ export async function onRequest(context) {
     })),
     refs: refs.map((row) => ({
       name: row.ref_host || "(direkt)",
+      // Der rohe Host neben dem Anzeigenamen: Er ist der Schlüssel, mit dem die
+      // Zeile aufgeklappt wird, und '' ist dabei ein Wert und keine Lücke.
+      host: row.ref_host || "",
       hits: Number(row.hits) || 0
     })),
+    countries: countries.map((row) => ({ country: row.country || "", hits: Number(row.hits) || 0 })),
     feedCountries: feedCountries.map((row) => ({ country: row.country, hits: Number(row.n) || 0 })),
     feedPages: feedPages.map((row) => ({ path: row.path, title: row.title || null, hits: Number(row.hits) || 0 })),
-    // Eine Kennung bleibt in feed_agents stehen, auch nachdem sie zugeordnet
-    // wurde — die Zeilen von gestern wissen nichts vom Muster von heute. Ohne
-    // diese Prüfung führt die Arbeitsliste dauerhaft Namen, die längst erkannt
-    // sind, und jemand ordnet sie ein zweites Mal zu. Die Muster liegen hier
-    // ohnehin, also wird beim Lesen entschieden.
-    feedAgents: agents
-      .filter((row) => feedReader(row.agent).reader === "unbekannt" && classifyFeed(row.agent).kind !== "feedbot")
-      .slice(0, 10)
-      .map((row) => ({ agent: row.agent, hits: Number(row.hits) || 0 })),
-    feedReaders: readers.map((row) => ({
-      reader: row.reader,
-      subscribers: row.subscribers === null ? null : Number(row.subscribers),
-      hits: Number(row.hits) || 0
-    })),
+    // Nach Abonnenten sortiert, nicht nach Abrufen. Bei gleicher Schätzung
+    // entscheiden die Abrufe, damit die Reihenfolge stabil bleibt.
+    feedReaders: readers
+      .map((row) => {
+        const geschaetzt = abosJeLeser.find((eintrag) => eintrag.reader === row.reader);
+        return {
+          reader: row.reader,
+          subscribers: row.subscribers === null ? null : Number(row.subscribers),
+          abos: (Number(geschaetzt?.gemeldet) || 0) + (Number(geschaetzt?.eigen) || 0),
+          hits: Number(row.hits) || 0
+        };
+      })
+      .sort((a, b) => b.abos - a.abos || b.hits - a.hits),
+    // Ab wann es Besucher gibt. Das ist keine Herkunftsangabe zu einer Zahl,
+    // sondern der Anfang einer Messung: Aufrufe reichen weiter zurück als
+    // Besucher, und ohne diesen Tag stünde neben den Aufrufen eines Jahres die
+    // Besucherzahl weniger Tage.
+    besucherAb: besucherAb?.tag || null
   });
 }
 

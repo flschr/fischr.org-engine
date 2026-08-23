@@ -15,7 +15,7 @@
     const total = data.total || {};
 
     els.statsBody.innerHTML = [
-      statsSection("Website", statsWebsiteKennzahlen(total), [
+      statsSection("Website", statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
         statsSparkline(statsSeries(data.series, data.range))
       ], statsWebsitePanels(data)),
       statsSection("Feed", statsFeedKennzahlen(total), [], statsFeedPanels(data))
@@ -43,12 +43,30 @@
         name: page.path || "/",
         title: page.title,
         count: page.hits,
+        href: statsSeitenUrl(page.path || "/"),
         // Aufgeklappt zeigt die Zeile, welche Quellen auf diese Seite geführt
         // haben. Der Pfad ist der Schlüssel — anders als bei GoatCounter gibt
         // es keine interne Seiten-ID mehr, die man mitschleppen müsste.
         drill: { key: "path", id: page.path }
       }))),
-      statsBreakdownPanel("Quellen", (data.refs || []).map((ref) => ({ name: ref.name, count: ref.hits })))
+      // Die Gegenrichtung, aus derselben Tabelle: Welche Seiten hat diese
+      // Quelle gebracht? Auch "(direkt)" klappt auf — dort steht, was ohne
+      // erkennbare Quelle aufgerufen wurde, und das ist die größte Zeile.
+      statsExpandablePanel("Quellen", (data.refs || []).map((ref) => ({
+        name: ref.name,
+        count: ref.hits,
+        href: statsQuellenUrl(ref.host),
+        drill: { key: "ref", id: ref.host || "" }
+      }))),
+      // Woher gelesen wird. Aufrufe je Land, dieselbe Einheit wie die Listen
+      // daneben. Die importierte Historie kennt keine Länder; für Zeiträume,
+      // die weiter zurückreichen, ergibt die Liste deshalb weniger als die
+      // Aufrufe darüber — der Hinweis sagt das, statt es zu verschweigen.
+      ...((data.countries || []).length
+        ? [statsBreakdownPanel("Woher gelesen wird", data.countries.map((row) => ({
+            name: row.country || "ohne Land", count: row.hits
+          })), { hinweis: "Aufrufe je Land, nur aus eigener Messung" })]
+        : [])
     ];
   }
 
@@ -64,10 +82,12 @@
       // die sie erklären soll.
       ...((data.feedPages || []).length
         ? [statsBreakdownPanel("Beiträge im Reader", data.feedPages.map((row) => (
+            // Der Sammelpfad der Historie ist kein Beitrag und bekommt deshalb
+            // auch keinen Öffnen-Link — hinter ihm steckt keine Seite.
             row.path === "/feed.xml"
               ? { name: "ohne Beitragszuordnung", title: "aus der GoatCounter-Historie", count: row.hits }
-              : { name: row.path, title: row.title, count: row.hits }
-          )), { isPath: true })]
+              : { name: row.path, title: row.title, count: row.hits, href: statsSeitenUrl(row.path) }
+          )))]
         : []),
       // Woher abgerufen wird. "Abruftage", nicht "Abonnenten": Eine Zeile je
       // Abrufer und Tag, über den Zeitraum summiert. Als Verhältnis
@@ -76,13 +96,7 @@
       ...((data.feedCountries || []).length
         ? [statsBreakdownPanel("Woher abgerufen wird", data.feedCountries.map((row) => ({
             name: row.country, count: row.hits
-          })))]
-        : []),
-      // Nur solange es unerkannte Kennungen gibt. Sie sind die Arbeitsliste,
-      // aus der die Erkennung wächst — und die Antwort auf die Frage, ob hinter
-      // "unbekannt" Menschen oder Maschinen stecken.
-      ...((data.feedAgents || []).length
-        ? [statsBreakdownPanel("Unerkannte Kennungen", data.feedAgents.map((row) => ({ name: row.agent, count: row.hits })))]
+          })), { hinweis: "Abruftage je Land; bei Diensten das Land ihres Rechenzentrums" })]
         : [])
     ];
   }
@@ -136,13 +150,33 @@
     return gebuendelt;
   }
 
+  // "unbekannt" ist hier regelmäßig die größte Zeile. Was dahintersteckt, stand
+  // vorher als eigene Liste am Ende der Ansicht — ohne sichtbaren Zusammenhang
+  // zu der Zeile, die sie auflöst, und als Anhängsel, das nach Unordnung aussah.
+  // Jetzt klappt die Zeile auf und zeigt die Kennungen, die sie zusammenfasst.
+  // Sortiert nach Abonnenten, nicht nach Abrufen — und deshalb steht die
+  // geschätzte Abonnentenzahl auch als Zahl in der Zeile. Wie oft ein Programm
+  // abruft, sagt nichts über seine Reichweite: Ein selbstgehosteter Leser fragt
+  // stündlich für einen Menschen, ein Dienst einmal für hundert. Eine nach dem
+  // einen sortierte Liste, die das andere zeigt, sieht unsortiert aus.
+  //
+  // Die Abrufe stehen als Unterzeile weiter da; sie waren die alte Zahl und
+  // sind der Grund, warum ein Programm überhaupt in der Liste steht.
   function statsFeedPanel(readers, totalFeed) {
     const rows = readers.map((reader) => ({
-      name: reader.subscribers
-        ? `${reader.reader} · ${numberFormat.format(reader.subscribers)} Abos`
-        : reader.reader,
-      count: reader.hits
+      name: reader.reader,
+      title: reader.subscribers
+        ? `gemeldet · ${numberFormat.format(reader.hits)} Abrufe`
+        : `${numberFormat.format(reader.hits)} Abrufe`,
+      count: reader.abos || 0,
+      // Ein Programm, das am stärksten Tag nicht dabei war, hat für diesen
+      // Zeitraum keine Schätzung. Ein Strich sagt das; eine Null behauptete,
+      // niemand nutze es.
+      wert: reader.abos ? null : "–",
+      // Nur die unbekannte Zeile hat eine Auflösung. Ein erkanntes
+      // Leseprogramm ist bereits das Ergebnis der Zuordnung.
+      drill: reader.reader === "unbekannt" ? { key: "reader", id: "unbekannt" } : null
     }));
     if (!rows.length && totalFeed) rows.push({ name: "ohne erkennbaren Leser", count: totalFeed });
-    return statsBreakdownPanel("Feed-Leser", rows);
+    return statsExpandablePanel("Feed-Leser", rows, "geschätzte Abonnenten je Programm");
   }

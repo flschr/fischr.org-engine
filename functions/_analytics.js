@@ -287,7 +287,18 @@ export async function recordHit(db, hit) {
         `INSERT INTO daily_page_ref (day, path, ref_host, source, hits)
          VALUES (?, ?, ?, 'live', 1)
          ON CONFLICT (day, path, ref_host, source) DO UPDATE SET hits = hits + 1`
-      ).bind(day, path, refHost || "")
+      ).bind(day, path, refHost || ""),
+      // Das Land, das Cloudflare der Anfrage beilegt. Es steht sonst nur in der
+      // Rohzeile und wäre mit ihr nach 180 Tagen weg.
+      //
+      // Ohne erkanntes Land wird die leere Zeichenkette geschrieben, keine
+      // Zeile ausgelassen: Die Liste im Dashboard schlüsselt die Aufrufe
+      // darüber auf, und was fehlt, soll man sehen können.
+      db.prepare(
+        `INSERT INTO daily_country (day, country, hits)
+         VALUES (?, ?, 1)
+         ON CONFLICT (day, country) DO UPDATE SET hits = hits + 1`
+      ).bind(day, country || "")
     );
   }
 

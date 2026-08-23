@@ -13,11 +13,34 @@
   // Besucher gibt es erst ab der eigenen Messung, Aufrufe schon davor. Die Zahl
   // steht deshalb für sich und wird nirgends zu den Aufrufen ins Verhältnis
   // gesetzt — so behauptet sie nichts, was aus zwei Zeiträumen stammt.
-  function statsWebsiteKennzahlen(total) {
+  //
+  // Was die Zahl umfasst, muss trotzdem dabeistehen. Die eigene Zählung ist
+  // jünger als die Aufrufe: Neben den Aufrufen eines ganzen Jahres stand die
+  // Besucherzahl der wenigen Tage seit der Umstellung — in Woche, Monat,
+  // Quartal und Jahr dieselbe, und damit eine Zahl, die kaputt aussieht.
+  //
+  // Der Vermerk nennt deshalb den Beginn der Messung, nicht die Herkunft der
+  // Zahl: "gezählt seit" sagt, worüber sie spricht, ohne den Bruch zwischen
+  // Import und eigener Messung zum Thema der Ansicht zu machen. Er verschwindet
+  // von selbst, sobald der Zeitraum ganz in der eigenen Messung liegt.
+  function statsWebsiteKennzahlen(total, besucherAb, range) {
+    const gemessen = besucherAb && range?.end >= besucherAb;
+    const teilweise = gemessen && range?.start < besucherAb;
     return [
       { label: "Aufrufe", value: numberFormat.format(Number(total.hits) || 0) },
-      { label: "Besucher", value: numberFormat.format(Number(total.visitors) || 0) }
+      {
+        label: "Besucher",
+        // Ein Strich, keine Null: Vor der Umstellung wurde niemand gezählt —
+        // das heißt nicht, dass niemand da war.
+        value: gemessen ? numberFormat.format(Number(total.visitors) || 0) : "–",
+        hint: teilweise ? `gezählt seit ${statsTagKurz(besucherAb)}` : ""
+      }
     ];
+  }
+
+  function statsTagKurz(day) {
+    const datum = new Date(`${day}T12:00:00`);
+    return Number.isNaN(datum.getTime()) ? day : statsShortDayFormat.format(datum);
   }
 
   function statsFeedKennzahlen(total) {

@@ -92,6 +92,24 @@ CREATE TABLE IF NOT EXISTS daily_page_ref (
   PRIMARY KEY (day, path, ref_host, source)
 );
 
+-- Aufrufe je Land. Cloudflare legt das Land jeder Anfrage bei; ohne dieses
+-- Aggregat stünde es nur in den Rohdaten und wäre nach 180 Tagen weg.
+--
+-- Ohne source-Spalte, anders als die Tabellen darüber: Länder gibt es nur aus
+-- eigener Messung, der GoatCounter-Export trägt keine. Eine Spalte, die für
+-- immer 'live' enthält, wäre eine Behauptung ohne Fall — die Auswertung müsste
+-- sie trotzdem in jeder Abfrage mitschleppen.
+--
+-- Eine Anfrage ohne erkanntes Land bekommt die leere Zeichenkette statt gar
+-- keine Zeile. Sonst ergäbe die Liste weniger als die Zahl, die sie aufschlüsselt,
+-- und niemand könnte sehen, dass etwas fehlt.
+CREATE TABLE IF NOT EXISTS daily_country (
+  day     TEXT    NOT NULL,
+  country TEXT    NOT NULL,             -- '' = kein Land ermittelt
+  hits    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, country)
+);
+
 -- Feed-Leser melden ihre Abonnentenzahl im User-Agent
 -- ("Feedly/1.0 (+http://feedly.com/; 42 subscribers)"). Das ist die einzige
 -- Zahl, die ein RSS-Feed über seine Reichweite überhaupt hergibt.

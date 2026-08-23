@@ -169,3 +169,36 @@
 
 /* "47 Aufrufe von 31 Besuchern" über den Quellen einer aufgeklappten Seite. */
 .stats-subvisitors { color: var(--ink-soft); font-weight: 600; }
+
+/* Öffnen-Link am Zeilenende: Was die Zeile zählt, lässt sich direkt ansehen.
+   Er liegt neben dem Aufklapp-Knopf statt darin — ein Link in einem Knopf wäre
+   ungültiges Markup, und beide meinen Verschiedenes. */
+.stats-row-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.stats-row-linked { grid-template-columns: minmax(0, 1fr) auto auto; }
+.stats-row-open {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--ink-faint);
+  opacity: 0.4;
+  transition: color 130ms ease, opacity 130ms ease;
+}
+.stats-row-open svg { width: 0.85rem; height: 0.85rem; }
+.stats-row-open:hover { color: var(--accent); }
+/* Blass, aber sichtbar: Ein erst beim Überfahren erscheinendes Symbol findet
+   nur, wer schon weiß, dass es da ist. Auf der berührten Zeile tritt es hervor. */
+.stats-row-group:hover .stats-row-open,
+.stats-row:hover .stats-row-open,
+.stats-row-open:focus-visible { opacity: 1; }
+
+/* Eine Zeile Erklärung unter dem Titel einer Liste, wo die Überschrift allein
+   offenlässt, was gezählt wird. */
+.stats-panel-hint {
+  margin: -0.4rem 0 0.6rem;
+  color: var(--ink-faint);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
