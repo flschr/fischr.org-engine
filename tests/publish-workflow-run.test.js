@@ -136,3 +136,17 @@ test("bleibt der Lauf unsichtbar, scheitert der Suchschritt statt still weiterzu
     /noch nicht sichtbar/
   );
 });
+
+// Das Wartefenster muss zu echten Veröffentlichungen passen. Gemessen am 2026-08-23 über die
+// letzten zwölf Läufe: 43 bis 736 Sekunden. Ein Fenster von zehn Minuten hätte die beiden
+// längsten fälschlich als Zeitüberschreitung gemeldet — und eine gemeldete Zeitüberschreitung,
+// die keine ist, schickt jemanden auf die Suche nach einem Fehler, den es nicht gibt.
+test("das Wartefenster deckt auch die längsten bisher gemessenen Läufe ab", async () => {
+  const { step, pausen } = stepStub();
+  const { holen } = githubStub({ laeufe: [{ status: "in_progress" }] });
+
+  await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen });
+
+  // Jede Pause sind zehn Sekunden; die längste gemessene Veröffentlichung lief 736.
+  assert.ok(pausen.length * 10 >= 900, `Fenster zu klein: ${pausen.length * 10} s`);
+});

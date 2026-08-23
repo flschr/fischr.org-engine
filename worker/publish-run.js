@@ -16,11 +16,24 @@
 
 const API = "https://api.github.com";
 
-// Wie oft und wie lange auf den Bau gewartet wird. 60 Runden à 10 Sekunden sind zehn Minuten —
-// ein Publish dauert normalerweise ein bis vier. Wer darüber hinausläuft, hängt.
-const RUNDEN = 60;
+// Wie lange auf den Bau gewartet wird.
+//
+// Gemessen an den letzten zwölf Veröffentlichungen: 43 bis 736 Sekunden, im Mittel rund drei
+// Minuten. Zehn Minuten wären knapp genug gewesen, um die beiden langen fälschlich als
+// Zeitüberschreitung zu melden — und eine gemeldete Zeitüberschreitung, die keine ist, schickt
+// jemanden auf die Suche nach einem Fehler, den es nicht gibt.
+//
+// Dreissig Minuten sind grosszügig und trotzdem begrenzt: Was so lange läuft, hängt wirklich,
+// und die Instanz darf nicht für immer offen bleiben.
+const RUNDEN = 180;
 const PAUSE = "10 seconds";
 
+// Noch offen: Zwei gleichzeitig gestartete Instanzen halten sich gegenseitig nicht auf. Die
+// Prüfung oben fängt nur den Fall ab, dass main zwischenzeitlich weitergewandert ist — starten
+// zwei Veröffentlichungen im selben Moment, sehen beide denselben Stand und stossen beide an.
+// Heute fängt das die gemeinsame concurrency-Gruppe in Actions auf, die Läufe reihen sich also
+// hintereinander. Ein echtes Schloss (eine Zeile in D1 oder ein Durable Object) gehört in die
+// Stufe, die den Admin auf diesen Weg umzieht — vorher hat es nichts zu bewachen.
 export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {}) {
   const { repository, requestId, mainSha, draftSha, changeCount, token } = event.payload;
   const github = (pfad, optionen) => anfrage(pfad, token, optionen, holen);
