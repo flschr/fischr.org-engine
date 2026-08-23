@@ -10,9 +10,6 @@
     ["Install dependencies", "Abhängigkeiten installieren"],
     ["Prepare final publish commit", "Veröffentlichung prüfen"],
     ["Check out prepared publish commit", "Geprüftes Ergebnis fixieren"],
-    // Skipped on a content publish — only the full gate needs the headroom. The phase list has
-    // to stay in workflow order regardless, since it is matched against it 1:1.
-    ["Free disk space", "Speicherplatz für den Build freigeben"],
     ["Validate production site", "Website bauen und prüfen"],
     ["Push published commit to main", "Geprüfte Website übernehmen"],
     ["Publish build media to R2", "Medien zu R2 übertragen"],
