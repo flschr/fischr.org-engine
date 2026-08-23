@@ -1,6 +1,5 @@
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
-import { hasGithubAccess } from "./05-github-auth.js";
 
 // --- Status & busy -------------------------------------------------------
 
@@ -40,12 +39,9 @@ export function setBusy(isBusy) {
     button.disabled = Boolean(isBusy);
   });
 
-  if (!isBusy) {
-    els.syncButton.disabled = state.changes.size === 0 || !hasGithubAccess() || state.publishInFlight;
-    if (els.clearTokenButton) els.clearTokenButton.disabled = !state.token;
-  } else {
-    els.syncButton.disabled = true;
-  }
+  // #syncButton fehlt hier bewusst: Er öffnet nur die Warteschlange und bleibt deshalb auch
+  // während einer busy-Phase klickbar — sonst wäre der Fortschritt genau dann nicht einsehbar.
+  if (!isBusy && els.clearTokenButton) els.clearTokenButton.disabled = !state.token;
 
   setEditorLocked(isBusy);
 }

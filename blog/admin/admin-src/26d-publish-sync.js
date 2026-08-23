@@ -75,7 +75,10 @@ export function renderSyncState(changes) {
     : (count === 1 ? "1 Änderung veröffentlichen" : `${count} Änderungen veröffentlichen`));
   els.syncButton.classList.toggle("has-changes", count > 0);
   els.syncButton.classList.toggle("is-publishing", state.publishInFlight);
-  els.syncButton.disabled = state.isBusy || state.publishInFlight || count === 0 || !hasGithubAccess();
+  // Der Knopf startet nichts, er führt nur in die Warteschlange — und die ist der einzige Ort,
+  // der einen laufenden Vorgang zeigt. Deshalb bleibt er immer klickbar; gesperrt bleibt allein,
+  // was schreibt: #pushButton und die Verwerfen-Aktionen in der Warteschlange selbst.
+  els.syncButton.disabled = false;
   if (state.view === "queue") renderQueue();
 }
 
@@ -194,6 +197,10 @@ export function recoverPendingMediaOperations() {
 
 export async function refreshQueueFromGitHub() {
   if (!hasGithubAccess()) return;
+  // Der Weg hierher steht immer offen, das Neuladen nicht: Es verwirft die Baum-Caches, mit
+  // denen ein laufender Schreibvorgang gerade arbeitet (dieselbe Rücksicht nimmt
+  // Pull-to-Refresh). Der lädt die Änderungen am Ende selbst neu und zeichnet die Ansicht mit.
+  if (state.isBusy) return;
   const request = state.queueRefreshRequest + 1;
   state.queueRefreshRequest = request;
   state.tree = null;

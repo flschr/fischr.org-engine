@@ -179,3 +179,15 @@ test("an upload that only exists as a record is queued and can be discarded as u
   // has no blob in either tree.
   expect(treeRequest.body.tree).toEqual([expect.objectContaining({ path: record.path, sha: null })]);
 });
+
+// Ohne GitHub-Verbindung weiss der Admin nicht, was in der Warteschlange steht — er weiss nur,
+// dass er nicht nachsehen kann. Der Weg in die Ansicht steht trotzdem offen; dann darf dort
+// keine Entwarnung stehen, die niemand geprüft hat.
+test("die Warteschlange gibt ohne GitHub-Verbindung keine Entwarnung", async ({ page }) => {
+  await page.goto("/admin/");
+  await page.locator("#syncButton").click();
+
+  await expect(page.locator("#queueView")).toBeVisible();
+  await expect(page.locator("#queueList .entry-empty")).toContainText("Nicht mit GitHub verbunden");
+  await expect(page.locator("#pushButton")).toBeDisabled();
+});

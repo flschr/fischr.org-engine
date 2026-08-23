@@ -37,3 +37,41 @@ test("authenticated editor saves a real draft snapshot and dispatches its review
   // einem Vorgang, für den nie ein Actions-Lauf erscheint.
   expect(storedRequest.workflowId).toBe("workflow-instance-1");
 });
+
+// Die Warteschlange ist der einzige Ort, der zeigt, was eine laufende Veröffentlichung gerade
+// tut: Fortschritt, Schritt, Lauf-Link, Fehlermeldung. Solange ihr Knopf während des Laufs
+// gesperrt war, sperrte er genau diese Sicht aus — wer den Admin während eines Laufs öffnete,
+// kam bis zu dessen Ende nicht mehr hinein.
+test("die Warteschlange bleibt während einer laufenden Veröffentlichung erreichbar", async ({ page }) => {
+  await page.unroute("**/api/admin/auth/session");
+  const requests = [];
+  await mockAuthenticatedGithub(page, requests, [], {
+    onWorkflowPoll({ workflow }) {
+      if (workflow !== "admin-publish.yml") return null;
+      return {
+        workflow_runs: [{
+          id: 4711,
+          display_title: "Publish laufender-lauf",
+          status: "in_progress",
+          html_url: "https://github.com/example/example-blog/actions/runs/4711",
+          created_at: "2026-01-01T10:00:00Z"
+        }]
+      };
+    }
+  });
+
+  // Der Admin wird geladen, während auf GitHub bereits veröffentlicht wird: Der laufende Vorgang
+  // wird beim Start gefunden, ohne dass in dieser Sitzung etwas angestossen wurde.
+  await page.goto("/admin/");
+  await expect(page.locator("#syncButton")).toHaveClass(/is-publishing/);
+  await expect(page.locator("#queueView")).toBeHidden();
+
+  // Ein echter Klick — an einem gesperrten Knopf würde er scheitern.
+  await expect(page.locator("#syncButton")).toBeEnabled();
+  await page.locator("#syncButton").click();
+  await expect(page.locator("#queueView")).toBeVisible();
+  await expect(page.locator(".queue-progress")).toBeVisible();
+
+  // Sichtbar heisst nicht startbar: Veröffentlicht wird weiterhin nichts, solange etwas läuft.
+  await expect(page.locator("#pushButton")).toBeDisabled();
+});

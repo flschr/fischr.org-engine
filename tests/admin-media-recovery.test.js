@@ -111,10 +111,13 @@ test("foreground uploads and startup recovery share one derived processing state
 });
 
 test("unfinished media blocks publishing and destructive queue actions", () => {
-  assert.match(
-    source,
-    /els\.syncButton\.disabled = state\.isBusy \|\| state\.publishInFlight \|\| count === 0 \|\| !hasGithubAccess\(\)/
-  );
+  // Der Weg in die Warteschlange gehört nicht zu den gesperrten Aktionen: #syncButton öffnet
+  // nur die Ansicht. Gesperrt wird ausschliesslich, was schreibt.
+  assert.match(source, /els\.syncButton\.disabled = false;/);
+  assert.doesNotMatch(source, /els\.syncButton\.disabled = (?!false;)/);
+  // Offen ist nur der Weg dorthin: Das Neuladen der Warteschlange verwirft die Baum-Caches und
+  // hält sich deshalb aus einem laufenden Schreibvorgang heraus.
+  assert.match(source, /async function refreshQueueFromGitHub\(\) \{[\s\S]{0,600}?if \(state\.isBusy\) return;/);
   assert.match(source, /function hasActiveMediaWork\(\) \{\s*return state\.mediaProcessing/);
   assert.match(
     source,

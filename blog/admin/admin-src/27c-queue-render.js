@@ -136,7 +136,12 @@ export function renderQueue() {
   if (!visibleChanges.length) {
     const empty = document.createElement("li");
     empty.className = "entry-empty";
-    empty.textContent = "Keine ausstehenden Änderungen. Alles ist veröffentlicht.";
+    // Ohne GitHub-Verbindung ist die Liste nicht leer, sondern ungelesen. Seit der Weg hierher
+    // immer offensteht, trifft das auch jemanden, der nur nachsehen wollte — dann darf hier
+    // keine Entwarnung stehen, die niemand geprüft hat.
+    empty.textContent = hasGithubAccess()
+      ? "Keine ausstehenden Änderungen. Alles ist veröffentlicht."
+      : "Nicht mit GitHub verbunden — die Warteschlange kann gerade nicht gelesen werden.";
     els.queueList.append(empty);
     return;
   }
