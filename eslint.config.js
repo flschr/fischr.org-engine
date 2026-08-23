@@ -5,7 +5,9 @@ const globals = require("globals");
 // typo like a missing function parameter can't ship a runtime crash.
 module.exports = [
   {
-    files: ["blog/admin/*.js", "blog/assets/js/*.js"],
+    // Das gebaute Bündel steht ausdrücklich dabei: es trägt den gesamten handgeschriebenen
+    // Admin-Code aus admin-src/, und ein Glob, das es nicht trifft, prüft ihn nie.
+    files: ["blog/admin/*.js", "blog/admin/vendor/app/admin.js", "blog/assets/js/*.js"],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: "script",
@@ -22,7 +24,11 @@ module.exports = [
         RWMediaService: "readonly",
         RWPublishService: "readonly",
         RWPublishStatus: "readonly",
-        RWSocialConfig: "readonly"
+        RWSocialConfig: "readonly",
+        RWDraftRepository: "readonly",
+        RWSourcePages: "readonly",
+        RWAdmonitions: "readonly",
+        RWPublishPlan: "readonly"
       }
     },
     rules: {

@@ -158,3 +158,55 @@ test("non-conflict ref failures are not retried", async () => {
   await assert.rejects(create({ github }).commit([], "test"), /403/);
   assert.equal(patches, 1);
 });
+
+// Der Admin schreibt nicht nur Entwürfe. Die Social-Konfiguration liegt auf dem
+// Veröffentlichungs-Branch und wird von dort aus gelesen, also muss sie auch dorthin
+// zurückgeschrieben werden — mit derselben Compare-and-Swap-Schleife, nicht mit einer
+// zweiten, eigenen Fassung daneben. Bis 2026-07-20 gab es dafür eine freie Funktion
+// commitTree(branch, …); als der Entwurfsspeicher sie ablöste, blieb der zweite Aufrufer
+// ohne Funktion zurück und lief in einen ReferenceError.
+test("a commit can target another branch than the working branch", async () => {
+  const calls = [];
+  const github = async (endpoint, options = {}) => {
+    calls.push(endpoint);
+    if (endpoint === "git/ref/heads/main" && !options.method) return { object: { sha: "main-head" } };
+    if (endpoint === "git/commits/main-head") return { tree: { sha: "main-tree" } };
+    if (endpoint === "git/blobs") return { sha: "config-blob" };
+    if (endpoint === "git/trees") return { sha: "next-tree" };
+    if (endpoint === "git/commits") return { sha: "next-commit" };
+    if (endpoint === "git/refs/heads/main") return {};
+    throw new Error(`Unexpected ${endpoint}`);
+  };
+
+  const repository = create({ github });
+  const blob = await repository.createBlob("{}\n");
+  const result = await repository.commit(
+    [{ path: "automation/social-config.json", mode: "100644", type: "blob", sha: blob.sha }],
+    "Update social config [skip ci]",
+    { branch: "main" }
+  );
+
+  assert.equal(result.commitSha, "next-commit");
+  assert.equal(result.parentSha, "main-head");
+  // Der Entwurfs-Branch wird dabei weder gelesen noch angelegt: er hat mit dieser
+  // Schreiboperation nichts zu tun.
+  assert.deepEqual(calls.filter((endpoint) => endpoint.includes("drafts")), []);
+});
+
+test("a raced write to another branch retries from that branch's head", async () => {
+  let refReads = 0;
+  let patches = 0;
+  const github = async (endpoint, options = {}) => {
+    if (endpoint === "git/ref/heads/main" && !options.method) return { object: { sha: `main-${++refReads}` } };
+    if (endpoint.startsWith("git/commits/main-")) return { tree: { sha: "base-tree" } };
+    if (endpoint === "git/trees") return { sha: `tree-${refReads}` };
+    if (endpoint === "git/commits") return { sha: `commit-${refReads}` };
+    if (endpoint === "git/refs/heads/main" && ++patches === 1) throw new Error("GitHub 409 raced");
+    if (endpoint === "git/refs/heads/main") return {};
+    throw new Error(`Unexpected ${endpoint}`);
+  };
+
+  const result = await create({ github }).commit([], "Update social config [skip ci]", { branch: "main" });
+  assert.equal(result.commitSha, "commit-2");
+  assert.equal(patches, 2);
+});

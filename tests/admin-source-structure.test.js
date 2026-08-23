@@ -181,13 +181,11 @@ test("no module reads another module's binding while it is still being evaluated
 // eslint kann das, weil es den Geltungsbereich wirklich analysiert statt nach Mustern zu suchen.
 // Ein selbstgeschriebener Regex-Check hatte genau diese neun übersehen.
 //
-// Die beiden Ausnahmen sind ältere Fehler, die der Umbau nur sichtbar gemacht hat: Beide Zeilen
-// stehen unverändert im Vorgängerstand und liefen dort in denselben ReferenceError. Sie hier zu
-// beheben hiesse, in einem verhaltenserhaltenden Umbau das Verhalten zu ändern; sie sind als
-// eigene Aufgaben notiert. Wird eine behoben, muss ihr Eintrag hier verschwinden.
-const bekannteAltlasten = [
-  "14a-social-controls.js 'commitTree' is not defined."
-];
+// Der Umbau brachte zwei ältere Fehler dieser Art ans Licht, die unverändert im
+// Vorgängerstand standen und dort in denselben ReferenceError liefen. Beide sind inzwischen
+// behoben — publishPlan in #96, commitTree beim Reparieren des Einstellungen-Speicherns.
+// Die Liste zugelassener Ausnahmen ist damit leer und wieder verschwunden: Es gibt keinen
+// Bezeichner mehr, den dieser Test durchlassen darf.
 
 test("every identifier a module uses is either declared or imported", async () => {
   const { ESLint } = require("eslint");
@@ -233,5 +231,37 @@ test("every identifier a module uses is either declared or imported", async () =
     result.messages.map((message) => `${path.basename(result.filePath)} ${message.message}`)
   );
 
-  assert.deepEqual(found.sort(), [...bekannteAltlasten].sort());
+  assert.deepEqual(found.sort(), []);
+});
+
+// Die Fehlerklasse, die weder der Build noch ein Unit-Test bemerkt: Ein Bezeichner, der
+// nirgends deklariert ist, ist im Browser einfach `undefined` — der Aufruf scheitert erst,
+// wenn ein Mensch den Knopf drückt, und dann nur als Text in der Statuszeile.
+//
+// eslint findet das in einer Sekunde, aber es muss die Datei auch wirklich lesen. Bis zum
+// 23.08.2026 tat es das nicht: `npm run lint` übergab das gebaute Bündel zwar ausdrücklich,
+// der Regelblock galt aber für `blog/admin/*.js` und traf die Datei zwei Ebenen darunter
+// nicht. In der Flat Config heisst "kein passender Block" nicht Fehler, sondern *keine
+// Regeln* — grün, ohne gelesen zu haben. So blieb `commitTree` fünf Wochen stehen und das
+// Speichern der Social-Konfiguration lief in einen ReferenceError.
+//
+// Dieser Test hält beides fest: dass die Regel für das Bündel wirklich gilt, und dass sie
+// nichts findet.
+test("the admin lint gate really covers the built bundle", async () => {
+  const { ESLint } = require("eslint");
+  const root = path.join(__dirname, "..");
+  const bundle = path.join(root, "blog/admin/vendor/app/admin.js");
+  const eslint = new ESLint({ cwd: root });
+
+  // Ohne diese Zusicherung wäre der Rest bedeutungslos: eine Datei ohne passenden Block
+  // meldet nichts, weil nichts geprüft wird.
+  const applied = await eslint.calculateConfigForFile(bundle);
+  assert.equal(applied.rules?.["no-undef"]?.[0], 2, "no-undef must apply to the bundle as an error");
+
+  const results = await eslint.lintFiles([bundle]);
+  assert.equal(results.length, 1, "the check must actually have seen the bundle");
+  // Nur Fehler: Warnungen lassen auch `npm run lint` durch, und tote Bezeichner sind eine
+  // andere Aufräumaufgabe als ein Aufruf, der im Browser abstürzt.
+  const errors = results[0].messages.filter((message) => message.severity === 2);
+  assert.deepEqual(errors.map((message) => `${message.line} ${message.message}`), []);
 });

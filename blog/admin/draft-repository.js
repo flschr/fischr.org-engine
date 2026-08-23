@@ -34,11 +34,17 @@
       });
     }
 
-    async function commit(entries, message, { expectedBlobs = null } = {}) {
-      await ensureBranch();
+    // Compare-and-swap commit of a tree onto a branch, retrying if the head moved
+    // meanwhile (another device). `branch` names the target: the working branch by
+    // default, but the admin also writes single files straight onto the published
+    // branch (the social configuration), and that path needs the same loop.
+    async function commit(entries, message, { expectedBlobs = null, branch: target = branch } = {}) {
+      // Only the working branch is created on demand; every other target must
+      // already exist, and asking for it here would just hide a typo.
+      if (target === branch) await ensureBranch();
       let lastError;
       for (let attempt = 0; attempt < retries; attempt += 1) {
-        const ref = await github(`git/ref/heads/${encodeURIComponent(branch)}`);
+        const ref = await github(`git/ref/heads/${encodeURIComponent(target)}`);
         const parentSha = ref.object.sha;
         const parent = await github(`git/commits/${parentSha}`);
         if (expectedBlobs) await assertExpectedBlobs(parent.tree.sha, expectedBlobs);
@@ -51,7 +57,7 @@
           body: { message, tree: tree.sha, parents: [parentSha] }
         });
         try {
-          await github(`git/refs/heads/${encodeURIComponent(branch)}`, {
+          await github(`git/refs/heads/${encodeURIComponent(target)}`, {
             method: "PATCH",
             body: { sha: next.sha, force: false }
           });

@@ -1,5 +1,5 @@
 import { repo } from "./00-konstanten.js";
-import { github, socialConfigPath } from "./01-bootstrap.js";
+import { draftRepository, socialConfigPath } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { icon } from "./02-toolbar.js";
@@ -100,12 +100,14 @@ export function resetSocialConfig() {
   setSocialConfigStatus("Reset.", "muted");
 }
 
-// Commit a single text file straight onto the published branch, retrying if
-// the branch head moved (mirrors commitToDrafts, but targets main).
+// Commit a single text file straight onto the published branch, retrying if the branch
+// head moved (mirrors commitToDrafts, but targets main and leaves the cached drafts tree
+// alone — nothing on main belongs to it).
 async function commitFileToPublished(path, content, message) {
-  const blob = await github("git/blobs", { method: "POST", body: { content, encoding: "utf-8" } });
+  const blob = await draftRepository.createBlob(content);
   const entry = { path, mode: "100644", type: "blob", sha: blob.sha };
-  return commitTree(repo.publishBranch, [entry], message);
+  const result = await draftRepository.commit([entry], message, { branch: repo.publishBranch });
+  return result.commitSha;
 }
 
 export async function saveSocialConfig() {
