@@ -15,8 +15,25 @@
   // ist er wieder frei — bis dahin ist ein eigener Name ohnehin richtiger, weil beide parallel
   // existieren sollen.
   "name": "fischr-org-site",
+
+  // Hier steht bewusst weder "routes" noch "custom_domain". mysite.example hängt über eine Route auf
+  // Zonenebene an diesem Worker (Muster "mysite.example/*"), angelegt über die API und nur dort
+  // sichtbar — /workers/scripts/.../domains und /accounts/.../workers/domains sind leer und
+  // haben schon eine fremde Session auf die falsche Fährte geführt.
+  //
+  // Route statt Custom Domain, weil eine Domain erst vom Pages-Projekt gelöst werden müsste und
+  // dazwischen eine Lücke entstünde. Eine Route greift vor der Pages-Domain, ohne dass etwas
+  // gelöst wird — das Pages-Projekt bleibt bestehen und ist der Rückweg: Route löschen, Pages
+  // bedient wieder. Deshalb wird Pages weiterhin als Domain geführt, obwohl es nichts mehr
+  // ausliefert.
+  //
+  // www.mysite.example deckt die Route nicht ab und braucht es nicht: Der Hostname antwortet mit
+  // einer Weiterleitung auf den Apex.
   "compatibility_date": "2026-08-23",
-  "main": "./_site/_worker.js",
+  // Nicht direkt das generierte Bündel: worker/index.js reicht dessen Handler durch und
+  // exportiert daneben die Workflow-Klasse. Ein von `pages functions build` erzeugtes Bündel
+  // kann sie nicht mitbringen, die Laufzeit braucht sie aber als eigenen Export.
+  "main": "./worker/index.js",
 
   "assets": {
     "directory": "./_site",
@@ -45,6 +62,18 @@
 
   // Unverändert aus wrangler.jsonc übernommen — Bindungen sind zwischen Pages und Workers
   // gleich aufgebaut. Die Gründe stehen dort und werden hier bewusst nicht verdoppelt.
+  // Die Veröffentlichung als Zustandsmaschine. Sie baut nicht selbst — Eleventy, sharp und
+  // ffmpeg brauchen einen Checkout, den ein Worker nicht hat. Sie ordnet: prüft den Stand,
+  // stösst den Bau in Actions an, wartet ihn ab und hält fest, wo sie steht. Genau das fehlte,
+  // als zwei YAML-Dateien und Commit-Marker diese Rolle übernehmen mussten.
+  "workflows": [
+    {
+      "name": "fischr-publish",
+      "binding": "PUBLISH",
+      "class_name": "PublishWorkflow"
+    }
+  ],
+
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
