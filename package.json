@@ -14,6 +14,8 @@
     "start": "npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && npm run admin:vendor && eleventy --serve",
     "serve:prod": "npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && npm run admin:vendor && ELEVENTY_ENV=production eleventy --serve",
     "build": "npm run admin:vendor && npm run build:prepared",
+    "build:worker": "npm run build && cp .assetsignore _site/.assetsignore && npx --yes wrangler@4 pages functions build --outdir=_site/_worker.js/",
+    "deploy:worker:preview": "npx --yes wrangler@4 versions upload -c wrangler.workers.jsonc",
     "build:prepared": "npm run lint:prepared && npm run build:site",
     "build:site": "npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && ELEVENTY_ENV=production eleventy && npm run check:media-delivery && npm run check:deployment-vendors && npm run check:mf2 && npm run check:dates && npm run search:index",
     "build:dev": "npm run admin:vendor && npm run lint:prepared && npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && eleventy && npm run check:media-delivery && npm run check:deployment-vendors && npm run check:mf2 && npm run check:dates && npm run search:index",
@@ -43,6 +45,8 @@
     "webmentions:submit": "node scripts/submit-webmentions.js",
     "engine:export": "node scripts/export-public-engine.js",
     "engine:check": "node --test tests/public-engine-export.test.js",
+    "check:redirects": "node scripts/check-redirects.js",
+    "dev:worker": "npx --yes wrangler@4 dev -c wrangler.workers.jsonc --port 8787 --local",
     "validate:public": "npm test && npm run build"
   },
   "devDependencies": {

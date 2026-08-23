@@ -1,0 +1,4 @@
+# Der kompilierte Worker liegt im selben Verzeichnis wie die statischen Dateien, darf aber
+# nicht als eine davon ausgeliefert werden — sonst wäre der Quelltext des Admin-Proxys und der
+# Sitzungsbehandlung öffentlich abrufbar.
+_worker.js

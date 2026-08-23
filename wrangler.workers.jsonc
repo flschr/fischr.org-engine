@@ -1,0 +1,63 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Die Workers-Variante von wrangler.jsonc, absichtlich als zweite Datei.
+  //
+  // Solange die Produktion auf Pages läuft, dürfen sich beide nicht ins Gehege kommen: Ein
+  // `_worker.js` im Ausgabeverzeichnis würde Pages in seinen Advanced Mode versetzen und den
+  // laufenden Deploy verändern. Deshalb erzeugt `npm run build:site` diese Datei nicht — nur
+  // `npm run build:worker` tut das — und deshalb steht diese Konfiguration daneben statt darin.
+  //
+  // Beim Umschalten wird daraus wrangler.jsonc, und wrangler.jsonc entfällt.
+  //
+  // Der Name ist nicht "fischr-org": Workers und Pages-Projekte teilen sich im Dashboard einen
+  // Namensraum, und dieser Name gehört noch dem Pages-Projekt. Erst wenn das abgeschaltet wird,
+  // ist er wieder frei — bis dahin ist ein eigener Name ohnehin richtiger, weil beide parallel
+  // existieren sollen.
+  "name": "fischr-org-site",
+  "compatibility_date": "2026-08-23",
+  "main": "./_site/_worker.js",
+
+  "assets": {
+    "directory": "./_site",
+    "binding": "ASSETS",
+
+    // Der Punkt, an dem die Migration still kaputtgehen könnte: Pages führt Functions VOR den
+    // statischen Dateien aus, Workers macht es genau umgekehrt. Ohne diese Liste würde
+    // /feed.xml von der gebauten Datei bedient statt von functions/feed.xml.js — die Seite
+    // sähe völlig normal aus, und die Feed-Zählung hörte lautlos auf.
+    //
+    // Die Einträge sind eins zu eins die "include"-Liste aus blog/_routes.json, die unter Pages
+    // dieselbe Frage beantwortet hat. Wer dort etwas ergänzt, muss es hier ergänzen; ein Test
+    // in tests/workflow-validation.test.js hält die beiden zusammen.
+    "run_worker_first": [
+      "/feed.xml",
+      "/admin",
+      "/admin/*",
+      "/api/admin/*",
+      "/api/github/*",
+      "/api/hit"
+    ],
+
+    // Die Seite hat eine eigene 404-Seite; ohne das käme eine nackte Cloudflare-Fehlerseite.
+    "not_found_handling": "404-page"
+  },
+
+  // Unverändert aus wrangler.jsonc übernommen — Bindungen sind zwischen Pages und Workers
+  // gleich aufgebaut. Die Gründe stehen dort und werden hier bewusst nicht verdoppelt.
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "fischr-media"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "ANALYTICS",
+      "database_name": "fischr-analytics-eu",
+      "database_id": "49a984ad-3f98-41d7-b968-7ddae2f8822c",
+      "preview_database_id": "87f5a68f-55dc-4208-bf1e-7e47c2122fbb"
+    }
+  ]
+}
