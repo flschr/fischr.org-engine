@@ -149,8 +149,14 @@ test("narrow author cards wrap around the portrait and leave social links to the
 test("about page keeps its profiles as text links next to the mail address", async ({ page }) => {
   await page.goto("/about/");
 
-  const contact = page.locator(".about-site-notes p").last();
-  await expect(contact).toContainText("Alternativ findest du mich auch bei");
+  const notes = page.locator(".about-site-notes");
+  await expect(notes.getByRole("link", { name: "hello@mysite.example", exact: true }))
+    .toHaveAttribute("href", "mailto:hello@mysite.example");
+
+  // Address the paragraph by its own text rather than by position. Mail address and profiles have
+  // lived in one paragraph and in two; which of those it is today is a copy decision, and pinning
+  // it here turned a pure text edit on /about/ into four red browser tests.
+  const contact = notes.locator("p", { hasText: "Alternativ findest du mich auch bei" });
 
   const profiles = [
     ["Mastodon", "https://mysite.example/@example"],
@@ -161,7 +167,9 @@ test("about page keeps its profiles as text links next to the mail address", asy
     ["OpenStreetMap", "https://www.openstreetmap.org/user/fischr"],
   ];
 
-  await expect(contact.getByRole("link")).toHaveCount(profiles.length);
+  // Count the rel="me" links: whether the mail link shares this paragraph is exactly the detail
+  // above says is not the page's promise. Every profile is still pinned by name and href below.
+  await expect(contact.locator('a[rel="me"]')).toHaveCount(profiles.length);
   for (const [name, href] of profiles) {
     const link = contact.getByRole("link", { name, exact: true });
     await expect(link).toHaveAttribute("href", href);
