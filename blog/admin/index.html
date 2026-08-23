@@ -309,8 +309,9 @@ eleventyExcludeFromCollections: true
                /api/admin/analytics (server-side, session-gated) — it reads the
                D1 database, no third-party service is involved. -->
           <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
-            <div class="library-head view-head">
+            <div class="library-head view-head stats-head">
               <h1 class="view-title">Statistics</h1>
+              <p id="statsRangeLabel" class="stats-range-label"></p>
               <div class="library-tools">
                 <!-- Die Presets und der freie Zeitraum sind eine Auswahl, keine
                      zwei: "Zeitraum" ist der fünfte Knopf und klappt die beiden
@@ -338,7 +339,6 @@ eleventyExcludeFromCollections: true
                 </button>
               </div>
             </div>
-            <p id="statsRangeLabel" class="stats-range-label"></p>
             <div id="statsBody" class="stats-body"></div>
           </section>
 

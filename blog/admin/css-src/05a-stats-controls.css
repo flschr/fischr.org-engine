@@ -5,7 +5,7 @@
 /* Der freie Zeitraum klappt unter der Auswahl auf, statt dauerhaft zwei Felder
    in die Leiste zu stellen. Rechts ausgerichtet an der Auswahl, weil die Leiste
    selbst am rechten Rand der Ansicht sitzt. */
-.stats-range-wrap { position: relative; display: inline-flex; }
+.stats-range-wrap { position: relative; display: inline-flex; min-width: 0; }
 .stats-picker {
   position: absolute;
   top: calc(100% + 0.45rem);

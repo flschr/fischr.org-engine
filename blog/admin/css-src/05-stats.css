@@ -1,10 +1,14 @@
 /* ---- Stats (eigene Auswertung) ----------------------------------------- */
 .stats-view { max-width: var(--content-w); margin: 0 auto 0 0; }
-.stats-range { display: inline-flex; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel-2); }
+/* Die Pille darf schmaler werden als ihre fünf Knöpfe und scrollt dann
+   seitwärts, statt über den rechten Rand hinauszustehen. */
+.stats-range { display: inline-flex; min-width: 0; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel-2); overflow-x: auto; scrollbar-width: none; }
+.stats-range::-webkit-scrollbar { display: none; }
 .stats-range-btn {
+  flex: 0 0 auto;
   border: 0;
   border-radius: var(--radius-pill);
-  padding: 0.35rem 0.8rem;
+  padding: 0.35rem 0.6rem;
   background: transparent;
   color: var(--ink-soft);
   font: inherit;
@@ -14,13 +18,20 @@
 }
 .stats-range-btn:hover { color: var(--ink); }
 .stats-range-btn.is-active { background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+/* Der Zeitraum ist die Überschrift dieser Ansicht — der Titel darüber ist nur
+   noch für Screenreader da. Er steht deshalb links in der Kopfzeile, und die
+   Auswahl rückt an den rechten Rand; auch dann, wenn sie in einem schmalen
+   Fenster auf eine eigene Zeile umbricht (deshalb wächst .library-tools). */
 .stats-range-label {
-  margin: 0 0 1.1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
   color: var(--ink);
-  font-size: clamp(1.25rem, 2.4vw, 1.5rem);
-  font-weight: 660;
-  letter-spacing: -0.025em;
+  font-size: 1.05rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
 }
+.stats-head .library-tools { flex: 1 1 auto; }
 .stats-state { margin: 2rem 0; color: var(--ink-soft); text-align: left; }
 .stats-state-error { color: var(--red-ink); }
 

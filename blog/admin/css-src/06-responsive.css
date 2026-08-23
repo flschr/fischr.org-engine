@@ -179,6 +179,10 @@
     -webkit-overflow-scrolling: touch;
   }
   .library-tools { flex: 1 1 100%; }
+  /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
+     statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
+  .stats-head { flex-wrap: nowrap; }
+  .stats-head .library-tools { min-width: 0; }
   .library-tools .search { flex: 1 1 auto; width: auto; }
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
 }
