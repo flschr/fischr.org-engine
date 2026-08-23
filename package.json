@@ -20,7 +20,7 @@
     "build:site": "npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && ELEVENTY_ENV=production eleventy && npm run check:media-delivery && npm run check:deployment-vendors && npm run check:mf2 && npm run check:dates && npm run search:index",
     "build:dev": "npm run admin:vendor && npm run lint:prepared && npm run check:content && npm run clean && npm run media:source && npm run check:media && npm run media:videos && eleventy && npm run check:media-delivery && npm run check:deployment-vendors && npm run check:mf2 && npm run check:dates && npm run search:index",
     "lint": "npm run admin:vendor && npm run lint:prepared",
-    "lint:prepared": "npm run admin:vendor:check && eslint blog/admin/*.js blog/admin/admin-src/*.js blog/admin/vendor/app/admin.js blog/assets/js/*.js functions/**/*.js scripts/**/*.js lib/**/*.js",
+    "lint:prepared": "npm run admin:vendor:check && eslint blog/admin/*.js blog/admin/admin-src/*.js blog/admin/vendor/app/admin.js blog/assets/js/*.js functions/**/*.js scripts/**/*.js lib/**/*.js worker/*.js",
     "test": "npm run admin:vendor && npm run test:prepared",
     "test:prepared": "npm run admin:vendor:check && node --test tests/*.test.js",
     "validate:site": "npm run admin:vendor && npm run test:prepared && npm run build:prepared",
