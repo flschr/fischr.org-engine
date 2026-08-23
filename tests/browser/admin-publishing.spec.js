@@ -12,14 +12,16 @@ test("authenticated editor saves a real draft snapshot and dispatches its review
   await page.getByPlaceholder("Titel").fill("Transactional browser test");
   await page.locator(".cm-content").click();
   await page.keyboard.insertText("Saved through the GitHub object API.");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichen" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Veröffentlichen" }).click();
   await page.getByRole("dialog", { name: "Veröffentlichen" }).getByRole("button", { name: "Veröffentlichen" }).click();
-  await expect(page.locator("#syncNowDialog")).toBeVisible();
-  await page.locator("#syncNowDialog").getByRole("button", { name: "Veröffentlichen und syncen" }).click();
+  // Confirming the publish sheet is the last click — the sync question that
+  // used to stand here is gone; the save commits to drafts and starts the
+  // publish in one go.
+  //
   // Gestartet wird über den eigenen Endpunkt, nicht mehr per Dispatch aus dem Browser. Was
   // geprüft wird, ist unverändert: Es geht genau der Stand raus, den die Queue gezeigt hat.
   await expect.poll(() => requests.some((request) => request.method === "POST" && request.url.endsWith("/api/admin/publish"))).toBe(true);
-  const start = requests.find((request) => request.url.endsWith("/api/admin/publish"));
+  const start = requests.find((request) => request.method === "POST" && request.url.endsWith("/api/admin/publish"));
   expect(start.body.draftSha).toBe("new-commit-sha");
   expect(start.body.mainSha).toBe("main-head-sha");
   expect(start.body.changeCount).toBe(1);
@@ -45,18 +47,16 @@ test("authenticated editor saves a real draft snapshot and dispatches its review
 test("die Warteschlange bleibt während einer laufenden Veröffentlichung erreichbar", async ({ page }) => {
   await page.unroute("**/api/admin/auth/session");
   const requests = [];
+  // Was gerade läuft, steht im Buch der Veröffentlichungen — nicht mehr in der Actions-Liste,
+  // in der es früher über einen Titel gesucht wurde. Der Lauf selbst wird über seine Nummer
+  // geholt; der Mock beantwortet das mit einem laufenden Lauf.
   await mockAuthenticatedGithub(page, requests, [], {
-    onWorkflowPoll({ workflow }) {
-      if (workflow !== "admin-publish.yml") return null;
-      return {
-        workflow_runs: [{
-          id: 4711,
-          display_title: "Publish laufender-lauf",
-          status: "in_progress",
-          html_url: "https://github.com/example/example-blog/actions/runs/4711",
-          created_at: "2026-01-01T10:00:00Z"
-        }]
-      };
+    laufendeVeroeffentlichung: {
+      requestId: "laufender-lauf",
+      workflowId: "cf_laufend",
+      runId: 4711,
+      changeCount: 0,
+      startedAt: "2026-01-01T10:00:00Z"
     }
   });
 

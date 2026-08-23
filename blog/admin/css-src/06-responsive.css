@@ -21,6 +21,9 @@
      of each re-deriving it, so they can never drift apart. */
   :root {
     --tabbar-h: 3.4rem;
+    /* Measured, not guessed: 0.4rem padding above and below a 2.3rem button
+       plus its border comes to 3.16rem on a 16px root. */
+    --writingbar-h: 3.2rem;
     --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   }
   /* :not(.is-editor-view) is load-bearing, not decoration: :has() inherits its
@@ -32,8 +35,19 @@
   .admin-body:not(.is-editor-view):has(.sync-button.is-publishing) {
     --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 3.45rem);
   }
-  /* The editor hides the bar, so its chrome is just the home indicator. */
-  .admin-body.is-editor-view { --bottom-chrome: env(safe-area-inset-bottom); }
+  /* The editor hides the tab bar, but it is not empty down there: the writing
+     bar sits on the bottom edge and rides up with the keyboard. Anything else
+     pinned to that edge — the status toast, the publish overlay — has to start
+     above both, which is exactly what this value is for. Leaving it at the
+     home indicator alone is what put the toast on top of the writing bar. */
+  .admin-body.is-editor-view {
+    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px) + env(safe-area-inset-bottom));
+  }
+  /* An open keyboard already covers the home indicator, so the bar drops its
+     safe-area padding and the chrome above it must drop the same amount. */
+  html.is-keyboard-open .admin-body.is-editor-view {
+    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px));
+  }
 
   .admin-layout { display: block; }
   .admin-sidebar {
@@ -110,7 +124,8 @@
   .status-bar { bottom: calc(var(--bottom-chrome) + 0.9rem); }
 
   /* The editor is full-screen on a phone: the tab bar would sit under the
-     keyboard anyway, so it steps aside and #editorBackButton leads out. */
+     keyboard anyway, so it steps aside. Getting back out is the platform's
+     job — browser back, or the edge-swipe in a home-screen app. */
   .admin-body.is-editor-view .admin-sidebar { display: none; }
   .library-head,
   .queue-head {
@@ -121,63 +136,23 @@
     margin-bottom: 1rem;
   }
   .meta-panel { grid-template-columns: 1fr; }
-  /* Keep the toolbar on a single row; scroll horizontally instead of wrapping. */
+  /* Six buttons now instead of eighteen, so the article bar fits without the
+     sideways scroll it used to need. */
   .editor-bar {
     flex-wrap: nowrap;
     gap: 0.35rem;
-    overflow-x: auto;
-    overflow-y: hidden;
     width: 100%;
     max-width: var(--editor-content-w);
+    margin-top: 0;
+    padding-top: 0;
     padding-right: 0;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
   }
-  .editor-bar::-webkit-scrollbar { display: none; }
-  .editor-bar { margin-top: 0; padding-top: 0; }
   .editor-bar > *,
   .format-toolbar > * { flex: 0 0 auto; }
   .format-toolbar { flex-wrap: nowrap; }
   /* Pull-to-refresh replaces the refresh buttons here; on desktop they stay,
      because there is no gesture to pull with a mouse. */
   #refreshButton, #refreshMediaButton, #statsRefresh { display: none; }
-  .tb-divider { display: none; }
-  .tb-back { display: inline-flex; position: sticky; left: 0; z-index: 1; }
-  .admin-body.is-editor-view {
-    height: 100dvh;
-    overflow: hidden;
-  }
-  .admin-body.is-editor-view .admin-shell,
-  .admin-body.is-editor-view .admin-layout,
-  .admin-body.is-editor-view .admin-workspace {
-    min-height: 0;
-    height: 100dvh;
-  }
-  .admin-body.is-editor-view .admin-workspace {
-    overflow: hidden;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-  }
-  .admin-body.is-editor-view .editor-form {
-    gap: 0.75rem;
-    grid-template-rows: auto minmax(0, 1fr);
-    min-height: 0;
-    height: 100%;
-  }
-  .admin-body.is-editor-view .editor-bar {
-    position: relative;
-    top: auto;
-    z-index: 2;
-    margin-top: 0;
-    padding-top: 0;
-    padding-bottom: 0.35rem;
-  }
-  .admin-body.is-editor-view .editor-article {
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
-    -webkit-overflow-scrolling: touch;
-  }
   .library-tools { flex: 1 1 100%; }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
@@ -233,4 +208,16 @@
   .publish-dialog-foot-spacer { display: none; }
   .publish-dialog-foot button { flex: 1 1 8rem; min-height: 2.75rem; }
   #publishDialogUnpublish { flex-basis: 100%; }
+}
+
+/* ---- Publish overlay on phones ----------------------------------------- */
+/* Full width above whatever chrome the bottom edge is carrying, so it never
+   lands on top of the tab bar or the writing bar. */
+@media (max-width: 52rem) {
+  .publish-overlay {
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: calc(var(--bottom-chrome) + 0.75rem);
+    width: auto;
+  }
 }

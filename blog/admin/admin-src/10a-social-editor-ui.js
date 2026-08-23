@@ -4,7 +4,6 @@ import { SOCIAL_OFF, loadSocialConfig, socialDefaultRule, socialRuleById, social
 import { syncImageControls } from "./11-social-images.js";
 import { updateSocialPanel } from "./13-publish-dialog.js";
 import { captureEditorSnapshot, editorSnapshot } from "./18-snapshots.js";
-import { collectEditorFields } from "./20a-editor-field-actions.js";
 
 export function populateSocialCategoryOptions() {
   const select = els.categorySelect;

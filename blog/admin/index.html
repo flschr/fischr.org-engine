@@ -97,40 +97,44 @@ eleventyExcludeFromCollections: true
             <div class="editor-head view-head">
               <h1 id="editorViewTitle" class="view-title">New article</h1>
             </div>
-            <nav class="editor-bar" aria-label="Editor">
-              <!-- Mobile-only: the bottom bar steps aside for the full-screen
-                   editor, and a standalone PWA has no browser back button, so
-                   this is the only way back to the list on a phone. -->
-              <button id="editorBackButton" class="tb-btn tb-back" type="button" aria-label="Zurück zur Liste" title="Zurück zur Liste">
-                <span data-icon="chevron-left" aria-hidden="true"></span>
-              </button>
-              <button id="publishButton" class="tb-btn tb-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
-                <span data-icon="send" aria-hidden="true"></span>
-              </button>
-              <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
-                <span data-icon="save" aria-hidden="true"></span>
-              </button>
-              <button id="deleteButton" class="tb-btn tb-delete" type="button" aria-label="Löschen" title="Löschen">
-                <span data-icon="trash-2" aria-hidden="true"></span>
-              </button>
-              <span class="tb-divider" aria-hidden="true"></span>
+            <!-- Two bars, split by what the buttons act on. This one acts on
+                 the document and stays at the top; the writing bar below acts
+                 on the text and rides the keyboard. They used to be one strip
+                 of eighteen buttons that scrolled sideways on a phone. -->
+            <nav class="editor-bar" aria-label="Artikel">
+              <span class="editor-bar-spacer"></span>
               <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
                 <span data-icon="eye" aria-hidden="true"></span>
               </button>
               <button id="toggleMetaButton" class="tb-btn" type="button" aria-expanded="false" aria-label="Artikeloptionen" title="Artikeloptionen">
                 <span data-icon="sliders-horizontal" aria-hidden="true"></span>
               </button>
-              <span class="tb-divider" aria-hidden="true"></span>
+              <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen">
+                <span data-icon="ellipsis" aria-hidden="true"></span>
+              </button>
+              <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
+                <span data-icon="save" aria-hidden="true"></span>
+              </button>
+              <button id="publishButton" class="tb-btn tb-publish is-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                <span data-icon="send" aria-hidden="true"></span>
+              </button>
+            </nav>
+
+            <input id="imageUploadInput" class="hidden-file-input" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
+            <input id="gpxUploadInput" class="hidden-file-input" type="file" accept="application/gpx+xml,.gpx">
+
+            <!-- Acts on the text. Inline here on a wide screen; on a phone CSS
+                 pins it to `--keyboard-inset` so it rides just above the
+                 on-screen keyboard, where the thumbs already are. -->
+            <nav id="writingBar" class="writing-bar" aria-label="Schreiben">
               <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung"></div>
-              <span class="tb-divider" aria-hidden="true"></span>
+              <span class="writing-bar-spacer"></span>
               <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)">
                 <span data-icon="undo-2" aria-hidden="true"></span>
               </button>
               <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)">
                 <span data-icon="redo-2" aria-hidden="true"></span>
               </button>
-              <input id="imageUploadInput" class="hidden-file-input" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
-              <input id="gpxUploadInput" class="hidden-file-input" type="file" accept="application/gpx+xml,.gpx">
             </nav>
 
             <article class="editor-article">
@@ -346,6 +350,8 @@ eleventyExcludeFromCollections: true
         </main>
       </div>
 
+      <!-- Follows the publish wherever you started it — see 27f-publish-overlay.js. -->
+      <div id="publishOverlay" class="publish-overlay" hidden></div>
       <div id="statusBar" class="status-bar" role="status" aria-live="polite"></div>
     </div>
 

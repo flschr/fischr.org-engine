@@ -32,24 +32,13 @@
       </form>
     </dialog>
 
-    <dialog id="syncNowDialog" class="dialog">
-      <form method="dialog">
-        <h2 id="syncNowDialogTitle">Sync everything now?</h2>
-        <p id="syncNowDialogText">Soll jetzt wirklich alles veröffentlicht werden?</p>
-        <menu>
-          <button class="ghost" value="later">Später</button>
-          <button id="syncNowDialogAction" class="primary-action" value="sync">Jetzt syncen</button>
-        </menu>
-      </form>
-    </dialog>
-
     <dialog id="unpublishDialog" class="dialog">
       <form method="dialog">
         <h2>Veröffentlichung zurückziehen?</h2>
-        <p>Der Artikel wird als Entwurf gespeichert. Anschließend kannst du die Änderung sofort synchronisieren und ihn damit vom öffentlichen Blog entfernen.</p>
+        <p>Der Artikel wird als Entwurf gespeichert und dabei sofort vom öffentlichen Blog entfernt.</p>
         <menu>
           <button class="ghost" value="cancel">Abbrechen</button>
-          <button class="danger" value="unpublish">Als Entwurf speichern</button>
+          <button class="danger" value="unpublish">Zurückziehen</button>
         </menu>
       </form>
     </dialog>
@@ -70,4 +59,38 @@
         <span id="saveDialogSpinner" class="save-spinner" aria-hidden="true"></span>
         <p id="saveDialogText">Wird gespeichert …</p>
       </div>
+    </dialog>
+
+    <!-- The writing bar's "+": everything that inserts into the text but is
+         not needed in every article. Filled from MORE_COMMANDS. -->
+    <dialog id="moreCommandsDialog" class="dialog sheet-dialog" aria-label="Weitere Einfügungen">
+      <form method="dialog" class="sheet-form">
+        <h2>Einfügen</h2>
+        <div id="moreCommandsList" class="tb-sheet-list"></div>
+        <menu>
+          <button class="ghost" value="cancel">Abbrechen</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <!-- The top bar's "⋯": rare actions on the article itself. They sit here
+         rather than in the bar so that "Löschen" is never one mis-tap away
+         from "Speichern" on a phone. -->
+    <dialog id="docMenuDialog" class="dialog sheet-dialog" aria-label="Weitere Artikelaktionen">
+      <form method="dialog" class="sheet-form">
+        <h2 id="docMenuDialogTitle">Artikel</h2>
+        <div class="tb-sheet-list">
+          <button id="docMenuUnpublish" class="tb-sheet-button" type="submit" value="unpublish">
+            <span data-icon="eye-off" aria-hidden="true"></span>
+            <span class="tb-sheet-label">Veröffentlichung zurückziehen</span>
+          </button>
+          <button id="docMenuDelete" class="tb-sheet-button is-danger" type="submit" value="delete">
+            <span data-icon="trash-2" aria-hidden="true"></span>
+            <span class="tb-sheet-label">Artikel löschen</span>
+          </button>
+        </div>
+        <menu>
+          <button class="ghost" value="cancel">Abbrechen</button>
+        </menu>
+      </form>
     </dialog>

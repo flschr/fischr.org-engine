@@ -249,7 +249,7 @@ test("a standalone poster repair stays visible and publishable", async ({ page }
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" && request.url.endsWith("/api/admin/publish")
   )).toBe(true);
-  const start = requests.find((request) => request.url.endsWith("/api/admin/publish"));
+  const start = requests.find((request) => request.method === "POST" && request.url.endsWith("/api/admin/publish"));
   expect(start.body.changeCount).toBe(1);
 });
 

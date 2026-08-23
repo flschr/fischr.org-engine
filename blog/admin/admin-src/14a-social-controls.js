@@ -2,14 +2,12 @@ import { repo } from "./00-konstanten.js";
 import { draftRepository, socialConfigPath } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
-import { icon } from "./02-toolbar.js";
 import { setBusy, showStatus } from "./03-status.js";
-import { commitToDrafts } from "./04a-draft-writes.js";
 import { hasGithubAccess, requireGithubAccess } from "./05-github-auth.js";
 import { isoFromDateInputValue } from "./08-encoding.js";
 import { normalizeRule, normalizeSocialConfigDraft, refreshDefaultCategoryOptions, renderSocialConfig, resolveDefaultTemplate, socialDeepClone } from "./14-social-settings.js";
 import { renderSocialCategoryCards } from "./14b-social-cards.js";
-import { applyStatsTabVisibility, statsEnabled } from "./21-stats.js";
+import { applyStatsTabVisibility } from "./21-stats.js";
 
 export function textControl(value, onInput, placeholder) {
   const input = document.createElement("input");

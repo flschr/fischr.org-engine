@@ -1,3 +1,4 @@
+import { collections } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { syncAutoSlug } from "./06-paths.js";
@@ -7,14 +8,12 @@ import { addGalleryImage } from "./11-social-images.js";
 import { onContentTypeChange } from "./12-content-type.js";
 import { closePublishDialog, confirmPublishDialog, restoreDialogBackup, updateSocialPanel } from "./13-publish-dialog.js";
 import { cancelSocialImagePick, startSocialImagePick } from "./15-media-references.js";
-import { ensureEditor, handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, renderEditorBody, resetEditorDrop, setEditorMode, syncEditorFromVisible, transferHasMedia } from "./17-editor.js";
+import { ensureEditor, handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, renderEditorBody, resetEditorDrop, setEditorMode, syncEditorFromVisible } from "./17-editor.js";
 import { confirmLeaveEditor } from "./19-recovery.js";
 import { renderEditorMetaLine, resizeTitleInput } from "./20-editor-fields.js";
-import { backToLibrary } from "./23-routing.js";
-import { replaceNav } from "./24-history.js";
 import { renderEntryList } from "./25-entries.js";
 import { newEntry, queueEntryDelete } from "./25a-entry-actions.js";
-import { handleCurrentPublishAction, saveWithProgress } from "./25b-publish-actions.js";
+import { handleCurrentPublishAction, saveWithProgress, unpublishCurrentPost } from "./25b-publish-actions.js";
 import { queueGpxUpload, queueUploads } from "./26-media.js";
 import { renderMedia } from "./26b-media-render.js";
 import { syncOutbox } from "./27b-publish-actions.js";
@@ -57,18 +56,39 @@ export function wireEditorEvents() {
     if (!expanded) syncAutoSlug();
   });
 
-  // Leaving the editor without saving — the phone's only exit now that the
-  // bottom bar hides here. Routes like any other navigation so the history
-  // stack keeps matching the view.
-  els.editorBackButton?.addEventListener("click", async () => {
-    if (state.view !== "editor") return;
-    if (!(await confirmLeaveEditor())) return;
-    backToLibrary();
-    replaceNav();
-  });
+  // No back button: the platform's own back — the browser's, or the edge-swipe
+  // in a home-screen app — already leads out, and it lands in handlePopState(),
+  // which asks about unsaved changes exactly like this button did and re-pushes
+  // the editor if the answer is no. A second way out only cost a slot in the
+  // bar.
   els.saveButton.addEventListener("click", () => saveWithProgress("save"));
   els.publishButton.addEventListener("click", handleCurrentPublishAction);
-  els.deleteButton.addEventListener("click", queueEntryDelete);
+  // Rare article actions live behind "⋯" so the bar keeps only what gets used
+  // while writing. The menu itself decides nothing — each entry still runs its
+  // own confirmation.
+  els.docMenuButton?.addEventListener("click", () => {
+    const published = state.current?.collection === "posts" && Boolean(state.current.published);
+    if (els.docMenuUnpublish) els.docMenuUnpublish.hidden = !published;
+    // A page is not an article. The delete confirmation next door already names
+    // the kind it is about; the menu that leads to it has to agree.
+    const label = collections[state.current?.collection]?.label || "Eintrag";
+    const deleteLabel = els.docMenuDelete?.querySelector(".tb-sheet-label");
+    if (deleteLabel) deleteLabel.textContent = `${label} löschen`;
+    if (els.docMenuDialogTitle) els.docMenuDialogTitle.textContent = label;
+    if (!els.docMenuDialog) return;
+    // Reset before opening, like every other dialog here. WebKit — i.e. the
+    // browser this admin is written on — leaves `returnValue` untouched when a
+    // dialog is dismissed with Escape, so a previous "delete" would still be
+    // sitting there and fire again on the next dismissal. Chromium clears it
+    // to "", which hides the bug completely on desktop.
+    els.docMenuDialog.returnValue = "cancel";
+    els.docMenuDialog.showModal();
+  });
+  els.docMenuDialog?.addEventListener("close", () => {
+    const choice = els.docMenuDialog.returnValue;
+    if (choice === "delete") queueEntryDelete();
+    else if (choice === "unpublish") unpublishCurrentPost();
+  });
   els.undoButton.addEventListener("click", () => {
     if (state.editorMode === "preview") setEditorMode("markdown");
     const editor = ensureEditor();
@@ -141,9 +161,5 @@ export function wireEditorEvents() {
     input.addEventListener("input", renderEditorMetaLine);
     input.addEventListener("change", renderEditorMetaLine);
     input.addEventListener("change", updateSocialPanel);
-  });
-  els.draftInput.addEventListener("change", () => {
-    if (state.current) state.current.draftTouched = true;
-    renderEditorMetaLine();
   });
 }

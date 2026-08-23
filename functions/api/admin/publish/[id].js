@@ -5,6 +5,7 @@
 // dafür weder Titelabgleich noch Rateschleife.
 
 import { jsonResponse, readSession } from "../../../_admin-auth.js";
+import { ledgerAus } from "../../../../worker/publish-ledger.js";
 
 export function onRequestGet(context) {
   return handlePublishStatus(context, { readSession });
@@ -30,10 +31,21 @@ export async function handlePublishStatus(context, { readSession: sitzungLesen }
     throw error;
   }
 
+  // Der Lauf kommt aus dem Buch, sobald der Workflow ihn gefunden hat. Damit fragt der Admin ihn
+  // direkt ab, statt die letzten dreissig Läufe zu listen und deren Titel mit einer selbst
+  // gebauten Zeichenkette zu vergleichen — eine Kopplung an die run-name-Zeile in
+  // admin-publish.yml, die der Browser gar nicht sehen kann.
+  //
+  // Fehlt der Eintrag, ist das kein Fehler: Zwischen dem Start und dem Fund liegen Sekunden, in
+  // denen es schlicht noch keinen Lauf gibt.
+  const zeile = await ledgerAus(context.env.PUBLISH_LEDGER)?.nachInstanz(String(id));
+
   return jsonResponse({
     id: String(id),
     status: zustand.status,
     output: zustand.output ?? null,
-    error: zustand.error ?? null
+    error: zustand.error ?? null,
+    lauf: zeile?.run_id ? { id: zeile.run_id, url: zeile.run_url || null } : null,
+    buch: zeile ? { requestId: zeile.request_id, status: zeile.status, grund: zeile.grund, seit: zeile.started_at } : null
   });
 }

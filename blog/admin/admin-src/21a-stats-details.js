@@ -1,5 +1,4 @@
 import { state } from "./01c-state.js";
-import { icon } from "./02-toolbar.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat } from "./21-stats.js";
 import { statsPeriodBounds } from "./21b-stats-period.js";

@@ -28,6 +28,13 @@
   // dieselbe wie die Produktion, landeten Testaufrufe aus `wrangler pages dev`
   // und aus Vorschau-Bereitstellungen dauerhaft in den echten Zahlen.
   "d1_databases": [
+    // Das Buch der Veröffentlichungen. Eigene Datenbank, nicht die der Analytics: andere Frage,
+    // anderer Lebenszyklus. Schema in lib/publish/schema.sql.
+    {
+      "binding": "PUBLISH_LEDGER",
+      "database_name": "fischr-publish-eu",
+      "database_id": "f6d16693-af19-453d-b232-499a4ccabc5b"
+    },
     {
       "binding": "ANALYTICS",
       "database_name": "fischr-analytics-eu",

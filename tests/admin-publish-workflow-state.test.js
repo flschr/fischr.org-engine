@@ -103,3 +103,19 @@ test("jede Statusabfrage läuft durch den Prüfer", () => {
   const refresh = extractFunction(adminSource(), "async function refreshPublishRequest(request, signal)");
   assert.match(refresh, /const status = await workflowGeprueft\(\s*await window\.RWPublishService\.fetchStatus\(/);
 });
+
+// Der Aufrüstpfad. Eine Anfrage, die noch im Browser liegt, während der Umbau deployt wird,
+// kennt weder Lauf noch Instanz — über sie ist nichts mehr zu erfahren. Bliebe sie liegen,
+// stünde die Karte zwölf Minuten auf „vorgemerkt" und meldete dann etwas Falsches.
+test("eine Anfrage von vor dem Buch wird verworfen statt weiterverfolgt", () => {
+  const source = adminSource();
+  const gelesen = extractFunction(source, "function storedPublishRequest()");
+
+  assert.match(gelesen, /if \(!request\.runId && !request\.workflowId\)/);
+  assert.match(gelesen, /clearRequest\(localStorage, publishRequestKey\)/);
+  assert.match(gelesen, /return null/);
+
+  // Und danach greift die Wiederaufnahme aus dem Buch — sonst wäre das Verwerfen ein Verlust.
+  const resume = extractFunction(source, "async function resumePublish()");
+  assert.match(resume, /storedPublishRequest\(\)\s*\|\|\s*await window\.RWPublishService\.discoverActiveRequest\(\)/);
+});

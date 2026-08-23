@@ -1,6 +1,5 @@
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
-import { startMediaJobs } from "./26c-media-jobs.js";
 import { renderQueue } from "./27c-queue-render.js";
 
 // --- Shared media recovery state ----------------------------------------

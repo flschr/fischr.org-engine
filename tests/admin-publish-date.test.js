@@ -51,15 +51,34 @@ test("admin publish and unpublish only toggle draft state", () => {
   }
 });
 
-test("saving a published article offers to sync the queued changes", () => {
+test("only sending publishes; saving only ever writes to drafts", () => {
   const source = adminSource();
 
-  assert.match(source, /async function saveWithProgress\(mode,[\s\S]*?const wasPublished = state\.current\?\.collection === "posts" && Boolean\(state\.current\.published\)/);
-  assert.match(source, /const shouldOfferSync = [^;]*mode === "save" && wasPublished/);
-  assert.match(source, /if \(shouldOfferSync\)[\s\S]*?await maybeOfferSyncAfterSave/);
-  assert.match(source, /savesUnpublish = mode !== "publish" && wasPublished && els\.draftInput\.checked/);
-  assert.match(source, /savesUnpublish \? "unpublish"/);
-  assert.match(source, /effectiveSyncAction === "unpublish"[\s\S]*state\.current\.unpublishQueued = true/);
+  // One deliberate button decides that the public site changes. Publishing on
+  // every save was tried and rejected: each publish is a real Actions build,
+  // and production deploys share one non-cancelling concurrency group, so
+  // saves made while writing would queue up as builds behind each other and
+  // the last one would land minutes later.
+  assert.match(source, /const shouldSync = offerSync \|\| mode === "publish";/);
+  assert.doesNotMatch(source, /mode === "save" && wasPublished/);
+  assert.doesNotMatch(source, /savesPublish/);
+  assert.match(source, /if \(shouldSync\)[\s\S]*?await syncAfterSave\(\)/);
+
+  // The dialog between "sent" and "live" is gone for good — it asked a
+  // question whose answer was always yes. Collecting several posts into one
+  // publish is still possible from the queue view.
+  assert.doesNotMatch(source, /askSyncNowAction|maybeOfferSyncAfterSave|syncNowDialog/);
+  assert.match(extractBlock(source, "async function syncAfterSave()"), /await syncOutbox\(\)/);
+});
+
+test("unpublishing is the one non-send action allowed to reach the public site", () => {
+  const source = adminSource();
+  const unpublish = extractBlock(source, "async function unpublishCurrentPost()");
+
+  // It saves as a draft rather than sending, so it needs offerSync to publish
+  // at all — and it is already confirmed before it gets here.
+  assert.match(unpublish, /await askUnpublishAction\(\)/);
+  assert.match(unpublish, /saveWithProgress\("draft", \{ offerSync: true \}\)/);
 });
 
 test("unused media cleanup uses the loaded change set", () => {
@@ -75,13 +94,16 @@ test("a published post has a dedicated confirmed unpublish action", () => {
   const unpublish = extractBlock(source, "async function unpublishCurrentPost()");
 
   assert.match(renderMeta, /const published = Boolean\(state\.current\.published\)/);
-  assert.match(renderMeta, /unpublishAction \? ICON\.unpublish : ICON\.send/);
-  assert.match(source, /icon\("eye-off"\)/);
+  // The send button only sends. Unpublishing is the opposite intent and lives
+  // behind the article bar's "⋯", so the button no longer inverts itself.
+  assert.match(renderMeta, /els\.publishButton\.innerHTML = ICON\.send/);
+  assert.doesNotMatch(source, /ICON\.unpublish/);
   assert.match(source, /els\.publishButton\.addEventListener\("click", handleCurrentPublishAction\)/);
-  assert.match(source, /if \(action === "unpublish"\)[\s\S]*await unpublishCurrentPost\(\)/);
-  assert.match(source, /if \(action === "sync-unpublish"\)[\s\S]*await maybeOfferSyncAfterSave\("unpublish"\)/);
+  assert.doesNotMatch(extractBlock(source, "function currentPublishAction()"), /unpublish/);
+  assert.match(source, /els\.docMenuButton\?\.addEventListener\("click"/);
+  assert.match(source, /choice === "unpublish"\) unpublishCurrentPost\(\)/);
   assert.match(unpublish, /await askUnpublishAction\(\)/);
-  assert.match(unpublish, /saveWithProgress\("draft", \{ offerSync: true, syncAction: "unpublish" \}\)/);
+  assert.match(unpublish, /saveWithProgress\("draft", \{ offerSync: true \}\)/);
 });
 
 test("public state comes from the published main document, not the draft checkbox", () => {
@@ -116,10 +138,11 @@ test("rename metadata stays internal and publish intent stays out of the DOM", (
   assert.match(source, /async function preparePrunedRenameOriginsChange/);
   assert.match(source, /draftMap\.has\(targetPath\) && !draftMap\.has\(originPath\) && mainMap\.has\(originPath\)/);
   assert.match(extractBlock(source, "async function deleteChange(path, expectedSha)"), /preparePrunedRenameOriginsChange\(\[entry\]\)/);
-  assert.match(source, /draftTouched: false/);
-  assert.match(source, /state\.current\.draftTouched = true/);
-  assert.match(source, /const draftWasTouched = Boolean\(state\.current\?\.draftTouched\)/);
-  assert.doesNotMatch(source, /dataset\.draftTouched/);
+  // draftTouched and unpublishQueued existed only to feed the publish button's
+  // four-way state. That state is gone, and so is the bookkeeping — write-only
+  // fields outlive their reader silently otherwise.
+  assert.doesNotMatch(source, /draftTouched/);
+  assert.doesNotMatch(source, /unpublishQueued/);
 });
 
 test("admin publish offers alt-text generation without making it mandatory", () => {
@@ -165,7 +188,7 @@ test("admin restores an in-flight publish after reload", () => {
   const source = adminSource();
   assert.match(source, /RWPublishService\.persistRequest\(localStorage, publishRequestKey/);
   assert.match(source, /async function resumePublish\(\)/);
-  assert.match(source, /discoverActiveRequest\(github, repo\.publishBranch\)/);
+  assert.match(source, /discoverActiveRequest\(\)/);
   assert.match(source, /RWPublishService\.fetchStatus/);
   assert.match(source, /RWPublishService\.poll/);
 });

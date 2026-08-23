@@ -1,4 +1,3 @@
-import { github } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { githubConnectionError, sessionHasGithubAccess, tokenHasGithubAccess } from "./05-github-auth.js";

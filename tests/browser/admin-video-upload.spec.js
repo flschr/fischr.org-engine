@@ -52,7 +52,7 @@ test("video processing locks publishing and every destructive queue action", asy
   )).toBe(true);
   await expect(page.locator("#syncButton")).toBeEnabled();
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
 
   await page.locator("#syncButton").evaluate((button) => button.click());

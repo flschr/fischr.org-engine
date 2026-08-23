@@ -11,7 +11,6 @@ import { syncImageControls } from "./11-social-images.js";
 import { syncContentTypeFields } from "./12-content-type.js";
 import { generateMissingAltTexts } from "./16a-alt-text-actions.js";
 import { syncEditorFromVisible } from "./17-editor.js";
-import { collectEditorFields } from "./20a-editor-field-actions.js";
 import { saveWithProgress } from "./25b-publish-actions.js";
 
 // --- Publish dialog ---

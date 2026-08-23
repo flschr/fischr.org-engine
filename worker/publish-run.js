@@ -36,9 +36,20 @@ const PAUSE = "10 seconds";
 // Heute fängt das die gemeinsame concurrency-Gruppe in Actions auf, die Läufe reihen sich also
 // hintereinander. Ein echtes Schloss (eine Zeile in D1 oder ein Durable Object) gehört in die
 // Stufe, die den Admin auf diesen Weg umzieht — vorher hat es nichts zu bewachen.
-export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {}) {
+export async function fuehrePublishAus(event, step, { fetch: holen = fetch, buch = null, jetzt = () => Math.floor(Date.now() / 1000) } = {}) {
   const { repository, requestId, mainSha, draftSha, changeCount, token } = event.payload;
   const github = (pfad, optionen) => anfrage(pfad, token, optionen, holen);
+
+  // Jeder Ausgang wird ins Buch geschrieben, bevor er zurückgegeben wird — auch der frühe.
+  // Sonst hielte die Zeile das Schloss weiter, obwohl längst nichts mehr läuft, und die nächste
+  // Veröffentlichung wäre bis zum Verfall blockiert.
+  //
+  // Ein Buch, das nicht schreiben kann, darf die Veröffentlichung nicht mitreissen: Sie ist
+  // dann bereits durch, und das Schloss verfällt von selbst.
+  const schliesseAb = async (ergebnis) => {
+    await buch?.schliesseAb(requestId, ergebnis.status, ergebnis.grund || null, jetzt()).catch(() => {});
+    return ergebnis;
+  };
 
   // Zuerst der Stand: Hat sich auf main etwas bewegt, das jemand geprüft hat, gilt die Freigabe
   // nicht mehr. Ohne diese Prüfung veröffentlichte ein verzögerter Anlauf etwas anderes als das,
@@ -56,7 +67,7 @@ export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {
 
   if (!kopf.gilt) {
     // Kein Fehler, ein Befund. Der Admin bekommt ihn als Zustand zurück und kann neu prüfen.
-    return { status: "veraltet", erwartet: mainSha, gefunden: kopf.main, grund: kopf.grund };
+    return schliesseAb({ status: "veraltet", erwartet: mainSha, gefunden: kopf.main, grund: kopf.grund });
   }
 
   await step.do("bau anstossen", async () => {
@@ -87,6 +98,18 @@ export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {
     return { id: treffer.id, url: treffer.html_url };
   });
 
+  // Ab hier kennt das Buch den Lauf. Der Admin liest ihn dort und fragt ihn direkt ab, statt
+  // dreissig Läufe zu listen und deren Titel mit einer selbst gebauten Zeichenkette zu
+  // vergleichen — dieselbe Zuordnung, nur einmal statt in jeder Abfrage neu.
+  //
+  // Scheitert das dauerhaft, läuft die Veröffentlichung trotzdem weiter: Der Bau hängt nicht am
+  // Buch. Der Admin sieht dann bis zum Schluss "vorgemerkt" und erfährt den Ausgang am Ende von
+  // der Instanz selbst — weniger Auskunft, aber kein falscher Fehler.
+  await step.do("lauf festhalten", { retries: { limit: 3, delay: "2 seconds" } }, async () => {
+    await buch?.haltLaufFest(requestId, lauf.id, lauf.url);
+    return { festgehalten: true };
+  }).catch(() => ({ festgehalten: false }));
+
   // Gewartet wird in einzelnen Schritten statt in einer Schleife: Jede Runde ist ein eigenes
   // step.do, also übersteht das Warten einen Neustart der Ausführung.
   for (let runde = 0; runde < RUNDEN; runde += 1) {
@@ -96,13 +119,22 @@ export async function fuehrePublishAus(event, step, { fetch: holen = fetch } = {
     });
 
     if (ergebnis) {
-      return { status: ergebnis.conclusion === "success" ? "fertig" : "gescheitert", lauf };
+      const geschafft = ergebnis.conclusion === "success";
+      return schliesseAb({
+        status: geschafft ? "fertig" : "gescheitert",
+        grund: geschafft ? null : `Der Bau endete mit ${ergebnis.conclusion || "einem Fehler"}.`,
+        lauf
+      });
     }
 
     await step.sleep(`pause ${runde}`, PAUSE);
   }
 
-  return { status: "zeitueberschreitung", lauf };
+  return schliesseAb({
+    status: "zeitueberschreitung",
+    grund: "Der Bau war nach dreissig Minuten nicht abgeschlossen.",
+    lauf
+  });
 }
 
 async function anfrage(pfad, token, { method = "GET", body = null } = {}, holen = fetch) {

@@ -2,15 +2,15 @@ import { collections, isTransientGitHubError } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { renderFormatToolbar } from "./02a-toolbar-render.js";
+import { initKeyboardInset } from "./02d-keyboard-inset.js";
 import { showStatus } from "./03-status.js";
 import { ensureDraftsBranch, loadAdminSnapshot } from "./04-drafts.js";
 import { loadChanges } from "./04a-draft-writes.js";
 import { githubConnectionError, hasGithubAccess, refreshSession, sessionHasGithubAccess, verifyStoredTokenAccess } from "./05-github-auth.js";
 import { loadSocialConfig } from "./10-social-editor.js";
-import { openSocialConfig } from "./14-social-settings.js";
-import { applyStatsTabVisibility, openStats, statsEnabled } from "./21-stats.js";
+import { applyStatsTabVisibility, statsEnabled } from "./21-stats.js";
 import { backToLibrary, showView, updateNav } from "./23-routing.js";
-import { pushNav, replaceNav, routeTo } from "./24-history.js";
+import { replaceNav, routeTo } from "./24-history.js";
 import { refreshEntries } from "./25-entries.js";
 import { recoverPendingMediaOperations } from "./26d-publish-sync.js";
 import { resumePublish } from "./27a-publish-state.js";
@@ -98,6 +98,7 @@ async function init() {
   // Read before showView/replaceNav below overwrite it.
   const resumed = resumeTarget();
   renderFormatToolbar();
+  initKeyboardInset();
   await refreshSession();
   await verifyStoredTokenAccess();
   wireEvents();

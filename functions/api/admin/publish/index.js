@@ -9,10 +9,42 @@
 // brauchen einen.
 
 import { jsonResponse, readSession } from "../../../_admin-auth.js";
+import { ledgerAus } from "../../../../worker/publish-ledger.js";
 import { freigabeGiltNoch } from "../../../../worker/publish-stand.js";
 
 export function onRequestPost(context) {
   return handlePublishStart(context, { readSession, fetch });
+}
+
+export function onRequestGet(context) {
+  return handleLaufende(context, { readSession });
+}
+
+// Welche Veröffentlichung gerade läuft — für die Wiederaufnahme nach einem Neuladen oder auf
+// einem zweiten Gerät.
+//
+// Bisher suchte der Browser das in der Actions-Liste: alle Läufe holen, nach einem Titel filtern,
+// der mit "Publish " beginnt, und die Kennung wieder aus diesem Titel herausschneiden. Das Buch
+// weiss es direkt — und weiss es auch dann noch, wenn der Lauf noch gar nicht existiert.
+export async function handleLaufende(context, { readSession: sitzungLesen }) {
+  const session = await sitzungLesen(context.request, context.env);
+  if (!session) return jsonResponse({ message: "Not authenticated." }, { status: 401 });
+
+  const buch = ledgerAus(context.env.PUBLISH_LEDGER);
+  if (!buch) return jsonResponse({ message: "Publish ledger is not bound." }, { status: 503 });
+
+  const zeile = await buch.laufende();
+  if (!zeile) return jsonResponse({ laufend: null });
+
+  return jsonResponse({
+    laufend: {
+      requestId: zeile.request_id,
+      workflowId: zeile.instance_id || "",
+      runId: zeile.run_id || null,
+      changeCount: zeile.change_count,
+      startedAt: new Date(zeile.started_at * 1000).toISOString()
+    }
+  });
 }
 
 // Die Abhängigkeiten kommen herein, damit ein Test die Anmeldung ersetzen kann, ohne ein
@@ -67,18 +99,70 @@ export async function handlePublishStart(context, { readSession: sitzungLesen, f
     );
   }
 
-  const instanz = await context.env.PUBLISH.create({
-    params: {
-      ...anfrage,
-      repository: adminRepository(context.env),
-      // Der Workflow läuft losgelöst von der Anfrage und hat keine Sitzung. Er bekommt deshalb
-      // dasselbe Token mit, das der Admin auch für seine eigenen Aufrufe benutzt — kein
-      // zusätzlicher Zugang, der eingerichtet und gedreht werden müsste. Die Instanz lebt nur
-      // für die Dauer einer Veröffentlichung.
-      token: session.token
-    }
-  });
+  // Das Schloss wird genommen, bevor eine Instanz entsteht — nicht danach. Andersherum gäbe es
+  // einen Moment, in dem eine Veröffentlichung läuft, für die niemand das Schloss hält, und eine
+  // zweite käme durch.
+  //
+  // Genommen wird es durch Schreiben, nicht durch Nachsehen: Ein partieller Unique-Index in
+  // lib/publish/schema.sql lässt genau eine laufende Zeile zu. Ein Vorher-Nachsehen hätte ein
+  // Fenster zwischen Prüfung und Schreiben; die Datenbank hat keins.
+  const buch = ledgerAus(context.env.PUBLISH_LEDGER);
+  if (!buch) return jsonResponse({ message: "Publish ledger is not bound." }, { status: 503 });
 
+  const jetzt = Math.floor(Date.now() / 1000);
+  const platz = await buch.reserviere({ ...anfrage, jetzt });
+
+  // Dieselbe Anfrage noch einmal — zweiter Klick, wiederholtes Senden nach einem Netzaussetzer.
+  // Sie hat schon eine Instanz; die wird zurückgegeben, statt eine zweite anzulegen. Ein Fehler
+  // wäre hier falsch: Aus Sicht des Absenders ist genau das passiert, was er wollte.
+  if (!platz.ok && platz.grund === "laeuft-schon") {
+    return jsonResponse({ id: platz.zeile.instance_id || "", status: "gestartet" }, { status: 202 });
+  }
+
+  if (!platz.ok && platz.grund === "abgeschlossen") {
+    return jsonResponse(
+      {
+        message: "Diese Veröffentlichung ist bereits durchgelaufen. Bitte neu laden.",
+        code: "ANFRAGE_ABGESCHLOSSEN",
+        ausgang: platz.zeile?.status || null
+      },
+      { status: 409 }
+    );
+  }
+
+  if (!platz.ok) {
+    return jsonResponse(
+      {
+        message: "Es läuft bereits eine Veröffentlichung. Bitte warten, bis sie durch ist.",
+        code: "VEROEFFENTLICHUNG_LAEUFT",
+        laufendeAnfrage: platz.laufend?.request_id || null,
+        seit: platz.laufend?.started_at || null
+      },
+      { status: 409 }
+    );
+  }
+
+  let instanz;
+  try {
+    instanz = await context.env.PUBLISH.create({
+      params: {
+        ...anfrage,
+        repository: adminRepository(context.env),
+        // Der Workflow läuft losgelöst von der Anfrage und hat keine Sitzung. Er bekommt deshalb
+        // dasselbe Token mit, das der Admin auch für seine eigenen Aufrufe benutzt — kein
+        // zusätzlicher Zugang, der eingerichtet und gedreht werden müsste. Die Instanz lebt nur
+        // für die Dauer einer Veröffentlichung.
+        token: session.token
+      }
+    });
+  } catch (fehler) {
+    // Ohne Instanz gibt es niemanden, der die Zeile je abschliessen würde. Das Schloss sofort
+    // zurückgeben — sonst wäre die nächste Veröffentlichung bis zum Verfall blockiert.
+    await buch.schliesseAb(anfrage.requestId, "gescheitert", `Die Veröffentlichung konnte nicht beginnen: ${fehler?.message || fehler}`, jetzt);
+    throw fehler;
+  }
+
+  await buch.verknuepfeInstanz(anfrage.requestId, instanz.id);
   return jsonResponse({ id: instanz.id, status: "gestartet" }, { status: 202 });
 }
 

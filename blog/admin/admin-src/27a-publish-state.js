@@ -1,17 +1,14 @@
-import { publishRequestKey, repo } from "./00-konstanten.js";
+import { publishRequestKey } from "./00-konstanten.js";
 import { github, isTransientGitHubError } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
-import { setBusy, showStatus } from "./03-status.js";
-import { ensureDraftsBranch, getAllChanges } from "./04-drafts.js";
+import { showStatus } from "./03-status.js";
 import { loadChanges } from "./04a-draft-writes.js";
 import { hasGithubAccess } from "./05-github-auth.js";
-import { askDiscardAction } from "./19a-editor-dialogs.js";
 import { refreshEntries } from "./25-entries.js";
 import { refreshCurrentPublishedState } from "./25c-entry-opening.js";
 import { refreshMedia } from "./26a-media-library.js";
-import { changeSetSignature, guardMediaIdle, loadFreshChanges, renderSyncState, visibleQueueChanges } from "./26d-publish-sync.js";
-import { waitForMediaCommits } from "./26e-media-recovery-state.js";
-import { clearPublishTracking, renderQueue } from "./27c-queue-render.js";
+import { renderSyncState, visibleQueueChanges } from "./26d-publish-sync.js";
+import { clearPublishTracking } from "./27c-queue-render.js";
 
 export async function refreshCurrentSilent() {
   try {
@@ -56,7 +53,18 @@ export async function refreshAfterTabResume() {
 }
 
 function storedPublishRequest() {
-  return window.RWPublishService.storedRequest(localStorage, publishRequestKey);
+  const request = window.RWPublishService.storedRequest(localStorage, publishRequestKey);
+  if (!request) return null;
+
+  // Eine gespeicherte Anfrage ohne Lauf und ohne Instanz stammt aus der Zeit vor dem Buch. Über
+  // sie lässt sich nichts mehr erfahren: Sie bliebe zwölf Minuten auf „vorgemerkt" stehen und
+  // meldete dann eine Zeitüberschreitung. Verwerfen und im Buch nachsehen ist die einzige
+  // Antwort, die stimmen kann.
+  if (!request.runId && !request.workflowId) {
+    window.RWPublishService.clearRequest(localStorage, publishRequestKey);
+    return null;
+  }
+  return request;
 }
 
 export function persistPublishRequest(request) {
@@ -69,7 +77,7 @@ async function refreshPublishRequest(request, signal) {
     ? (endpoint, options = {}) => github(endpoint, { ...options, signal })
     : github;
   const status = await workflowGeprueft(
-    await window.RWPublishService.fetchStatus(publishGithub, window.RWPublishStatus, repo.publishBranch, request),
+    await window.RWPublishService.fetchStatus(publishGithub, window.RWPublishStatus, request),
     request
   );
   state.publishStatus = status;
@@ -107,13 +115,35 @@ async function workflowGeprueft(status, request) {
   const lauf = await window.RWPublishService.fetchWorkflowState(request.workflowId);
   if (!lauf) return status;
 
+  // Sobald das Buch den Lauf kennt, merkt sich die Anfrage seine Nummer. Ab dann wird er direkt
+  // abgefragt, und diese Abzweigung greift nicht mehr.
+  if (lauf.lauf?.id && lauf.lauf.id !== request.runId) {
+    request.runId = lauf.lauf.id;
+    persistPublishRequest(request);
+  }
+
   if (lauf.output?.status === "veraltet") {
     return { state: "failed", message: "Der geprüfte Stand war nicht mehr aktuell. Bitte neu laden und erneut veröffentlichen." };
   }
   if (lauf.status === "errored" || lauf.status === "terminated") {
     return { state: "failed", message: `Die Veröffentlichung wurde abgebrochen: ${lauf.error?.message || lauf.status}` };
   }
+  // Ist die Instanz durch, ohne dass je ein Lauf sichtbar wurde, kennt nur sie den Ausgang.
+  // Ohne diesen Fall bliebe die Karte auf „vorgemerkt" stehen, bis das Warten abläuft — und
+  // meldete dann eine Zeitüberschreitung für etwas längst Abgeschlossenes.
+  if (lauf.status === "complete" && lauf.output?.status) {
+    return ausgangDerInstanz(lauf.output);
+  }
   return status;
+}
+
+function ausgangDerInstanz(ausgang) {
+  if (ausgang.status === "fertig") return { state: "success", message: "Veröffentlicht und verteilt" };
+  return {
+    state: "failed",
+    message: ausgang.grund || "Die Veröffentlichung ist nicht durchgelaufen.",
+    url: ausgang.lauf?.url
+  };
 }
 
 export async function pollPublishCompletion(token, request) {
@@ -146,7 +176,7 @@ export async function pollPublishCompletion(token, request) {
 
 export async function resumePublish() {
   const request = storedPublishRequest()
-    || await window.RWPublishService.discoverActiveRequest(github, repo.publishBranch);
+    || await window.RWPublishService.discoverActiveRequest();
   if (!request) return;
   state.publishRequest = request;
   state.publishInFlight = true;

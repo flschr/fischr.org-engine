@@ -179,7 +179,7 @@ test("the pull indicator tracks the finger and glides back", async ({ page }, te
   expect(released.classes).toContain("is-settling");
 });
 
-test("mobile editor hides the tab bar and leads back out", async ({ page }, testInfo) => {
+test("mobile editor hides the tab bar and leaves the way out to the platform", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only interaction");
   await page.goto("/admin/");
 
@@ -188,10 +188,11 @@ test("mobile editor hides the tab bar and leads back out", async ({ page }, test
   // Full-screen editing: the bar would sit under the keyboard anyway.
   await expect(page.locator("#sidebar")).toBeHidden();
 
-  // A standalone PWA has no browser back button, so this is the only way out.
-  const back = page.getByRole("button", { name: "Zurück zur Liste" });
-  await expect(back).toBeVisible();
-  await back.click();
+  // Getting out is the platform's job — browser back, or the edge-swipe in a
+  // home-screen app. Both arrive here as a popstate, which is the path this
+  // asserts; the bar carries no back button of its own any more.
+  await expect(page.getByRole("button", { name: "Zurück zur Liste" })).toHaveCount(0);
+  await page.goBack();
 
   await expect(page.locator("#editorForm")).toBeHidden();
   await expect(page.locator("#libraryTitle")).toHaveText("Articles");
@@ -210,7 +211,7 @@ test("desktop keeps the sidebar and needs no back button", async ({ page }, test
   await expect(page.locator("#editorForm")).toBeVisible();
   // The sidebar never leaves, so the editor's back button stays a phone affordance.
   await expect(page.locator("#sidebar")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Zurück zur Liste" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Zurück zur Liste" })).toHaveCount(0);
 
   await page.goBack();
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
@@ -226,4 +227,62 @@ test("mobile navigation works before startup requests finish", async ({ page }, 
   // The bar is markup, not state: it must not wait for the session to resolve.
   await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
+});
+
+test("the writing bar sits at the bottom of a phone and the article bar at the top", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+  await expect(page.locator("#editorForm")).toBeVisible();
+
+  const viewport = page.viewportSize();
+  const box = async (selector) => page.locator(selector).boundingBox();
+  const writing = await box("#writingBar");
+  const article = await box(".editor-bar");
+
+  // The whole point of the split. While typing, the thumbs are at the bottom
+  // of the screen and so is the keyboard; formatting used to live at the very
+  // top, which is the furthest point from both.
+  expect(writing.y).toBeGreaterThan(viewport.height / 2);
+  expect(Math.round(writing.y + writing.height)).toBeLessThanOrEqual(viewport.height + 1);
+  expect(article.y).toBeLessThan(viewport.height / 4);
+
+  // One row, not a sideways-scrolling strip: everything in it is reachable
+  // without a swipe.
+  const bar = page.locator("#writingBar");
+  const overflows = await bar.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(overflows).toBe(false);
+  for (const name of ["Fett (⌘B)", "Kursiv (⌘I)", "Link (⌘K)", "Bild oder Video einfügen", "Weitere Einfügungen"]) {
+    await expect(bar.getByRole("button", { name })).toBeVisible();
+  }
+
+  // With no keyboard open the bar rests on the bottom edge, so the offset that
+  // lifts it is zero rather than absent — an unset variable would silently
+  // collapse the calc() that positions the article's bottom padding.
+  const inset = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--keyboard-inset").trim());
+  expect(inset).toBe("0px");
+});
+
+test("nothing pinned to the bottom edge lands on top of the writing bar", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+  await expect(page.locator("#editorForm")).toBeVisible();
+
+  // --bottom-chrome is the one value everything on the bottom edge measures
+  // from. The editor used to declare it as the home indicator alone, which was
+  // true until the writing bar moved down there — after that the status toast
+  // sat squarely on top of the link, image and "+" buttons.
+  const writing = await page.locator("#writingBar").boundingBox();
+
+  await page.evaluate(() => window.RWAdminTestStatus?.() ?? null);
+  await page.locator("#statusBar").evaluate((el) => {
+    el.textContent = "Testmeldung";
+    el.classList.add("is-visible");
+  });
+  const toast = await page.locator("#statusBar").boundingBox();
+
+  // The toast must end above where the bar begins.
+  expect(Math.round(toast.y + toast.height)).toBeLessThanOrEqual(Math.round(writing.y));
 });

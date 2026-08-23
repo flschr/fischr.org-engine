@@ -167,12 +167,21 @@ test("page-shell selectors cannot introduce local maximum widths", () => {
   }
 });
 
-test("admin viewport breakpoints live in the responsive stylesheet", () => {
+test("admin viewport breakpoints live in the responsive stylesheets", () => {
+  // Breakpoints stay in the responsive files so the cascade order of the
+  // overrides is one decision, made in runtime-vendors.js, rather than being
+  // scattered across the component stylesheets. There are two of them since
+  // the single file passed its line budget: 07 loads directly after 06, so
+  // splitting changed the file count and not the order.
+  const responsive = new Set(["06-responsive.css", "07-responsive-editor.css"]);
   const directory = path.join(root, "blog/admin/css-src");
-  for (const file of fs.readdirSync(directory).filter((entry) => entry.endsWith(".css") && entry !== "06-responsive.css")) {
+  for (const file of fs.readdirSync(directory).filter((entry) => entry.endsWith(".css") && !responsive.has(entry))) {
     assert.doesNotMatch(read(`blog/admin/css-src/${file}`), /@media\s*\([^)]*(?:max|min)-width/, `${file} owns a viewport breakpoint`);
   }
-  // Responsive overrides stay together to preserve cascade order; the file is
-  // still bounded below the project's mandatory 350-line split threshold.
+  const bundle = styleSources.admin || [];
+  const order = [...responsive].map((file) => bundle.indexOf(`blog/admin/css-src/${file}`));
+  assert.ok(order.every((index) => index >= 0), "every responsive stylesheet is part of the admin bundle");
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), "responsive stylesheets keep their cascade order");
+  assert.equal(order.at(-1), bundle.length - 1, "responsive overrides load last");
   assertBoundedModules("blog/admin/css-src", 250);
 });

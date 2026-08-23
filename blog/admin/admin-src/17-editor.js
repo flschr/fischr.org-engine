@@ -1,4 +1,3 @@
-import { collections } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { ICON } from "./02-toolbar.js";

@@ -2,7 +2,6 @@ import { publishRequestKey } from "./00-konstanten.js";
 
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
-import { icon } from "./02-toolbar.js";
 import { showStatus } from "./03-status.js";
 import { deleteChange } from "./04a-draft-writes.js";
 import { hasGithubAccess } from "./05-github-auth.js";

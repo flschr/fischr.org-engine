@@ -13,7 +13,10 @@ async function openNewPost(page, text) {
 }
 
 async function insertFootnote(page, text) {
-  await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Footnote" }).click();
+  // Footnotes moved behind the writing bar's "+" — one of the insertions that
+  // is not needed in every article.
+  await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Weitere Einfügungen" }).click();
+  await page.getByRole("dialog", { name: "Weitere Einfügungen" }).getByRole("button", { name: "Fußnote" }).click();
   await page.getByRole("dialog").getByPlaceholder("Footnote text").fill(text);
   await page.getByRole("dialog").getByRole("button", { name: "Insert" }).click();
 }
@@ -36,17 +39,30 @@ test("footnotes use normal editor selection, formatting, deletion and undo", asy
     await page.keyboard.press("Shift+End");
   };
 
+  // Bold and italic stayed on the bar; the rest moved behind its "+" so the bar
+  // fits above the on-screen keyboard. Reached either way, the command has to
+  // act on the same selection.
+  const applyFormat = async (name, inSheet) => {
+    if (!inSheet) return toolbar.getByRole("button", { name }).click();
+    await toolbar.getByRole("button", { name: "Weitere Einfügungen" }).click();
+    await page.getByRole("dialog", { name: "Weitere Einfügungen" }).getByRole("button", { name }).click();
+  };
+
   for (const format of [
-    { button: "Bold (⌘B)", selector: ".cm-strong" },
-    { button: "Italic (⌘I)", selector: ".cm-em" },
-    { button: "Inline code", selector: ".cm-code" },
-    { button: "Strikethrough", selector: ".cm-strike" },
-    { button: "Highlight", selector: ".cm-highlight" }
+    { button: "Fett (⌘B)", selector: ".cm-strong", inSheet: false },
+    { button: "Kursiv (⌘I)", selector: ".cm-em", inSheet: false },
+    { button: "Code", selector: ".cm-code", inSheet: true },
+    { button: "Durchgestrichen", selector: ".cm-strike", inSheet: true },
+    { button: "Markieren", selector: ".cm-highlight", inSheet: true }
   ]) {
     await selectFootnoteWord();
-    await toolbar.getByRole("button", { name: format.button }).click();
+    await applyFormat(format.button, format.inSheet);
     await expect(footnoteLine.locator(format.selector)).toContainText('"Formatierbar" & mehr');
-    await toolbar.getByRole("button", { name: format.button }).click();
+    // No re-select in between, deliberately: the second click has to hit the
+    // same range the first one left behind. That is the actual claim about the
+    // sheet — opening a modal takes DOM focus, and the command still has to
+    // find CodeMirror's own selection where it was.
+    await applyFormat(format.button, format.inSheet);
     await expect(footnoteLine.locator(format.selector)).toHaveCount(0);
   }
 
@@ -57,19 +73,19 @@ test("footnotes use normal editor selection, formatting, deletion and undo", asy
   await page.locator(".cm-footnote-empty").click();
   await page.keyboard.insertText("Neu geschrieben");
   await expect(footnoteLine).toContainText("Neu geschrieben");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Rückgängig" }).click();
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Rückgängig" }).click();
+  await page.getByRole("navigation", { name: "Schreiben" }).getByRole("button", { name: "Rückgängig" }).click();
+  await page.getByRole("navigation", { name: "Schreiben" }).getByRole("button", { name: "Rückgängig" }).click();
   await expect(footnoteLine).toContainText('"Formatierbar" & mehr');
 
   await selectFootnoteWord();
-  await toolbar.getByRole("button", { name: "Italic (⌘I)" }).click();
+  await toolbar.getByRole("button", { name: "Kursiv (⌘I)" }).click();
   await expect(footnoteLine.locator(".cm-em")).toContainText('"Formatierbar" & mehr');
   await expect(footnoteLine).toContainText('<em>"Formatierbar" & mehr</em>');
   await page.locator(".cm-line").first().click();
   await expect(footnoteLine).not.toContainText("<em>");
   await expect(footnoteLine.locator(".cm-em")).toContainText("Formatierbar");
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Vorschau" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Vorschau" }).click();
   await expect(page.locator("#previewPanel .footnote-ref")).toHaveText("1");
   await expect(page.locator("#previewPanel .footnotes")).toContainText('"Formatierbar" & mehr');
   await expect(page.locator("#previewPanel .footnotes em")).toBeVisible();
@@ -106,7 +122,7 @@ test("footnote selections can be linked from the editor toolbar", async ({ page 
   await linkDialog.getByRole("button", { name: "Insert" }).click();
   await expect(page.locator(".cm-footnote-line .cm-link")).toContainText("Verlinkte Quelle");
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Vorschau" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Vorschau" }).click();
   await expect(page.locator("#previewPanel .footnotes a[href='https://example.com/fussnote']")).toBeVisible();
 });
 
@@ -122,14 +138,14 @@ test("multiline footnotes render line breaks and reveal their source only while 
   await footnoteText.click();
   await page.keyboard.press("Home");
   await page.keyboard.press("Shift+End");
-  await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Bold (⌘B)" }).click();
+  await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Fett (⌘B)" }).click();
   await expect(footnoteLine.locator(".cm-strong")).toContainText("Erste Zeile");
   await expect(footnoteLine).toContainText("<br>");
 
   await page.locator(".cm-line").first().click();
   await expect(footnoteLine.locator("br")).toHaveCount(1);
   await expect(footnoteLine).not.toContainText("<br>");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Vorschau" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Vorschau" }).click();
   await expect(page.locator("#previewPanel .footnotes br")).toHaveCount(1);
 });
 
@@ -144,7 +160,7 @@ test("footnote formatting can be removed from only part of a formatted range", a
   await footnoteText.click();
   await page.keyboard.press("Home");
   await page.keyboard.press("Shift+End");
-  await toolbar.getByRole("button", { name: "Bold (⌘B)" }).click();
+  await toolbar.getByRole("button", { name: "Fett (⌘B)" }).click();
   await page.locator(".cm-line").first().click();
   await page.locator(".cm-content").evaluate((element) => {
     const view = element.cmTile.view;
@@ -153,7 +169,7 @@ test("footnote formatting can be removed from only part of a formatted range", a
     view.dispatch({ selection: { anchor: start, head: start + 3 } });
     view.focus();
   });
-  await toolbar.getByRole("button", { name: "Bold (⌘B)" }).click();
+  await toolbar.getByRole("button", { name: "Fett (⌘B)" }).click();
   await expect(footnoteLine.locator(".cm-strong")).toHaveCount(2);
   await expect(footnoteLine.locator(".cm-strong").nth(0)).toHaveText("A");
   await expect(footnoteLine.locator(".cm-strong").nth(1)).toHaveText("E");

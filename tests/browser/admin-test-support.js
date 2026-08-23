@@ -29,6 +29,10 @@ function mockAuthenticatedGithub(page, requests = [], initialTree = [], options 
   let remainingDraftRefreshFailures = 0;
   const workflowRuns = new Map();
   const workflowInputs = new Map();
+  // Beim Start läuft nichts — sonst nähme jeder Test eine Veröffentlichung wieder auf, die es
+  // nie gab. `options.laufendeVeroeffentlichung` sät eine, für Tests, die den Admin laden,
+  // während anderswo schon veröffentlicht wird.
+  let laufendeVeroeffentlichung = options.laufendeVeroeffentlichung || null;
   options.onReady?.({
     replaceTree(nextTree) { draftTree = nextTree; },
     replaceDraftsHead(nextHead) { draftsHead = nextHead; },
@@ -54,9 +58,25 @@ function mockAuthenticatedGithub(page, requests = [], initialTree = [], options 
     // bildet dieser Stub gleich mit ab, damit der Rest des Ablaufs (Fortschritt, Erfolg) über
     // dieselbe Actions-Abfrage läuft wie im Betrieb.
     page.route("**/api/admin/publish", (route) => {
+      // Dieselbe Adresse trägt zwei Fragen: GET fragt, was gerade läuft (die Wiederaufnahme nach
+      // einem Neuladen), POST beginnt eine Veröffentlichung.
+      if (route.request().method() === "GET") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ laufend: laufendeVeroeffentlichung })
+        });
+      }
       const body = route.request().postDataJSON?.() || {};
       requests.push({ url: route.request().url(), method: route.request().method(), body });
       workflowRuns.set("admin-publish.yml", `Publish ${body.requestId}`);
+      laufendeVeroeffentlichung = {
+        requestId: body.requestId,
+        workflowId: "workflow-instance-1",
+        runId: null,
+        changeCount: body.changeCount,
+        startedAt: "2026-08-24T00:00:00Z"
+      };
       workflowInputs.set("admin-publish.yml", {
         request_id: body.requestId,
         main_sha: body.mainSha,
@@ -100,6 +120,13 @@ function mockAuthenticatedGithub(page, requests = [], initialTree = [], options 
             : []
         };
         if (response.workflow_runs?.some((run) => run.conclusion === "failure")) mediaWorkflowFailed = true;
+      } else if (/\/actions\/runs\/\d+\/jobs/.test(url)) {
+        response = options.onRunJobs?.({ url }) || { jobs: [] };
+      } else if (/\/actions\/runs\/\d+$/.test(url.split("?")[0])) {
+        // Seit dem Buch der Veröffentlichungen holt der Admin den Lauf über seine Nummer, statt
+        // ihn in einer Liste über den Titel zu suchen.
+        const id = Number(url.split("/actions/runs/")[1].split("?")[0]);
+        response = options.onRun?.({ id }) || { id, status: "in_progress", html_url: `https://github.com/example/example-blog/actions/runs/${id}` };
       } else if (url.includes("/git/blobs/") && method === "GET") {
         const sha = decodeURIComponent(url.split("/git/blobs/")[1].split("?")[0]);
         response = blobs[sha] || {};

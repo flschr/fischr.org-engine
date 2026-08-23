@@ -6,7 +6,6 @@ import { blobShaMap, blobTextCache, cacheBlobText, diffChange, fetchMainTree, ge
 import { fetchTree, hasGithubAccess } from "./05-github-auth.js";
 import { refreshMediaReferenceIndex } from "./15a-media-reference-index.js";
 import { renderSyncState } from "./26d-publish-sync.js";
-import { renderQueue } from "./27c-queue-render.js";
 
 export async function commitToDrafts(treeEntries, message, expectedBlobs = null) {
   if (!state.tree?.tree) await fetchTree(false);

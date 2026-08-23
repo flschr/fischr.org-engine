@@ -1,0 +1,65 @@
+/* ---- Publish overlay ---------------------------------------------------- */
+/* Follows the publish wherever it was started, so the two minutes after Save
+   are visible without navigating to the queue. Non-blocking on purpose: it
+   reports, it never asks. */
+
+.publish-overlay {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: min(23rem, calc(100vw - 2.2rem));
+  padding: 0.95rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.publish-overlay[hidden] { display: none; }
+
+.publish-ring-wrap { position: relative; flex: 0 0 auto; width: 3.1rem; height: 3.1rem; }
+.publish-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.publish-ring circle { fill: none; stroke-width: 7; }
+.publish-ring-track { stroke: var(--line-2); }
+.publish-ring-value {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  /* The step arrives as a jump every few seconds; the ring glides across it.
+     Only possible because 27d updates this node instead of replacing it. */
+  transition: stroke-dashoffset 700ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+.publish-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* No step reported yet: spin rather than rest at 0%, which reads as stuck. */
+.publish-overlay.is-indeterminate .publish-ring { animation: publish-ring-spin 1.15s linear infinite; }
+.publish-overlay.is-indeterminate .publish-ring-value { transition: none; }
+@keyframes publish-ring-spin { to { transform: rotate(270deg); } }
+
+.publish-overlay-text { display: grid; gap: 0.18rem; min-width: 0; }
+.publish-overlay-text strong { font-size: 0.94rem; font-weight: 680; letter-spacing: -0.02em; }
+.publish-overlay-phase { color: var(--ink-soft); font-size: 0.84rem; }
+.publish-overlay-link { justify-self: start; margin-top: 0.15rem; font-size: 0.82rem; }
+.publish-overlay-link[hidden] { display: none; }
+
+.publish-overlay[data-tone="success"] .publish-ring-value { stroke: var(--green); }
+.publish-overlay[data-tone="failed"] .publish-ring-value { stroke: var(--red); }
+.publish-overlay[data-tone="failed"] .publish-ring-label { color: var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  .publish-ring-value { transition: none; }
+  .publish-overlay.is-indeterminate .publish-ring { animation: none; }
+}

@@ -132,18 +132,6 @@ export async function requestAltText(image, src) {
   return escapeMarkdownAlt(alt);
 }
 
-function extractOpenAiResponseText(data = {}) {
-  if (typeof data.output_text === "string") return data.output_text;
-
-  const parts = [];
-  for (const item of data.output || []) {
-    for (const content of item.content || []) {
-      if (typeof content.text === "string") parts.push(content.text);
-    }
-  }
-  return parts.join(" ");
-}
-
 function cleanOpenAiAltText(value) {
   return String(value || "")
     .replace(/^["'“”„]+|["'“”„]+$/g, "")

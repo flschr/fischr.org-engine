@@ -3,6 +3,22 @@ const { mockAuthenticatedGithub, useAdminRouteDefaults } = require("./admin-test
 
 useAdminRouteDefaults(test);
 
+// Nothing may reach the publish endpoint. Asserted through a helper so the
+// negative claim cannot quietly become vacuous by drifting off the real URL.
+async function assertNoPublishStarted(page, requests) {
+  // Settle first. The save dialog closes on its own once the non-publishing
+  // branch is taken, which is both the signal that the save finished and
+  // enough real time for a publish request to have shown up if one were
+  // coming. Asserting immediately after the blob POST would pass whether or
+  // not the publish was suppressed.
+  await expect(page.locator("#saveDialog")).toBeHidden();
+  const started = requests.filter((request) =>
+    request.method === "POST" &&
+    (request.url.endsWith("/api/admin/publish") || request.url.includes("admin-publish.yml/dispatches"))
+  );
+  expect(started.map((request) => request.url)).toEqual([]);
+}
+
 test("admin shell starts without browser errors", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -87,7 +103,7 @@ test("authenticated admin opens the editor and publish dialog", async ({ page })
   const title = page.getByPlaceholder("Titel");
   await expect(title).toBeVisible();
   await title.fill("Browser smoke test");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichen" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Veröffentlichen" }).click();
 
   await expect(page.getByRole("dialog", { name: "Veröffentlichen" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Veröffentlichen" }).getByRole("button", { name: "Veröffentlichen" })).toBeVisible();
@@ -140,7 +156,11 @@ test("source pages open as raw templates and save without Markdown controls", as
 
   await expect(page.locator("#editorViewTitle")).toHaveText("Über mich bearbeiten");
   await expect(page.locator("#titleInput")).toBeHidden();
+  // The whole writing bar steps aside, not just the formatting inside it —
+  // undo/redo moved in there too and a raw template has no Markdown controls.
+  await expect(page.locator("#writingBar")).toBeHidden();
   await expect(page.locator("#formatToolbar")).toBeHidden();
+  await expect(page.locator("#undoButton")).toBeHidden();
   await expect(page.locator(".cm-content")).toContainText("{{ site.title }}");
   await page.locator("#saveButton").click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
@@ -201,7 +221,7 @@ test("failed media can be removed completely and does not poison later saves", a
   await page.getByRole("button", { name: "Medium entfernen" }).click();
   await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
 });
 
@@ -225,7 +245,7 @@ test("saving during a failed media upload uses one recovery dialog", async ({ pa
     mimeType: "image/png",
     buffer: Buffer.from("retry")
   });
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   releaseFailure();
 
   await expect(page.locator("#mediaFailureDialog")).toBeVisible();
@@ -262,7 +282,7 @@ test("failed media cleanup updates its saved article after navigating away", asy
     mimeType: "image/png",
     buffer: Buffer.from("late failure")
   });
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
   await expect(page.locator("#saveDialog")).toBeHidden();
 
@@ -523,7 +543,7 @@ test("a refresh failure after the durable cleanup still completes the editor act
 
   await expect(page.locator("#statusBar")).toContainText("Fehlgeschlagene Medien wurden entfernt");
   await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
 });
 
@@ -558,7 +578,7 @@ test("a failed post-commit tree read preserves the cleaned article for its next 
     mimeType: "image/png",
     buffer: Buffer.from("image")
   });
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
   await expect(page.locator("#saveDialog")).toBeHidden();
   releaseFailure();
@@ -569,18 +589,19 @@ test("a failed post-commit tree read preserves the cleaned article for its next 
   await expect(page.locator(".cm-content")).not.toContainText("/assets/images/uploads/");
   await page.locator(".cm-content").click();
   await page.keyboard.insertText(" Weiterbearbeitet.");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
 });
 
-test("saving an edited public article offers immediate sync", async ({ page }) => {
+test("saving an edited public article writes to drafts and publishes nothing", async ({ page }) => {
+  const requests = [];
   const path = "blog/posts/2026-08-18-public.md";
   const sha = "public-post-sha";
   const content = `---\ntitle: Öffentlicher Artikel\nslug: public\ndate: 2026-08-18T12:00:00+02:00\ndraft: false\n---\n\nÖffentlicher Text.\n`;
   const tree = [{ path, type: "blob", sha, size: content.length }];
   const blobs = { [sha]: { encoding: "base64", content: Buffer.from(content).toString("base64") } };
   await page.unroute("**/api/admin/auth/session");
-  await mockAuthenticatedGithub(page, [], tree, { mainTree: tree, blobs });
+  await mockAuthenticatedGithub(page, requests, tree, { mainTree: tree, blobs });
   await page.goto("/admin/");
   await page.locator('[data-collection="posts"]').evaluate((button) => button.click());
   await page.locator(".entry-card").filter({ hasText: path }).click();
@@ -588,13 +609,21 @@ test("saving an edited public article offers immediate sync", async ({ page }) =
   await page.locator(".cm-content").click();
   await page.keyboard.insertText(" Bearbeitet.");
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Gespeicherte Änderungen jetzt veröffentlichen?" })).toBeVisible();
-  await expect(page.locator("#syncNowDialogText")).toContainText("öffentliche Artikel wird mit deinen Änderungen aktualisiert");
-  await page.getByRole("button", { name: "Später" }).click();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
+  await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
+
+  // Saving writes to drafts and stops there, even for an article that is
+  // already public. Every publish is a real Actions build sharing one
+  // non-cancelling deploy queue, so the saves made while writing must not each
+  // become one. Sending is the deliberate act, and it is a different button.
+  await expect(page.getByRole("dialog", { name: "Veröffentlichen" })).toHaveCount(0);
+  await expect.poll(() => requests.some((request) =>
+    request.method === "POST" && request.url.endsWith("/git/blobs")
+  )).toBe(true);
+  await assertNoPublishStarted(page, requests);
 });
 
-test("saving a public article as draft offers removal sync", async ({ page }) => {
+test("saving a public article as draft queues the removal without publishing it", async ({ page }) => {
   const requests = [];
   const path = "blog/posts/2026-08-18-save-unpublish.md";
   const sha = "save-unpublish-sha";
@@ -612,16 +641,18 @@ test("saving a public article as draft offers removal sync", async ({ page }) =>
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Artikel jetzt vom Blog entfernen?" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" && request.url.endsWith("/git/blobs") && /draft: true/.test(request.body.content || "")
   )).toBe(true);
-  await page.getByRole("button", { name: "Später" }).click();
-  await expect(page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Zurückziehen synchronisieren" })).toBeVisible();
+
+  // Ticking the draft box and saving queues the removal; it does not carry it
+  // out. Taking the article off the site is what the "⋯" menu's Zurückziehen
+  // is for, and that one asks first.
+  await assertNoPublishStarted(page, requests);
 });
 
-test("public article uses a crossed-out unpublish action with confirmation and sync", async ({ page }) => {
+test("unpublishing a public article runs from the article menu, confirmed", async ({ page }) => {
   const requests = [];
   const path = "blog/posts/2026-08-18-public.md";
   const sha = "public-post-sha";
@@ -635,27 +666,24 @@ test("public article uses a crossed-out unpublish action with confirmation and s
   await page.locator(".entry-card").filter({ hasText: path }).click();
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
 
-  const unpublish = page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichung zurücknehmen" });
-  await expect(unpublish.locator("svg")).toBeVisible();
-  await page.locator("#draftInput").evaluate((input) => {
-    input.checked = true;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  await expect(page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichung zurücknehmen" })).toBeVisible();
-  await page.locator("#publishButton").click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Veröffentlichung zurückziehen?" })).toBeVisible();
-  await page.getByRole("button", { name: "Als Entwurf speichern" }).click();
+  // The send button always sends. Unpublishing is the opposite intent and sits
+  // behind the article bar's "⋯", where a mis-tap cannot reach it.
+  const bar = page.getByRole("navigation", { name: "Artikel" });
+  await expect(bar.getByRole("button", { name: "Änderung veröffentlichen" })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "Veröffentlichung zurücknehmen" })).toHaveCount(0);
 
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Artikel jetzt vom Blog entfernen?" })).toBeVisible();
-  await expect(page.locator("#syncNowDialogText")).toContainText("vom öffentlichen Blog entfernt");
+  await bar.getByRole("button", { name: "Weitere Artikelaktionen" }).click();
+  const menu = page.getByRole("dialog", { name: "Weitere Artikelaktionen" });
+  await menu.getByRole("button", { name: "Veröffentlichung zurückziehen" }).click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Veröffentlichung zurückziehen?" })).toBeVisible();
+  await page.getByRole("button", { name: "Zurückziehen", exact: true }).click();
+
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" && request.url.endsWith("/git/blobs") && /draft: true/.test(request.body.content || "")
   )).toBe(true);
-  await page.getByRole("button", { name: "Später" }).click();
-  await expect(page.locator("#editorMetaLine")).toContainText("Zurückziehen vorgemerkt");
-  await page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Zurückziehen synchronisieren" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Artikel jetzt vom Blog entfernen?" })).toBeVisible();
-  await page.getByRole("button", { name: "Später" }).click();
+  await expect.poll(() => requests.some((request) =>
+    request.method === "POST" && request.url.endsWith("/api/admin/publish")
+  )).toBe(true);
 });
 
 test("a queued new post is not mistaken for an already public article", async ({ page }) => {
@@ -671,13 +699,14 @@ test("a queued new post is not mistaken for an already public article", async ({
   });
 
   await expect(page.locator("#editorMetaLine")).toContainText("Veröffentlichung vorgemerkt");
-  const publish = page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichung synchronisieren" });
+  const publish = page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Änderung veröffentlichen" });
   await publish.click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "Artikel jetzt veröffentlichen?" })).toBeVisible();
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" && request.url.endsWith("/git/blobs") && /draft: false/.test(request.body.content || "")
   )).toBe(true);
-  await page.getByRole("button", { name: "Später" }).click();
+  await expect.poll(() => requests.some((request) =>
+    request.method === "POST" && request.url.endsWith("/api/admin/publish")
+  )).toBe(true);
 });
 
 test("a queued slug rename remains an update of the public article", async ({ page }) => {
@@ -702,7 +731,7 @@ test("a queued slug rename remains an update of the public article", async ({ pa
   await page.locator(".entry-card").filter({ hasText: newPath }).click();
 
   await expect(page.locator("#editorMetaLine")).toContainText("Veröffentlicht");
-  await expect(page.getByRole("navigation", { name: "Editor" }).getByRole("button", { name: "Veröffentlichung zurücknehmen" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Änderung veröffentlichen" })).toBeVisible();
   await page.locator("#syncButton").evaluate((button) => button.click());
   await expect(page.locator("#queueView")).not.toContainText("admin-rename-origins.json");
   await expect(page.locator("#pushButtonCount")).toHaveText("2");

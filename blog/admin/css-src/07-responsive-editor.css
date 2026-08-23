@@ -1,0 +1,87 @@
+/* ---- Responsive: the editor ------------------------------------------- */
+/* Split out of 06-responsive.css when that file passed its line budget. Loaded
+   directly after it, so the cascade order is unchanged; everything here is a
+   phone override for the full-screen editor and its two bars. */
+
+@media (max-width: 52rem) {
+  .admin-body.is-editor-view {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .admin-body.is-editor-view .admin-shell,
+  .admin-body.is-editor-view .admin-layout,
+  .admin-body.is-editor-view .admin-workspace {
+    min-height: 0;
+    height: 100dvh;
+  }
+  .admin-body.is-editor-view .admin-workspace {
+    overflow: hidden;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+  /* Two tracks, not three: the writing bar is fixed below and therefore out of
+     flow, so it claims no row here. */
+  .admin-body.is-editor-view .editor-form {
+    gap: 0.75rem;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+  }
+  .admin-body.is-editor-view .editor-bar {
+    position: relative;
+    top: auto;
+    z-index: 2;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  /* The writing bar rides the keyboard. `--keyboard-inset` is published by
+     02d-keyboard-inset.js from the visual viewport; with the keyboard closed
+     it is 0 and the bar rests on the bottom safe area. Transform rather than
+     `bottom` so the move is composited and does not lag behind the keyboard. */
+  .admin-body.is-editor-view .writing-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    gap: 0.35rem;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0.4rem max(0.6rem, env(safe-area-inset-left)) calc(0.4rem + env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-right));
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
+  }
+  /* The keyboard already covers the home indicator, so the safe-area padding
+     would only add dead height while it is open. */
+  html.is-keyboard-open .admin-body.is-editor-view .writing-bar { padding-bottom: 0.4rem; }
+  .admin-body.is-editor-view .writing-bar .format-toolbar { gap: 0.35rem; }
+  .admin-body.is-editor-view .editor-article {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Let the last lines scroll clear of everything pinned to the bottom edge
+       — measured from the shared value rather than re-derived here, so the
+       article and the bar cannot drift apart. */
+    padding-bottom: calc(var(--bottom-chrome) + 0.6rem);
+  }
+}
+
+/* ---- Command sheets on phones ------------------------------------------ */
+/* The "+" and "⋯" sheets meet the bottom edge, where the thumb already is. */
+@media (max-width: 40rem) {
+  .sheet-dialog {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(1.35rem + env(safe-area-inset-bottom));
+  }
+  .tb-sheet-button { min-height: 3rem; }
+}

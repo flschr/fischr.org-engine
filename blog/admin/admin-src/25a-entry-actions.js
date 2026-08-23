@@ -136,7 +136,6 @@ export async function queueCurrent(mode) {
   // The change is committed at this point — mark the editor clean now, so a
   // hiccup in the (best-effort) list refresh below can't leave it "unsaved".
   captureEditorSnapshot();
-  state.current.draftTouched = false;
   rememberEditorInputs();
   renderEditorMetaLine();
   // The save landed in the drafts queue, so the local recovery copy is no

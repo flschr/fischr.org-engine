@@ -4,7 +4,6 @@ import { sessionHasGithubAccess, tokenHasGithubAccess } from "./05-github-auth.j
 import { baseName, mediaSort, publicMediaPath } from "./06-paths.js";
 import { slugify, todayPrefix, uploadStamp } from "./08-encoding.js";
 import { readFileAsDataUrl } from "./26-media.js";
-import { mediaDisplayUrl } from "./26a1-media-manifest.js";
 import { formatBytes } from "./26d-media-metadata.js";
 import { delay } from "./27a-publish-state.js";
 

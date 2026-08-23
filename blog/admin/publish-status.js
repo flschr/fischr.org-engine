@@ -30,14 +30,6 @@
     return `publish-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
-  function runTitle(requestId) {
-    return `Publish ${requestId}`;
-  }
-
-  function findRequestRun(payload, requestId) {
-    return (payload?.workflow_runs || []).find((run) => run.display_title === runTitle(requestId)) || null;
-  }
-
   function millisecondsBetween(start, end) {
     const startMs = Date.parse(start || "");
     const endMs = Date.parse(end || "");
@@ -112,9 +104,7 @@
   global.RWPublishStatus = {
     createRequestId,
     describeRun,
-    findRequestRun,
     phaseNames: phases.map(([name]) => name),
-    timingBreakdown,
-    runTitle
+    timingBreakdown
   };
 })(window);

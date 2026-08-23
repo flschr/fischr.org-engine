@@ -1,6 +1,5 @@
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
-import { icon } from "./02-toolbar.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { statsPanelRahmen, statsZeileSichtbar, statsZeilenTeile } from "./21a-stats-details.js";
 import { statsPeriodBounds, statsPeriodKey, statsPeriodLabel } from "./21b-stats-period.js";

@@ -4,7 +4,6 @@ import { blobShaMap } from "./04-drafts.js";
 import { commitToDrafts } from "./04a-draft-writes.js";
 import { baseName } from "./06-paths.js";
 import { applyMediaManifestState, loadMediaManifest, mediaManifestKeyFor, mediaManifestSignature } from "./26a1-media-manifest.js";
-import { commitMediaDiscardPlan } from "./26c-video-derivatives.js";
 
 // --- Media manifest (removal) --------------------------------------------
 

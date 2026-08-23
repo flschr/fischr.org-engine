@@ -179,3 +179,77 @@ test("ein Manifest-Fold auf main hält den Workflow nicht auf", async () => {
   assert.equal(aufrufe.filter((a) => a.includes("dispatches")).length, 1, "der Bau läuft an");
   assert.deepEqual(schritte.slice(0, 3), ["stand prüfen", "bau anstossen", "lauf finden"]);
 });
+
+// Was der Workflow ins Buch schreibt. Ein Ausgang, der dort nicht ankommt, hielte das Schloss
+// weiter — die nächste Veröffentlichung wäre bis zum Verfall blockiert.
+function buchStub() {
+  const geschrieben = [];
+  return {
+    geschrieben,
+    buch: {
+      haltLaufFest: async (requestId, runId, runUrl) => { geschrieben.push({ art: "lauf", requestId, runId, runUrl }); },
+      schliesseAb: async (requestId, status, grund) => { geschrieben.push({ art: "abschluss", requestId, status, grund }); }
+    }
+  };
+}
+
+test("ein fertiger Lauf wird mit Nummer und Ausgang ins Buch geschrieben", async () => {
+  const { step } = stepStub();
+  const { holen } = githubStub();
+  const { buch, geschrieben } = buchStub();
+
+  await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen, buch, jetzt: () => 500 });
+
+  assert.deepEqual(geschrieben, [
+    { art: "lauf", requestId: "r-1", runId: 77, runUrl: "https://x/77" },
+    { art: "abschluss", requestId: "r-1", status: "fertig", grund: null }
+  ]);
+});
+
+test("ein gescheiterter Lauf schliesst mit Grund ab", async () => {
+  const { step } = stepStub();
+  const { holen } = githubStub({ laeufe: [{ status: "completed", conclusion: "failure" }] });
+  const { buch, geschrieben } = buchStub();
+
+  const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen, buch, jetzt: () => 500 });
+
+  assert.equal(ergebnis.status, "gescheitert");
+  const abschluss = geschrieben.find((eintrag) => eintrag.art === "abschluss");
+  assert.equal(abschluss.status, "gescheitert");
+  assert.match(abschluss.grund, /failure/);
+});
+
+// Der frühe Ausstieg ist der gefährlichste: Er passiert, bevor irgendetwas läuft, und ohne
+// Eintrag bliebe das Schloss für eine Veröffentlichung liegen, die es nie gab.
+test("auch ein veralteter Stand gibt das Schloss zurück", async () => {
+  const { step } = stepStub();
+  const { holen } = githubStub({ mainSha: "inzwischen-anders" });
+  const { buch, geschrieben } = buchStub();
+
+  await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen, buch, jetzt: () => 500 });
+
+  assert.deepEqual(geschrieben, [
+    { art: "abschluss", requestId: "r-1", status: "veraltet", grund: "geprüfte Dateien haben sich bewegt" }
+  ]);
+});
+
+// Das Buch ist Buchführung, nicht die Veröffentlichung. Fällt es aus, läuft der Bau trotzdem —
+// alles andere hiesse, eine erfolgreiche Veröffentlichung an einer Notiz scheitern zu lassen.
+test("ein Buch, das nicht schreiben kann, hält nichts auf", async () => {
+  const { step } = stepStub();
+  const { holen } = githubStub();
+  const kaputt = {
+    haltLaufFest: async () => { throw new Error("D1 nicht erreichbar"); },
+    schliesseAb: async () => { throw new Error("D1 nicht erreichbar"); }
+  };
+
+  const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen, buch: kaputt, jetzt: () => 500 });
+  assert.equal(ergebnis.status, "fertig");
+});
+
+test("ohne Buch läuft der Ablauf unverändert", async () => {
+  const { step } = stepStub();
+  const { holen } = githubStub();
+  const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen });
+  assert.equal(ergebnis.status, "fertig");
+});

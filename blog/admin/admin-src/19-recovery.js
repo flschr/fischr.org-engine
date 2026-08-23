@@ -1,4 +1,3 @@
-import { repo } from "./00-konstanten.js";
 import { buildDocument, splitDocument } from "./09-frontmatter.js";
 import { editorRecovery } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
@@ -14,7 +13,7 @@ import { fillEditor } from "./20-editor-fields.js";
 import { collectEditorFields } from "./20a-editor-field-actions.js";
 import { fillSourceEditor } from "./20b-source-pages.js";
 import { queueCurrent } from "./25a-entry-actions.js";
-import { normalizeUploadedImage, preparedMediaChange } from "./26-media.js";
+import { preparedMediaChange } from "./26-media.js";
 import { loadMediaManifest, mediaManifestKeyFor, pendingUploadPathFor } from "./26a1-media-manifest.js";
 import { removeMediaReferences } from "./26c-media-cleanup.js";
 

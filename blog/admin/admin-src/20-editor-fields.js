@@ -48,18 +48,10 @@ export function renderEditorMetaLine() {
   els.editorMetaLine.textContent = parts.join(" · ");
 
   const publishAction = currentPublishAction();
-  const unpublishAction = publishAction === "unpublish" || publishAction === "sync-unpublish";
-  els.publishButton.innerHTML = unpublishAction ? ICON.unpublish : ICON.send;
-  const publishLabel = {
-    unpublish: "Veröffentlichung zurücknehmen",
-    "sync-unpublish": "Zurückziehen synchronisieren",
-    publish: "Veröffentlichen",
-    "sync-publish": "Veröffentlichung synchronisieren"
-  }[publishAction];
+  els.publishButton.innerHTML = ICON.send;
+  const publishLabel = publishAction === "publish" ? "Veröffentlichen" : "Änderung veröffentlichen";
   els.publishButton.setAttribute("aria-label", publishLabel);
   els.publishButton.title = publishLabel;
-  els.publishButton.classList.toggle("is-publish", !unpublishAction);
-  els.publishButton.classList.toggle("is-published", unpublishAction);
 }
 
 export function rememberEditorInputs() {
@@ -107,10 +99,8 @@ export function fillEditor(fields, preserved, body, current, fieldBlocks = {}) {
     preserved: preserved || [],
     originalFields: { ...fields },
     originalFieldBlocks: { ...fieldBlocks },
-    originalInputs: {},
-    draftTouched: false
+    originalInputs: {}
   };
-  state.current.unpublishQueued = Boolean(current.published && current.local && merged.draft);
   state.autoSlug = current.collection === "posts" && Boolean(current.isNew);
   state.bodyMarkdown = String(body || "").replace(/\r\n/g, "\n").trimEnd();
   setSourceModeUi(false);

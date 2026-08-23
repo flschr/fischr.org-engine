@@ -18,29 +18,45 @@
     storage.removeItem(key);
   }
 
-  async function discoverActiveRequest(github, branch) {
-    const payload = await github(
-      `actions/workflows/admin-publish.yml/runs?event=workflow_dispatch&branch=${encodeURIComponent(branch)}&per_page=30`
-    );
-    const publishRuns = (payload.workflow_runs || []).filter(
-      (candidate) => candidate.display_title?.startsWith("Publish ")
-    );
-    const run = publishRuns.find((candidate) => candidate.status !== "completed");
-    if (!run) return null;
-    return {
-      requestId: run.display_title.slice("Publish ".length),
-      changeCount: 0,
-      signatures: [],
-      startedAt: run.created_at || "",
-      discoveredFromGithub: true
-    };
+  // Was gerade läuft, steht im Buch — nicht in der Actions-Liste.
+  //
+  // Vorher wurden dafür dreissig Läufe geholt, nach einem Titel gefiltert, der mit "Publish "
+  // beginnt, und die Kennung wieder aus diesem Titel herausgeschnitten. Das ging nur, solange
+  // ein Lauf existierte: Eine Veröffentlichung, die noch keinen hatte, war unauffindbar, und
+  // ein Neuladen in diesem Fenster verlor sie.
+  async function discoverActiveRequest(holen = globalThis.fetch) {
+    try {
+      const antwort = await holen("/api/admin/publish", { credentials: "same-origin" });
+      if (!antwort.ok) return null;
+      const { laufend } = await antwort.json();
+      if (!laufend) return null;
+      return {
+        requestId: laufend.requestId,
+        workflowId: laufend.workflowId || "",
+        runId: laufend.runId || null,
+        changeCount: laufend.changeCount || 0,
+        signatures: [],
+        startedAt: laufend.startedAt || ""
+      };
+    } catch {
+      return null;
+    }
   }
 
-  async function fetchStatus(github, statusModule, branch, request) {
-    const runs = await github(
-      `actions/workflows/admin-publish.yml/runs?event=workflow_dispatch&branch=${encodeURIComponent(branch)}&per_page=30`
-    );
-    const run = statusModule.findRequestRun(runs, request.requestId);
+  // Der Lauf wird über seine Nummer geholt, nicht gesucht.
+  //
+  // Vorher listete jede Abfrage die letzten dreissig Läufe und verglich deren Titel mit
+  // `Publish <requestId>`. Diese Zeichenkette entsteht an zwei Orten: in der run-name-Zeile von
+  // admin-publish.yml und hier. Nichts hielt die beiden zusammen — wer die YAML-Zeile ändert,
+  // lässt jede Veröffentlichung zwölf Minuten in "vorgemerkt" hängen und dann eine
+  // Zeitüberschreitung melden, die keine ist. Alle Tests bleiben dabei grün.
+  //
+  // Der Workflow kennt die Nummer, sobald er den Lauf gefunden hat, und schreibt sie ins Buch.
+  // `runId` kommt von dort. Fehlt sie noch, gibt es schlicht noch keinen Lauf — describeRun(null)
+  // beantwortet das seit jeher mit "vorgemerkt".
+  async function fetchStatus(github, statusModule, request) {
+    if (!request.runId) return statusModule.describeRun(null, null, request);
+    const run = await github(`actions/runs/${encodeURIComponent(request.runId)}`);
     const jobs = run?.id ? await github(`actions/runs/${run.id}/jobs?per_page=100`) : null;
     return statusModule.describeRun(run, jobs, request);
   }

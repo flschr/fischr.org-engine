@@ -5,10 +5,13 @@
 
 import { WorkflowEntrypoint } from "cloudflare:workers";
 
+import { ledgerAus } from "./publish-ledger.js";
 import { fuehrePublishAus } from "./publish-run.js";
 
 export class PublishWorkflow extends WorkflowEntrypoint {
   run(event, step) {
-    return fuehrePublishAus(event, step);
+    // Das Buch kommt von hier, nicht aus dem Ablauf: Dieselbe Trennung wie bei fetch — was an
+    // die Laufzeit gebunden ist, bleibt in der Hülle, damit der Ablauf ohne sie prüfbar ist.
+    return fuehrePublishAus(event, step, { buch: ledgerAus(this.env?.PUBLISH_LEDGER) });
   }
 }

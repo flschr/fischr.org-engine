@@ -26,37 +26,6 @@ export function askDiscardAction({ title, text, actionLabel = "Verwerfen" }) {
   });
 }
 
-export function askSyncNowAction(count, action = "update") {
-  if (!els.syncNowDialog || !els.syncNowDialogText) return Promise.resolve(false);
-  const changeText = count === 1 ? "1 Änderung" : `${count} Änderungen`;
-  const copy = action === "unpublish"
-    ? {
-        title: "Artikel jetzt vom Blog entfernen?",
-        text: `Beim Synchronisieren wird der Artikel vom öffentlichen Blog entfernt. Gleichzeitig werden alle aktuell wartenden Änderungen gesynct (${changeText}).`,
-        button: "Entfernen und syncen"
-      }
-    : action === "publish"
-      ? {
-          title: "Artikel jetzt veröffentlichen?",
-          text: `Beim Synchronisieren wird der Artikel veröffentlicht. Gleichzeitig werden alle aktuell wartenden Änderungen gesynct (${changeText}).`,
-          button: "Veröffentlichen und syncen"
-        }
-      : {
-          title: "Gespeicherte Änderungen jetzt veröffentlichen?",
-          text: `Der öffentliche Artikel wird mit deinen Änderungen aktualisiert. Gleichzeitig werden alle aktuell wartenden Änderungen gesynct (${changeText}).`,
-          button: "Änderungen syncen"
-        };
-  if (els.syncNowDialogTitle) els.syncNowDialogTitle.textContent = copy.title;
-  els.syncNowDialogText.textContent = copy.text;
-  if (els.syncNowDialogAction) els.syncNowDialogAction.textContent = copy.button;
-  els.syncNowDialog.returnValue = "later";
-  return new Promise((resolve) => {
-    const resolveWithValue = () => resolve(els.syncNowDialog.returnValue === "sync");
-    els.syncNowDialog.addEventListener("close", resolveWithValue, { once: true });
-    els.syncNowDialog.showModal();
-  });
-}
-
 export function askUnpublishAction() {
   if (!els.unpublishDialog) return Promise.resolve(false);
   els.unpublishDialog.returnValue = "cancel";

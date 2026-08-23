@@ -21,10 +21,6 @@
   background: var(--bg);
 }
 .editor-bar-spacer { flex: 1 1 auto; }
-.tb-divider { flex: 0 0 auto; width: 1px; height: 1.6rem; margin: 0 0.1rem; background: var(--line-2); }
-/* Back out of the editor — phones only, where the bottom bar steps aside for
-   the full-screen editor. On desktop the sidebar is always there instead. */
-.tb-back { display: none; }
 .format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 
 .preview-gpx {
@@ -51,9 +47,26 @@
 }
 .tb-text { font-size: 1rem; font-weight: 750; }
 
+/* ---- Writing bar ------------------------------------------------------- */
+/* Acts on the text, not the document. Inline under the article bar on a wide
+   screen; pinned above the keyboard on a phone (see 06-responsive.css). */
+.writing-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  max-width: var(--editor-content-w);
+  margin: 0 auto 0 0;
+  padding: 0.35rem 0;
+  background: var(--bg);
+}
+.writing-bar-spacer { flex: 1 1 auto; }
+
 /* Bear-style discrete bordered buttons */
 .editor-bar .tb-btn,
-.editor-bar .tb-button {
+.editor-bar .tb-button,
+.writing-bar .tb-btn,
+.writing-bar .tb-button {
   min-width: 2.3rem;
   min-height: 2.3rem;
   padding: 0 0.45rem;
@@ -63,20 +76,20 @@
   color: var(--ink-soft);
 }
 .editor-bar .tb-btn:hover,
-.editor-bar .tb-button:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
+.editor-bar .tb-button:hover,
+.writing-bar .tb-btn:hover,
+.writing-bar .tb-button:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
 .editor-bar .tb-btn svg,
-.editor-bar .tb-button svg { width: 1.05rem; height: 1.05rem; }
+.editor-bar .tb-button svg,
+.writing-bar .tb-btn svg,
+.writing-bar .tb-button svg { width: 1.05rem; height: 1.05rem; }
 
 /* Colored, filled action buttons (Bear style) */
 .editor-bar #previewModeButton[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent-weak-2); color: var(--accent-ink); }
 .editor-bar .tb-publish.is-publish { background: var(--accent); border-color: transparent; color: #fff; }
 .editor-bar .tb-publish.is-publish:hover { background: var(--accent-hover); border-color: transparent; color: #fff; }
-.editor-bar .tb-publish.is-published { background: var(--brown); border-color: transparent; color: #fff; }
-.editor-bar .tb-publish.is-published:hover { background: #6f4419; border-color: transparent; color: #fff; }
 .editor-bar .tb-save { background: var(--green); border-color: transparent; color: #fff; }
 .editor-bar .tb-save:hover { background: #11652f; border-color: transparent; color: #fff; }
-.editor-bar .tb-delete { background: var(--red); border-color: transparent; color: #fff; }
-.editor-bar .tb-delete:hover { background: #b91c1c; border-color: transparent; color: #fff; }
 .editor-actions .danger svg { width: 1.05rem; height: 1.05rem; }
 /* New = indigo + */
 .lib-new { border-color: transparent; background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgb(79 70 229 / 0.35); }
@@ -115,4 +128,3 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.9rem;
 }
-.editor-form.is-source-mode .tb-divider { display: none; }

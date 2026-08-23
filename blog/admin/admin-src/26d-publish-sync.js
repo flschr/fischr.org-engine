@@ -1,5 +1,6 @@
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
+import { renderPublishOverlay } from "./27f-publish-overlay.js";
 import { showStatus } from "./03-status.js";
 import { fetchMainTree, getBlobText } from "./04-drafts.js";
 import { loadChanges } from "./04a-draft-writes.js";
@@ -79,6 +80,7 @@ export function renderSyncState(changes) {
   // der einen laufenden Vorgang zeigt. Deshalb bleibt er immer klickbar; gesperrt bleibt allein,
   // was schreibt: #pushButton und die Verwerfen-Aktionen in der Warteschlange selbst.
   els.syncButton.disabled = false;
+  renderPublishOverlay();
   if (state.view === "queue") renderQueue();
 }
 

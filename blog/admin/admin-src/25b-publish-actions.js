@@ -5,7 +5,7 @@ import { loadChanges } from "./04a-draft-writes.js";
 import { hasGithubAccess } from "./05-github-auth.js";
 import { openPublishDialog } from "./13-publish-dialog.js";
 import { editorIsDirty } from "./19-recovery.js";
-import { askSyncNowAction, askUnpublishAction } from "./19a-editor-dialogs.js";
+import { askUnpublishAction } from "./19a-editor-dialogs.js";
 import { renderEditorMetaLine } from "./20-editor-fields.js";
 import { queueCurrent } from "./25a-entry-actions.js";
 import { syncOutbox } from "./27b-publish-actions.js";
@@ -16,29 +16,32 @@ function toggleCurrentPublishState() {
   return saveWithProgress(els.draftInput.checked ? "publish" : "draft");
 }
 
-export async function saveWithProgress(mode, { offerSync = false, syncAction = "update" } = {}) {
-  const wasPublished = state.current?.collection === "posts" && Boolean(state.current.published);
-  const savesUnpublish = mode !== "publish" && wasPublished && els.draftInput.checked;
-  const savesPublish = mode !== "draft" && !wasPublished && !els.draftInput.checked;
-  const effectiveSyncAction = syncAction === "update"
-    ? (savesUnpublish ? "unpublish" : savesPublish ? "publish" : "update")
-    : syncAction;
-  const shouldOfferSync = offerSync || mode === "publish" || savesPublish || (mode === "save" && wasPublished);
+export async function saveWithProgress(mode, { offerSync = false } = {}) {
+  // Only sending publishes. Saving always just writes to `drafts`, whatever the
+  // article's public state is.
+  //
+  // The alternative — publishing on every save of an already-public article —
+  // was tried and rejected: since the publish runs as a real Actions build,
+  // and all production deploys share one non-cancelling concurrency group,
+  // five saves while writing become five builds queued behind each other, the
+  // last landing minutes later. The intent to update the public site is worth
+  // one deliberate button, and that button is Senden.
+  //
+  // `offerSync` carries the one non-send case: unpublishing, which is already
+  // its own confirmed action behind the "⋯" menu.
+  const shouldSync = offerSync || mode === "publish";
   els.saveDialog.classList.remove("is-done", "is-error");
   els.saveDialogText.textContent = mode === "publish" ? "Veröffentlichung wird vorgemerkt …" : "Wird gespeichert …";
   if (!els.saveDialog.open) els.saveDialog.showModal();
   try {
     const ok = await queueCurrent(mode);
     if (ok) {
-      if (effectiveSyncAction === "unpublish") {
-        state.current.unpublishQueued = true;
-        renderEditorMetaLine();
-      }
+      renderEditorMetaLine();
       els.saveDialog.classList.add("is-done");
       els.saveDialogText.textContent = "In GitHub gespeichert";
-      if (shouldOfferSync) {
+      if (shouldSync) {
         if (els.saveDialog.open) els.saveDialog.close();
-        await maybeOfferSyncAfterSave(mode === "publish" ? "publish" : effectiveSyncAction);
+        await syncAfterSave();
       } else {
         window.setTimeout(() => { if (els.saveDialog.open) els.saveDialog.close(); }, 650);
       }
@@ -54,7 +57,11 @@ export async function saveWithProgress(mode, { offerSync = false, syncAction = "
   }
 }
 
-async function maybeOfferSyncAfterSave(action = "update") {
+// Publishes straight away. There used to be a dialog here asking whether to
+// sync now — it stood between "I saved" and "it is live" on every single save,
+// and the answer was always yes. Editing several posts and publishing them
+// together is still possible: that is what the queue view is for.
+async function syncAfterSave() {
   if (state.publishInFlight || !hasGithubAccess()) return;
   let changes = Array.from(state.changes.values());
   try {
@@ -66,8 +73,7 @@ async function maybeOfferSyncAfterSave(action = "update") {
     }
   }
   if (!changes.length) return;
-  const syncNow = await askSyncNowAction(changes.length, action);
-  if (syncNow) await syncOutbox();
+  await syncOutbox();
 }
 
 export async function handleCurrentPublishAction() {
@@ -76,33 +82,25 @@ export async function handleCurrentPublishAction() {
     return;
   }
   const action = currentPublishAction();
-  if (action === "sync-unpublish") {
-    await maybeOfferSyncAfterSave("unpublish");
-    return;
-  }
-  if (action === "unpublish") {
-    await unpublishCurrentPost();
-    return;
-  }
   if (action === "publish") {
     openPublishDialog();
     return;
   }
   if (editorIsDirty()) await saveWithProgress("publish");
-  else await maybeOfferSyncAfterSave("publish");
+  else await syncAfterSave();
 }
 
+// The send button only ever sends. Taking an article back off the site is a
+// rare, opposite intent and lives behind the top bar's "⋯" — a single button
+// that silently turned into its own inverse was the reason the bar needed a
+// four-way label lookup to explain itself.
 export function currentPublishAction() {
-  const published = state.current?.collection === "posts" && Boolean(state.current.published);
-  const draftIntent = els.draftInput.checked;
-  const draftWasTouched = Boolean(state.current?.draftTouched);
-  if (published) return draftIntent && state.current.unpublishQueued && !draftWasTouched ? "sync-unpublish" : "unpublish";
-  return draftIntent ? "publish" : "sync-publish";
+  return els.draftInput.checked ? "publish" : "sync-publish";
 }
 
-async function unpublishCurrentPost() {
+export async function unpublishCurrentPost() {
   if (state.current?.collection !== "posts" || !state.current.published) return;
   const confirmed = await askUnpublishAction();
   if (!confirmed) return;
-  await saveWithProgress("draft", { offerSync: true, syncAction: "unpublish" });
+  await saveWithProgress("draft", { offerSync: true });
 }

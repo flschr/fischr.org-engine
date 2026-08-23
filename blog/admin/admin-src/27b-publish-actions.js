@@ -3,14 +3,10 @@ import { github } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
 import { setBusy, showStatus } from "./03-status.js";
 import { ensureDraftsBranch, getAllChanges } from "./04-drafts.js";
-import { loadChanges } from "./04a-draft-writes.js";
 import { focusGithubConnection, hasGithubAccess, requireGithubAccess } from "./05-github-auth.js";
-import { orphanMediaChanges } from "./15a-media-reference-index.js";
-import { askDiscardAction } from "./19a-editor-dialogs.js";
-import { discardUnusedMediaChanges } from "./26c-video-derivatives.js";
-import { changeSetSignature, guardMediaIdle, guardMediaReadyForPublish, loadFreshChanges, recoverPendingMediaOperations, renderSyncState } from "./26d-publish-sync.js";
+import { guardMediaReadyForPublish, recoverPendingMediaOperations, renderSyncState } from "./26d-publish-sync.js";
 import { waitForMediaCommits } from "./26e-media-recovery-state.js";
-import { persistPublishRequest, pollPublishCompletion, refreshCurrentSilent } from "./27a-publish-state.js";
+import { persistPublishRequest, pollPublishCompletion } from "./27a-publish-state.js";
 import { changeSignature, openQueue, renderQueue } from "./27c-queue-render.js";
 
 // Startet die Veröffentlichung über den eigenen Endpunkt.

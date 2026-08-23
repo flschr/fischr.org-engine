@@ -1,7 +1,6 @@
 import { tokenKey } from "./00-konstanten.js";
 
 import { els } from "./01b-elements.js";
-import { mediaManifestSignature } from "./26a1-media-manifest.js";
 
 export const runtimeAssets = document.getElementById("adminRuntimeAssets")?.dataset || {};
 

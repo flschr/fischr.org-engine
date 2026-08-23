@@ -4,8 +4,6 @@ import { state } from "./01c-state.js";
 import { blobShaMap, diffChange, getBlobText } from "./04-drafts.js";
 import { fetchTree } from "./05-github-auth.js";
 import { fileName, isMediaLibraryPath, isVideoPath, mediaDateSortValue, publicMediaPath, referencedEntryFromMediaPath, videoPosterPath } from "./06-paths.js";
-import { mediaManifestKeys } from "./19-recovery.js";
-import { refreshMedia } from "./26a-media-library.js";
 
 // --- Media manifest (the R2 index) ---------------------------------------
 

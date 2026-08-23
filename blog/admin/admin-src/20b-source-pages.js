@@ -19,10 +19,10 @@ export function setSourceModeUi(enabled) {
   els.editorForm.classList.toggle("is-source-mode", sourceMode);
   els.titleInput.hidden = sourceMode;
   els.publishButton.hidden = sourceMode;
-  els.deleteButton.hidden = sourceMode;
+  els.docMenuButton.hidden = sourceMode;
   els.previewModeButton.hidden = sourceMode;
   els.toggleMetaButton.hidden = sourceMode;
-  els.formatToolbar.hidden = sourceMode;
+  if (els.writingBar) els.writingBar.hidden = sourceMode;
   if (sourceMode) els.metaPanel.hidden = true;
 }
 
