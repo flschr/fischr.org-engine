@@ -21,4 +21,13 @@ test("authenticated editor saves a real draft snapshot and dispatches its review
   expect(dispatch.body.inputs.draft_sha).toBe("new-commit-sha");
   expect(dispatch.body.inputs.main_sha).toBe("main-head-sha");
   expect(dispatch.body.inputs.change_count).toBe("1");
+
+  // Der Modus steht nur in der gespeicherten Anfrage, nicht in den Workflow-Inputs: Aus ihm
+  // beschriftet sich die Fortschrittskarte, und nur ein Content-Publish warnt nach 90 Sekunden.
+  // Er wurde still leer gelassen, weil `publishPlan` im Browser den Absatz `<p id="publishPlan">`
+  // traf statt eines Plans — ein Fehler, den nur eine Prüfung im echten Dokument sieht.
+  const storedRequest = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("rw-admin-publish-request-v1"))
+  );
+  expect(storedRequest.validationMode).toBe("content");
 });

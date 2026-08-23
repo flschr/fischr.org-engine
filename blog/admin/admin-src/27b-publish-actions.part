@@ -79,6 +79,11 @@
         ? state.mainTreeHeadSha
         : (await github(`git/ref/heads/${encodeURIComponent(repo.publishBranch)}`)).object.sha;
       const requestId = window.RWPublishStatus.createRequestId();
+      // Derselbe Plan, den die Queue anzeigt, aus denselben Änderungen neu berechnet. Die
+      // Anfrage ist die einzige Stelle, an der er die Veröffentlichung überdauert: die
+      // Fortschrittskarte beschriftet sich daraus, und die Warnung nach 90 Sekunden gilt nur
+      // für einen Content-Publish.
+      const publishPlan = window.RWPublishPlan.plan(changes);
       const request = {
         requestId,
         mainSha: mainHead,
