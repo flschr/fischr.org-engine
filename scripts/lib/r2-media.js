@@ -7,6 +7,8 @@ const sharp = require("sharp");
 
 const { imageMimeType, videoMimeType } = require("../../lib/eleventy/social");
 const {
+  contentAddressedKey,
+  objectKeyFor,
   pendingUploadFileName,
   pendingUploadsRelativeDir,
   readBaseManifest,
@@ -269,15 +271,29 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
 
   const { accountId, accessKeyId, secretAccessKey } = credentialsFromEnv(env);
   const contentType = contentTypeFor(localPath);
-  await putObject({ accountId, accessKeyId, secretAccessKey, key, buffer, contentType, env });
+  const objectKey = contentAddressedKey(key, hash);
+  await putObject({ accountId, accessKeyId, secretAccessKey, key: objectKey, buffer, contentType, env });
+
+  // What this entry used to be served from, if that was a different object. An entry replacing
+  // one of the original path-keyed uploads leaves that object in the bucket deliberately: its
+  // address is baked into published feed items, syndicated posts and the absolute URLs in the
+  // post archive, and all of those have to keep resolving. Recording it here is what keeps the
+  // drift report from calling it an orphan.
+  const previousObjectKey = existing ? objectKeyFor(existing, key) : null;
+  const superseded = [
+    ...(existing && Array.isArray(existing.supersededObjectKeys) ? existing.supersededObjectKeys : []),
+    ...(previousObjectKey && previousObjectKey !== objectKey ? [previousObjectKey] : [])
+  ].filter((value, index, all) => all.indexOf(value) === index);
 
   const dimensions = await rasterDimensions(localPath);
   manifest[key] = {
     sourcePath: sourcePath || path.relative(root, localPath).split(path.sep).join("/"),
+    objectKey,
     sha256: hash,
     size: buffer.length,
     contentType,
     ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
+    ...(superseded.length ? { supersededObjectKeys: superseded } : {}),
     migratedAt: new Date().toISOString()
   };
 
@@ -325,11 +341,14 @@ function deliveryUrlForKey(key, env = process.env, sha256 = null) {
 // and because validation runs before the deploy step, nothing shipped at all. The `?v=` below
 // moves the cache entry with the bytes and keeps that from stranding a clone; taking CI off the
 // cached path altogether is what keeps it from ever stranding a deploy.
-async function downloadMediaFile({ key, destinationPath, expectedSha256, env = process.env }) {
+async function downloadMediaFile({ key, objectKey, destinationPath, expectedSha256, env = process.env }) {
+  // `key` identifies the entry, `objectKey` addresses its bytes. They are the same for every
+  // original upload and diverge for anything written since — see lib/media-manifest.js.
+  const address = objectKey || key;
   const credentials = optionalCredentialsFromEnv(env);
   const buffer = credentials
-    ? await downloadFromBucket({ credentials, key, destinationPath, expectedSha256, env })
-    : await downloadFromDeliveryDomain({ key, destinationPath, expectedSha256, env });
+    ? await downloadFromBucket({ credentials, key: address, destinationPath, expectedSha256, env })
+    : await downloadFromDeliveryDomain({ key: address, destinationPath, expectedSha256, env });
 
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
   // Write-then-rename, because the half-written file an interrupted run leaves behind would
@@ -413,6 +432,7 @@ module.exports = {
   optionalCredentialsFromEnv,
   s3Endpoint,
   removePendingUploads,
+  contentAddressedKey,
   contentTypeFor,
   deliveryHost,
   deliveryUrlForKey,

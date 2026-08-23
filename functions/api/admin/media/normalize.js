@@ -53,7 +53,9 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
   const invalid = validateNormalizeRequest(request);
   if (invalid) return jsonResponse({ message: invalid }, { status: 400 });
 
-  const objectKey = objectKeyForUploadPath(request.targetPath);
+  // The entry's identity, derived from the path exactly as before. Where its bytes go is a
+  // separate question now, answered from the content once the WebP exists.
+  const manifestKey = objectKeyForUploadPath(request.targetPath);
   let raw;
   try {
     raw = await readUploadBlob(context.env, session.token, request, fetchFn);
@@ -72,9 +74,19 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
   // idempotency the workflow's reportAlreadyProcessed() provides, so a retry of completed
   // work reports success instead of resurfacing a media error the user cannot clear.
   if (raw === null) {
-    const stored = await bucket.head(objectKey);
-    if (stored) {
-      return jsonResponse({ status: "already-processed", objectKey, publicPath: publicPathFor(request.targetPath) });
+    // The object key is derived from the normalized bytes, and on this path those bytes are
+    // exactly what is missing — so the finished object can no longer be found by name. A small
+    // pointer written next to it answers the question instead: it is keyed by the path, which
+    // is all a retry knows. Being path-keyed is harmless here because nothing serves it — it is
+    // read through the binding, which does not go through the edge cache that made mutable
+    // delivery keys a problem in the first place.
+    const pointer = await bucket.get(processedPointerKey(manifestKey));
+    if (pointer) {
+      return jsonResponse({
+        status: "already-processed",
+        objectKey: await pointer.text(),
+        publicPath: publicPathFor(request.targetPath)
+      });
     }
     return jsonResponse(
       { message: `${request.sourcePath} fehlt in ${request.draftSha} und erreichte R2 nie.` },
@@ -97,18 +109,28 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
     return jsonResponse({ message: error?.message || "Bildumwandlung fehlgeschlagen.", code: error?.code }, { status });
   }
 
+  const sha256 = await sha256Hex(webp);
+  const objectKey = contentAddressedKey(manifestKey, sha256);
+
   await bucket.put(objectKey, webp, {
     httpMetadata: {
       contentType: "image/webp",
-      // Matches cacheControl in scripts/lib/r2-media.js — a key's bytes only ever change on a
-      // deliberate re-normalization, and publishMediaFile skips the PUT when the hash matches.
+      // Matches cacheControl in scripts/lib/r2-media.js. Now unconditionally safe rather than
+      // safe-by-convention: the key is the content, so no future upload can contradict what an
+      // edge cache already holds under it.
       cacheControl: "public, max-age=31536000"
     }
   });
 
+  // Written after the object, so a pointer never promises something that is not there.
+  await bucket.put(processedPointerKey(manifestKey), objectKey, {
+    httpMetadata: { contentType: "text/plain", cacheControl: "no-store" }
+  });
+
   const entry = {
     sourcePath: request.targetPath,
-    sha256: await sha256Hex(webp),
+    objectKey,
+    sha256,
     size: webp.byteLength,
     contentType: "image/webp",
     migratedAt: now()
@@ -121,9 +143,25 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
     status: "normalized",
     objectKey,
     publicPath: publicPathFor(request.targetPath),
-    recordPath: uploadRecordPath(objectKey),
-    record: { key: objectKey, entry }
+    recordPath: uploadRecordPath(manifestKey),
+    record: { key: manifestKey, entry }
   });
+}
+
+// Mirrors contentAddressedKey in lib/media-manifest.js, which this cannot import: that module is
+// CommonJS and this runs as ESM on Workers. tests/media-manifest.test.js asserts the two agree,
+// so a change to either fails rather than drifting silently.
+export function contentAddressedKey(sourceKey, sha256) {
+  const lastDot = String(sourceKey).lastIndexOf(".");
+  const lastSlash = String(sourceKey).lastIndexOf("/");
+  const extension = lastDot > lastSlash && lastDot !== -1 ? String(sourceKey).slice(lastDot).toLowerCase() : "";
+  return `cas/${sha256.slice(0, 2)}/${sha256}${extension}`;
+}
+
+// Internal bookkeeping, never delivered. Shares the shape of the existing staging/ prefix, and
+// like it is excluded from the drift report's orphan list rather than being recorded per object.
+export function processedPointerKey(manifestKey) {
+  return `processed/${manifestKey}`;
 }
 
 // Mirrors validateRequest() in scripts/admin-normalize-image.js. Both guard the same thing:

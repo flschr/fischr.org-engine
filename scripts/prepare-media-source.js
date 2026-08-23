@@ -15,6 +15,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { loadManifest, downloadMediaFile, optionalCredentialsFromEnv } = require("./lib/r2-media");
+const { objectKeyFor } = require("../lib/media-manifest");
 
 const root = process.cwd();
 const ephemeralSourcePrefix = "_site/";
@@ -41,11 +42,16 @@ async function main() {
   const manifest = loadManifest();
   const missing = Object.entries(manifest)
     .filter(([, entry]) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix))
-    .map(([key, entry]) => ({ key, destinationPath: path.join(root, entry.sourcePath), sha256: entry.sha256 }))
+    .map(([key, entry]) => ({
+      key,
+      objectKey: objectKeyFor(entry, key),
+      destinationPath: path.join(root, entry.sourcePath),
+      sha256: entry.sha256
+    }))
     .filter(({ destinationPath }) => !fs.existsSync(destinationPath));
 
-  await runWithConcurrency(missing, concurrency, ({ key, destinationPath, sha256 }) =>
-    downloadMediaFile({ key, destinationPath, expectedSha256: sha256 })
+  await runWithConcurrency(missing, concurrency, ({ key, objectKey, destinationPath, sha256 }) =>
+    downloadMediaFile({ key, objectKey, destinationPath, expectedSha256: sha256 })
   );
 
   const total = Object.values(manifest).filter(

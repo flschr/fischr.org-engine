@@ -37,6 +37,13 @@ function fakeBucket(initial = {}, { failDeletes = 0 } = {}) {
     async head(key) {
       return objects.has(key) ? { key } : null;
     },
+    // The pointer read on the retry path wants the body, not just presence — R2's get() returns
+    // an object with text(), so the stub has to as well.
+    async get(key) {
+      if (!objects.has(key)) return null;
+      const stored = objects.get(key);
+      return { key, async text() { return String(stored?.value ?? stored); } };
+    },
     async delete(key) {
       this.deleteAttempts += 1;
       if (remainingDeleteFailures > 0) {
@@ -127,7 +134,9 @@ test("normalize endpoint stores the WebP in R2 and returns a foldable upload rec
   const body = await response.json();
 
   assert.equal(body.status, "normalized");
-  assert.equal(body.objectKey, "images/uploads/2026-08-22-photo.webp");
+  // The response names where the bytes went; the record names what the entry is. They stopped
+  // being the same when uploads became content-addressed.
+  assert.match(body.objectKey, /^cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp$/);
   assert.equal(body.publicPath, "/assets/images/uploads/2026-08-22-photo.webp");
   // The record path and shape have to match lib/media-manifest.js exactly, or the build will
   // not fold the upload in and the image resolves to a path that is no longer in Git.
@@ -138,10 +147,18 @@ test("normalize endpoint stores the WebP in R2 and returns a foldable upload rec
   assert.equal(body.record.entry.migratedAt, "2026-08-22T12:00:00.000Z");
   assert.match(body.record.entry.sha256, /^[0-9a-f]{64}$/);
 
-  const stored = ctx.env.MEDIA_BUCKET.objects.get("images/uploads/2026-08-22-photo.webp");
+  assert.equal(body.record.entry.objectKey, body.objectKey);
+
+  const stored = ctx.env.MEDIA_BUCKET.objects.get(body.objectKey);
   assert.ok(stored, "expected the normalized image in R2");
   assert.equal(stored.options.httpMetadata.contentType, "image/webp");
   assert.equal(stored.options.httpMetadata.cacheControl, "public, max-age=31536000");
+
+  // The pointer is what a retry finds when the raw upload is gone and the content address can
+  // no longer be recomputed. Written after the object, so it never promises a missing file.
+  const pointer = ctx.env.MEDIA_BUCKET.objects.get("processed/images/uploads/2026-08-22-photo.webp");
+  assert.ok(pointer, "expected a path-keyed pointer to the finished object");
+  assert.equal(pointer.options.httpMetadata.cacheControl, "no-store");
 });
 
 test("the recorded hash and size describe the stored bytes, not the upload", async () => {
@@ -160,13 +177,21 @@ test("the recorded hash and size describe the stored bytes, not the upload", asy
 // contains the raw upload once an earlier attempt finished. Reporting success is what keeps
 // the user from being stuck behind a media error for work that is already done.
 test("a retry after a finished run reports success instead of an error", async () => {
-  const ctx = context(VALID, { MEDIA_BUCKET: fakeBucket({ "images/uploads/2026-08-22-photo.webp": {} }) });
+  // What proves the earlier run finished is the path-keyed pointer, not the object itself: the
+  // object's key is derived from bytes this request no longer has, so it cannot be looked up by
+  // name. The pointer also carries the address, which the answer hands back.
+  const finished = "cas/ab/" + "ab".repeat(32) + ".webp";
+  const ctx = context(VALID, {
+    MEDIA_BUCKET: fakeBucket({ "processed/images/uploads/2026-08-22-photo.webp": { value: finished } })
+  });
   const response = await endpoint.handleNormalizeRequest(ctx, deps({
     fetch: githubReturning(new Response("", { status: 404 }))
   }));
 
   assert.equal(response.status, 200);
-  assert.equal((await response.json()).status, "already-processed");
+  const body = await response.json();
+  assert.equal(body.status, "already-processed");
+  assert.equal(body.objectKey, finished);
 });
 
 test("a missing raw upload that never reached R2 is a conflict, not a silent success", async () => {

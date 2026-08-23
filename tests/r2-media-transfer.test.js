@@ -62,7 +62,7 @@ test("a failing upload is retried once by AwsClient's own budget, not by two nes
           manifest: {},
           env: envFor(server.endpoint)
         }),
-      /R2 upload failed for images\/sample\.webp: 500/
+      /R2 upload failed for cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp: 500/
     );
   } finally {
     await server.close();
@@ -83,7 +83,7 @@ test("an upload rejected as unauthorized fails on the first request", async () =
           manifest: {},
           env: envFor(server.endpoint)
         }),
-      /R2 upload failed for images\/sample\.webp: 403/
+      /R2 upload failed for cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp: 403/
     );
   } finally {
     await server.close();

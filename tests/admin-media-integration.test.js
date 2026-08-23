@@ -151,7 +151,11 @@ test("GitHub image normalization uploads to R2 and preserves a concurrent draft 
   assert.equal(entry.width, 1600);
   assert.equal(entry.contentType, "image/webp");
 
-  const uploaded = fakeR2.uploads.get("/fischr-media/images/uploads/test.webp");
+  // The record still names the entry by its path — that is its identity. Where the bytes went
+  // is the entry's objectKey, derived from the content, so the assertion follows the record
+  // instead of assuming the two are the same.
+  assert.match(entry.objectKey, /^cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp$/);
+  const uploaded = fakeR2.uploads.get(`/fischr-media/${entry.objectKey}`);
   assert.ok(uploaded, "expected the normalized image to have been PUT to R2");
   const metadata = await sharp(uploaded).metadata();
   assert.equal(metadata.format, "webp");
@@ -251,17 +255,19 @@ test("GitHub video preparation uploads to R2, drops the blob and preserves a con
   // The video source itself now lives in R2 like every image: uploaded here, recorded as a
   // small upload record, and no longer a blob on drafts. Leaving it in Git was the last way
   // media could still re-grow the repository after DB-1129.
-  const uploaded = fakeR2.uploads.get("/fischr-media/videos/uploads/test.mp4");
+  const record = JSON.parse(git(
+    fixture.runner, "show", "origin/drafts:automation/media-uploads/videos__uploads__test.mp4.json"
+  ));
+  // Identity stays the path; the address comes from the content.
+  assert.equal(record.key, "videos/uploads/test.mp4");
+  assert.match(record.entry.objectKey, /^cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.mp4$/);
+  const uploaded = fakeR2.uploads.get(`/fischr-media/${record.entry.objectKey}`);
   assert.ok(uploaded, "expected the video to have been PUT to R2");
   assert.equal(uploaded.length, fs.statSync(absoluteVideo).size);
   assert.throws(
     () => git(fixture.runner, "show", `origin/drafts:${videoPath}`),
     "the prepared video must not stay a blob on drafts"
   );
-  const record = JSON.parse(git(
-    fixture.runner, "show", "origin/drafts:automation/media-uploads/videos__uploads__test.mp4.json"
-  ));
-  assert.equal(record.key, "videos/uploads/test.mp4");
   assert.equal(record.entry.contentType, "video/mp4");
   assert.equal(record.entry.size, uploaded.length);
   // The upload is recorded, not folded in: a video upload must not carry a full rewrite of the

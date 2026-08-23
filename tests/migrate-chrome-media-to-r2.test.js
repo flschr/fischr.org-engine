@@ -12,7 +12,9 @@ const { promisify } = require("node:util");
 // rewrites that string in the exported snapshot, so these expectations travel with the files
 // they check. A regex literal that escapes the dots survives the rewrite untouched and then
 // fails only in the export, never here.
-const deliveryHost = "media.mysite.example".replace(/\./g, "\\.");
+const deliveryHostName = "media.mysite.example";
+// Pre-escaped for the remaining regex assertions in this file.
+const deliveryHost = deliveryHostName.replace(/\./g, "\\.");
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.join(__dirname, "..");
@@ -144,32 +146,51 @@ test("migrates every chrome asset to R2 and rewrites all of its references", asy
   assert.ok(manifest["images/og-default.webp"], "expected og-default.webp to be recorded in the manifest");
   assert.ok(manifest["images/favicon.ico"], "expected favicon.ico to be recorded in the manifest");
   assert.equal(Object.keys(manifest).length, 11);
-  assert.ok(fakeR2.uploads.get("/fischr-media/images/og-default.webp"), "expected og-default.webp to have been PUT to R2");
+  assert.ok(
+    fakeR2.uploads.get(`/fischr-media/${manifest["images/og-default.webp"].objectKey}`),
+    "expected og-default.webp to have been PUT to R2 under its content address"
+  );
+
+  // Every rewritten reference names the object, not the path the file used to have. Deriving the
+  // expectation from the manifest is the point: hard-coding an address would only re-assert the
+  // mutable scheme this migration exists to leave behind.
+  const delivered = (manifestKey) => `https://${deliveryHostName}/${manifest[manifestKey].objectKey}`;
+  // Plain substring checks rather than regexes: the addresses are hex, and escaping them for a
+  // pattern only invites the escaping bug over the assertion it is meant to make.
+  const contains = (haystack, needle, label) => assert.ok(haystack.includes(needle), `${label}: ${needle}`);
 
   const baseTemplate = fs.readFileSync(path.join(root, "blog/_includes/layouts/base.njk"), "utf8");
-  assert.match(baseTemplate, new RegExp(`href="https://${deliveryHost}/images/favicon-32x32\\.png\\?v=1"`));
-  assert.match(baseTemplate, new RegExp(`href="https://${deliveryHost}/images/favicon-16x16\\.png\\?v=1"`));
-  assert.match(baseTemplate, new RegExp(`href="https://${deliveryHost}/images/apple-touch-icon\\.png\\?v=1"`));
+  contains(baseTemplate, `href="${delivered("images/favicon-32x32.png")}?v=1"`, "favicon-32");
+  contains(baseTemplate, `href="${delivered("images/favicon-16x16.png")}?v=1"`, "favicon-16");
+  contains(baseTemplate, `href="${delivered("images/apple-touch-icon.png")}?v=1"`, "apple-touch-icon");
   // The /favicon.ico root-level reference is untouched — only /assets/images/... paths are
   // in scope, the root passthrough copy is a separate, still-local fallback.
   assert.match(baseTemplate, /href="\/favicon\.ico\?v=1"/);
   assert.match(
     baseTemplate,
-    new RegExp(`\\{% if previewImage == "https://${deliveryHost}/images/og-default\\.webp" %\\}`)
+    new RegExp(`\\{% if previewImage == "${delivered("images/og-default.webp").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}" %\\}`)
   );
 
   const webmanifest = fs.readFileSync(path.join(root, "blog/site.webmanifest.njk"), "utf8");
-  assert.match(webmanifest, new RegExp(`"src": "https://${deliveryHost}/images/icon-192\\.png"`));
-  assert.match(webmanifest, new RegExp(`"src": "https://${deliveryHost}/images/icon-512\\.png"`));
+  contains(webmanifest, `"src": "${delivered("images/icon-192.png")}"`, "icon-192");
+  contains(webmanifest, `"src": "${delivered("images/icon-512.png")}"`, "icon-512");
 
   const notFoundPage = fs.readFileSync(path.join(root, "blog/404.md"), "utf8");
-  assert.match(notFoundPage, new RegExp(`src="https://${deliveryHost}/images/404\\.webp"`));
+  contains(notFoundPage, `src="${delivered("images/404.webp")}"`, "404 image");
 
   const css = fs.readFileSync(path.join(root, "blog/assets/css-src/main/02-document-base.css"), "utf8");
-  assert.match(css, new RegExp(`url\\("https://${deliveryHost}/images/fish-line\\.svg"\\)`));
+  contains(css, `url("${delivered("images/fish-line.svg")}")`, "fish-line");
 
   const socialJs = fs.readFileSync(path.join(root, "lib/eleventy/social.js"), "utf8");
-  assert.match(socialJs, new RegExp(`const defaultSocialImage = "https://${deliveryHost}/images/og-default\\.webp";`));
+  // Unchanged on purpose, and the one assertion here that must NOT name a content address: this
+  // reference was already absolute before the run, and an absolute delivery URL is left exactly
+  // as it is. That is what "old keys stay frozen" means in practice — every address already
+  // published somewhere keeps resolving, and only local paths are rewritten to the new scheme.
+  contains(
+    socialJs,
+    `const defaultSocialImage = "https://${deliveryHostName}/images/og-default.webp";`,
+    "default social image stays on its original address"
+  );
 });
 
 test("--dry-run uploads nothing and leaves every reference untouched", async () => {

@@ -29,7 +29,7 @@ const path = require("path");
 const { AwsClient } = require("aws4fetch");
 
 const { bucketName, credentialsFromEnv, s3Endpoint } = require("./lib/r2-media");
-const { manifestRelativePath, pendingUploadsRelativeDir } = require("../lib/media-manifest");
+const { manifestRelativePath, objectKeyFor, objectKeysForEntry, pendingUploadsRelativeDir } = require("../lib/media-manifest");
 
 const root = process.cwd();
 const reportPath = path.join(root, "automation/media-drift-report.json");
@@ -38,6 +38,11 @@ const reportPath = path.join(root, "automation/media-drift-report.json");
 // its EXIF — including GPS — intact, and one that outlives the rule is a privacy problem, not
 // a housekeeping one.
 const stagingPrefix = "staging/";
+// Path-keyed pointers written by functions/api/admin/media/normalize.js so a retry can still
+// find a finished upload whose content-addressed key it cannot recompute. Bookkeeping, never
+// delivered, and not recorded per object in the manifest — so, like staged originals, these are
+// never orphans.
+const pointerPrefix = "processed/";
 const graceDays = Number.parseInt(process.env.MEDIA_DRIFT_GRACE_DAYS || "14", 10);
 const draftsBranch = process.env.DRAFTS_BRANCH || "drafts";
 
@@ -110,12 +115,30 @@ function readJsonAt(ref, file) {
   }
 }
 
-// Every key the manifest knows about anywhere: this working tree plus the drafts branch, whose
-// pending upload records describe objects that are in R2 but not yet published.
+// Every *object* key the manifest accounts for anywhere: this working tree plus the drafts
+// branch, whose pending upload records describe objects that are in R2 but not yet published.
+//
+// Object keys, not manifest keys — the two stopped being the same when uploads became
+// content-addressed. An entry accounts for the object it is served from now and for any it was
+// served from before: a superseded object stays in the bucket deliberately, because published
+// feed items and the absolute URLs in the post archive still name it. Reporting those as
+// orphans would be exactly the kind of false positive this script is built to avoid.
+//
+// A superseded key is registered without its entry, so it is checked for presence — it must
+// never vanish — but not for size, which now describes different bytes.
 function knownKeys() {
   const keys = new Map();
+  const addObjectKey = (objectKey, entry, origin) => {
+    if (typeof objectKey === "string" && objectKey && !keys.has(objectKey)) {
+      keys.set(objectKey, { entry, origin });
+    }
+  };
   const add = (key, entry, origin) => {
-    if (typeof key === "string" && key && !keys.has(key)) keys.set(key, { entry, origin });
+    if (typeof key !== "string" || !key) return;
+    addObjectKey(objectKeyFor(entry, key), entry, origin);
+    for (const superseded of objectKeysForEntry(entry, key).slice(1)) {
+      addObjectKey(superseded, null, `${origin} (superseded)`);
+    }
   };
 
   const localManifest = fs.existsSync(path.join(root, manifestRelativePath))
@@ -194,7 +217,7 @@ async function main() {
   const staged = objects.filter((object) => object.key.startsWith(stagingPrefix));
   const orphans = [];
   for (const object of objects) {
-    if (object.key.startsWith(stagingPrefix) || keys.has(object.key)) continue;
+    if (object.key.startsWith(stagingPrefix) || object.key.startsWith(pointerPrefix) || keys.has(object.key)) continue;
     const age = ageInDays(object.lastModified, now);
     // Recent writes are the admin's, mid-flight. Old ones have had every chance to be recorded.
     if (age < graceDays) continue;

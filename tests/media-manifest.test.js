@@ -5,6 +5,9 @@ const path = require("node:path");
 const { test } = require("node:test");
 
 const {
+  contentAddressedKey,
+  objectKeyFor,
+  objectKeysForEntry,
   pendingUploadFileName,
   pendingUploadsRelativeDir,
   readBaseManifest,
@@ -154,4 +157,59 @@ test("compaction is a no-op when there is nothing pending", () => {
 
   assert.deepEqual(removed, []);
   assert.deepEqual(Object.keys(readBaseManifest(root)), ["images/uploads/old.webp"]);
+});
+
+// --- content-addressed object keys ---------------------------------------------------------
+
+test("an entry without an objectKey is served from its manifest key, for good", () => {
+  // Every upload from before the scheme changed. Their addresses are baked into published feed
+  // items, syndicated posts and roughly 1,400 absolute URLs across the archive, so the fallback
+  // is not a transition state — it is the permanent answer for those entries.
+  assert.equal(objectKeyFor({ sha256: "abc" }, "images/uploads/old.webp"), "images/uploads/old.webp");
+  assert.equal(objectKeyFor(undefined, "images/uploads/old.webp"), "images/uploads/old.webp");
+  assert.equal(objectKeyFor({ objectKey: "" }, "images/uploads/old.webp"), "images/uploads/old.webp");
+});
+
+test("an entry with an objectKey is served from it, not from its manifest key", () => {
+  const entry = { objectKey: "cas/ab/abc.webp" };
+  assert.equal(objectKeyFor(entry, "images/uploads/new.webp"), "cas/ab/abc.webp");
+});
+
+test("a content address is derived from the content, keeping the extension and sharding by prefix", () => {
+  const sha = "3ec14d4973d88a527811817f8bd64ae9ee4d5e6e10a39220cc551dc1a5fe0464";
+  assert.equal(contentAddressedKey("images/uploads/photo.webp", sha), `cas/3e/${sha}.webp`);
+  // Case is normalized, so the same bytes never land under two addresses.
+  assert.equal(contentAddressedKey("images/uploads/PHOTO.WEBP", sha), `cas/3e/${sha}.webp`);
+  // A dot in a directory name is not an extension.
+  assert.equal(contentAddressedKey("images/v1.2/photo", sha), `cas/3e/${sha}`);
+  assert.equal(contentAddressedKey("noextension", sha), `cas/3e/${sha}`);
+});
+
+test("an entry accounts for the object it superseded, so the old one is not an orphan", () => {
+  const entry = { objectKey: "cas/ab/abc.webp", supersededObjectKeys: ["images/uploads/old.webp"] };
+  assert.deepEqual(objectKeysForEntry(entry, "images/uploads/old.webp"), [
+    "cas/ab/abc.webp",
+    "images/uploads/old.webp"
+  ]);
+  // A legacy entry accounts for exactly one object, and never lists it twice.
+  assert.deepEqual(objectKeysForEntry({}, "images/uploads/old.webp"), ["images/uploads/old.webp"]);
+});
+
+// functions/api/admin/media/normalize.js cannot import lib/media-manifest.js — it is ESM on
+// Workers, this is CommonJS — so the derivation is written out twice. That is precisely the
+// situation the project rule asks for a parity test rather than trust: a change to either copy
+// has to fail here instead of drifting until two upload paths disagree about an address.
+test("the Workers endpoint derives the same content address as the shared module", async () => {
+  const endpoint = await import("../functions/api/admin/media/normalize.js");
+  const cases = [
+    ["images/uploads/photo.webp", "3ec14d4973d88a527811817f8bd64ae9ee4d5e6e10a39220cc551dc1a5fe0464"],
+    ["images/uploads/PHOTO.WEBP", "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"],
+    ["videos/uploads/clip.mp4", "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"],
+    ["images/v1.2/photo", "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"],
+    ["noextension", "1111111111111111111111111111111111111111111111111111111111111111"]
+  ];
+
+  for (const [key, sha] of cases) {
+    assert.equal(endpoint.contentAddressedKey(key, sha), contentAddressedKey(key, sha), key);
+  }
 });

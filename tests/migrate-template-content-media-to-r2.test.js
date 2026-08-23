@@ -98,10 +98,14 @@ test("discovers a template-embedded image with no hardcoded filename, uploads it
   }
 
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "automation/media-manifest.json"), "utf8"));
-  assert.ok(manifest["images/imported/about/fixture-portrait.webp"]);
-  assert.ok(fakeR2.uploads.get("/fischr-media/images/imported/about/fixture-portrait.webp"));
+  const entry = manifest["images/imported/about/fixture-portrait.webp"];
+  assert.ok(entry);
+  assert.match(entry.objectKey, /^cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp$/);
+  assert.ok(fakeR2.uploads.get(`/fischr-media/${entry.objectKey}`));
 
-  const deliveryUrl = "https://media.mysite.example/images/imported/about/fixture-portrait.webp";
+  // The rewritten reference names the object, not the path the file used to have — that is the
+  // whole point of a content address, and the URL moves with the bytes.
+  const deliveryUrl = `https://media.mysite.example/${entry.objectKey}`;
   assert.match(fs.readFileSync(path.join(root, "blog/about.njk"), "utf8"), new RegExp(`src="${deliveryUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
   assert.match(fs.readFileSync(path.join(root, "blog/_includes/partials/author-card.njk"), "utf8"), new RegExp(`src="${deliveryUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
   assert.match(fs.readFileSync(path.join(root, "blog/_data/site.json"), "utf8"), new RegExp(`"image": "${deliveryUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
