@@ -85,7 +85,7 @@ test("the publish request records the same validation mode the queue announced",
     { kind: "upsert", path: "blog/posts/2026-08-23-artikel.md", sha: "a" },
     { kind: "upsert", path: "blog/pages/impressum.njk", sha: "c" }
   ]);
-  assert.equal(full.persisted[0].validationMode, "full");
+  assert.equal(full.persisted[0].validationMode, "deploy");
 });
 
 // Die Fortschrittskarte und die Warnung nach 90 Sekunden sind die beiden Leser des Modus. Ohne

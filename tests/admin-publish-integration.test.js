@@ -79,7 +79,7 @@ test("transactional publish excludes later saves and preserves them after reconc
     GITHUB_OUTPUT: outputFile
   });
   const finalSha = fs.readFileSync(outputFile, "utf8").match(/^final_sha=(.+)$/m)[1];
-  assert.match(fs.readFileSync(outputFile, "utf8"), /^validation_mode=full$/m);
+  assert.match(fs.readFileSync(outputFile, "utf8"), /^validation_mode=deploy$/m);
   assert.equal(git(runner, "show", `${finalSha}:blog/posts/reviewed.md`), "reviewed draft");
   assert.equal(git(runner, "show", `${finalSha}:blog/about.njk`), "<article>reviewed about source</article>");
   assert.equal(git(runner, "show", `${finalSha}:blog/posts/main-only.md`), "keep-main");

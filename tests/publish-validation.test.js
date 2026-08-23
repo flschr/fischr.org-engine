@@ -34,9 +34,9 @@ test("unknown, presentation, and implementation changes require full validation"
     ".eleventy.js"
   ];
 
-  paths.forEach((filePath) => assert.equal(validationMode([filePath]), "full", filePath));
-  assert.equal(validationMode(["blog/posts/article.md", "blog/pages/identity.njk"]), "full");
-  assert.equal(validationMode([]), "full");
+  paths.forEach((filePath) => assert.equal(validationMode([filePath]), "deploy", filePath));
+  assert.equal(validationMode(["blog/posts/article.md", "blog/pages/identity.njk"]), "deploy");
+  assert.equal(validationMode([]), "deploy");
 });
 
 test("publish classification covers create, update, delete, media, and mixed changes", () => {
@@ -65,8 +65,22 @@ test("publish classification covers create, update, delete, media, and mixed cha
   ];
 
   for (const filePath of contentCases) assert.equal(plan([{ path: filePath, kind: "delete" }]).mode, "content", filePath);
-  for (const filePath of fullCases) assert.equal(plan([{ path: filePath, kind: "upsert" }]).mode, "full", filePath);
+  for (const filePath of fullCases) assert.equal(plan([{ path: filePath, kind: "upsert" }]).mode, "deploy", filePath);
   const mixed = plan(["blog/posts/article.md", "blog/assets/js/site.js"]);
-  assert.equal(mixed.mode, "full");
+  assert.equal(mixed.mode, "deploy");
   assert.deepEqual(mixed.fullValidationPaths, ["blog/assets/js/site.js"]);
+});
+
+// Der Admin-Publish war der letzte Aufrufer der Browser-Suite, nachdem sie im August 2026 aus
+// jedem Merge und jedem Pull Request geflogen war. Dadurch kostete eine Zeile Text in einem
+// Template über "Veröffentlichen" 7:37, über einen Merge derselben Änderung 1:59 — bei gleichem
+// Deployment. Der Modus heißt jetzt "deploy" wie beim Merge. Fiele er auf "full" zurück, wäre
+// das kein Formatierungsdetail, sondern genau diese Entscheidung rückgängig gemacht.
+test("a publish carrying code takes the same gate a merge takes", () => {
+  const codePublish = plan([{ path: "blog/about.njk", kind: "upsert" }]);
+  assert.equal(codePublish.mode, "deploy");
+  assert.notEqual(codePublish.mode, "full", "der Admin-Publish darf die Browser-Suite nicht zurückholen");
+
+  // Der schnelle Pfad bleibt schnell: reiner Inhalt baut und prüft, ohne Unit-Tests und Lint.
+  assert.equal(plan([{ path: "blog/posts/artikel.md", kind: "upsert" }]).mode, "content");
 });

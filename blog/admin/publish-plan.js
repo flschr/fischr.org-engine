@@ -29,15 +29,22 @@
   function plan(changes = []) {
     const paths = changes.map((change) => typeof change === "string" ? change : change.path).filter(Boolean);
     const fullValidationPaths = paths.filter((filePath) => !isContentOnlyPath(filePath));
-    const mode = paths.length > 0 && fullValidationPaths.length === 0 ? "content" : "full";
+    // "deploy", not "full": a publish that carries code gets exactly the gate a merge of the same
+    // change into main gets — unit tests, lint, the production build and the output checks, but not
+    // the browser suite. That suite left every merge and pull request in August 2026 after it had
+    // burned the Actions budget and stopped deploys (see .github/workflows/tests.yml); the admin
+    // publish was the one path it stayed on, which made publishing a one-line copy edit to a
+    // template take 7:37 against 1:59 for merging the identical change. It now runs weekly and on
+    // demand, for publishes as for everything else.
+    const mode = paths.length > 0 && fullValidationPaths.length === 0 ? "content" : "deploy";
     return {
       mode,
-      label: mode === "content" ? "Schneller Content-Publish" : "Vollständige Prüfung",
+      label: mode === "content" ? "Schneller Content-Publish" : "Publish mit Codeprüfung",
       detail: mode === "content"
         ? "Inhalte und Medien werden gebaut und geprüft; unveränderter Code und Browsertests entfallen."
         : fullValidationPaths.length
-          ? `Vollständige Prüfung wegen ${fullValidationPaths[0]}`
-          : "Vollständige Prüfung, weil keine eindeutige Inhaltsänderung erkannt wurde.",
+          ? `Codeprüfung wegen ${fullValidationPaths[0]}; Browsertests laufen wöchentlich und auf Knopfdruck.`
+          : "Codeprüfung, weil keine eindeutige Inhaltsänderung erkannt wurde.",
       fullValidationPaths
     };
   }

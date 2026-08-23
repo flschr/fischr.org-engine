@@ -101,7 +101,7 @@ export function renderQueue() {
     card.innerHTML = [
       '<span class="queue-progress-spinner" aria-hidden="true"></span>',
       '<span class="queue-progress-text">',
-      `<strong>${escapeHtml(label)}${state.publishRequest?.validationMode ? ` · ${escapeHtml(state.publishRequest.validationMode === "content" ? "Schneller Content-Publish" : "Vollständige Prüfung")}` : ""}</strong>`,
+      `<strong>${escapeHtml(label)}${state.publishRequest?.validationMode ? ` · ${escapeHtml(state.publishRequest.validationMode === "content" ? "Schneller Content-Publish" : "Publish mit Codeprüfung")}` : ""}</strong>`,
       `<span${shouldAnnounce ? ' role="status" aria-live="polite"' : ""}>${escapeHtml(state.publishStatus?.message || "Warten auf den Start durch GitHub")}</span>`,
       progressMeta ? `<span class="queue-progress-meta" aria-hidden="true">${escapeHtml(progressMeta)}</span>` : "",
       state.publishStatus?.slowContent ? '<span class="queue-progress-meta">Warnung: Dieser Content-Publish dauert länger als 90 Sekunden.</span>' : "",
