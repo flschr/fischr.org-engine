@@ -18,12 +18,28 @@
       const response = await fetch(`/api/admin/analytics?${query}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
       if (!response.ok) throw new Error(`Anfrage fehlgeschlagen (${response.status})`);
       const data = await response.json();
-      panel.innerHTML = statsSubList(data.rows || []);
+      panel.innerHTML = statsBesucherZeile(data.visitors, toggle) + statsSubList(data.rows || []);
       panel.dataset.state = "loaded";
     } catch (error) {
       panel.innerHTML = `<p class="stats-substate stats-state-error">${escapeHtml(error.message)}</p>`;
       panel.dataset.state = ""; // allow a retry on next expand
     }
+  }
+
+  // "47 Aufrufe von 31 Besuchern" — die interessantere Aussage als die Aufrufe
+  // allein. Sie steht hier und nicht in der zugeklappten Zeile: Dort teilt sich
+  // der Platz schon Pfad und Titel, und wer eine Seite aufklappt, will genau
+  // solche Einordnung.
+  function statsBesucherZeile(besucher, toggle) {
+    const zahl = Number(besucher);
+    if (!Number.isFinite(zahl) || zahl <= 0) return "";
+    const aufrufe = Number(toggle.querySelector(".stats-row-count")?.textContent.replace(/[^0-9]/g, ""));
+    // "von 31 Besuchern" verlangt den Dativ, "31 Besucher" allein den Nominativ
+    // — und im Singular fallen beide zusammen.
+    const text = Number.isFinite(aufrufe) && aufrufe > 0
+      ? `${numberFormat.format(aufrufe)} Aufrufe von ${numberFormat.format(zahl)} ${zahl === 1 ? "Besucher" : "Besuchern"}`
+      : `${numberFormat.format(zahl)} Besucher`;
+    return `<p class="stats-substate stats-subvisitors">${escapeHtml(text)}</p>`;
   }
 
   function statsSubList(rows) {

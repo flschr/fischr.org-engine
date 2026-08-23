@@ -72,21 +72,35 @@ export async function onRequest(context) {
   const all = async (sql, ...params) => (await db.prepare(sql).bind(...params).all()).results || [];
   const one = async (sql, ...params) => await db.prepare(sql).bind(...params).first();
 
-  // Aufklappbare Zeile im Dashboard: Welche Quellen führten auf diese Seite?
+  // Aufklappbare Zeile im Dashboard: Welche Quellen führten auf diese Seite,
+  // und wie viele Menschen waren es?
+  //
+  // Die Besucherzahl steht hier und nicht in der Hauptantwort. Dort wurde sie
+  // für jede Seite mitgeliefert und von der Darstellung nie gelesen — eine
+  // Abfrage bei jedem Öffnen des Dashboards für eine Zahl, die niemand sah.
+  // Beim Aufklappen kostet sie eine Abfrage, und dann will jemand sie wissen.
   const drill = url.searchParams.get("path");
   if (drill) {
-    const rows = await all(
-      `SELECT ref_host, SUM(hits) AS hits FROM daily_page_ref
-       WHERE path = ?1 AND day BETWEEN ?2 AND ?3 ${eineQuelle("page")}
-       GROUP BY ref_host ORDER BY hits DESC LIMIT ${LIMIT}`,
-      drill, start, end
-    );
+    const [rows, besucher] = await Promise.all([
+      all(
+        `SELECT ref_host, SUM(hits) AS hits FROM daily_page_ref
+         WHERE path = ?1 AND day BETWEEN ?2 AND ?3 ${eineQuelle("page")}
+         GROUP BY ref_host ORDER BY hits DESC LIMIT ${LIMIT}`,
+        drill, start, end
+      ),
+      one(
+        `SELECT COUNT(DISTINCT visitor) AS besucher FROM visitor_page_days
+         WHERE path = ?1 AND day BETWEEN ?2 AND ?3`,
+        drill, start, end
+      )
+    ]);
     return jsonResponse({
-      rows: rows.map((row) => ({ name: row.ref_host || "(direkt)", count: Number(row.hits) || 0 }))
+      rows: rows.map((row) => ({ name: row.ref_host || "(direkt)", count: Number(row.hits) || 0 })),
+      visitors: Number(besucher?.besucher) || 0
     });
   }
 
-  const [series, totals, visitors, pages, pageVisitors, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents, since] = await Promise.all([
+  const [series, totals, visitors, pages, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents, since] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -105,11 +119,6 @@ export async function onRequest(context) {
       `SELECT path, MAX(title) AS title, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
        GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`,
-      start, end
-    ),
-    all(
-      `SELECT path, COUNT(DISTINCT visitor) AS besucher FROM visitor_page_days
-       WHERE day BETWEEN ?1 AND ?2 GROUP BY path`,
       start, end
     ),
     all(
@@ -206,8 +215,6 @@ export async function onRequest(context) {
     one(`SELECT MIN(day) AS tag FROM daily_page WHERE source = 'live'`)
   ]);
 
-  const visitorsByPath = new Map(pageVisitors.map((row) => [row.path, Number(row.besucher) || 0]));
-
   return jsonResponse({
     range: { start, end },
     total: {
@@ -225,8 +232,7 @@ export async function onRequest(context) {
     pages: pages.map((row) => ({
       path: row.path,
       title: row.title || null,
-      hits: Number(row.hits) || 0,
-      visitors: visitorsByPath.get(row.path) ?? null
+      hits: Number(row.hits) || 0
     })),
     refs: refs.map((row) => ({
       name: row.ref_host || "(direkt)",

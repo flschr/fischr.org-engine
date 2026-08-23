@@ -166,3 +166,6 @@
   cursor: pointer;
 }
 .stats-more:hover { background: var(--panel-2); color: var(--ink); }
+
+/* "47 Aufrufe von 31 Besuchern" über den Quellen einer aufgeklappten Seite. */
+.stats-subvisitors { color: var(--ink-soft); font-weight: 600; }
