@@ -92,7 +92,7 @@ async function countOwn({ env, request }) {
     request.headers.get("CF-Connecting-IP") || "",
     userAgent
   ]);
-  await recordFeedFetcher(env.ANALYTICS, day, fetcher, reader.reader, reader.subscribers);
+  await recordFeedFetcher(env.ANALYTICS, day, fetcher, reader.reader, reader.subscribers, cf.country);
 
   // Der größte Posten der Leserliste hieß bislang "unbekannt" und blieb es.
   if (reader.reader === "unbekannt") {

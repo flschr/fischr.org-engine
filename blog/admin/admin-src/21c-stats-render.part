@@ -69,6 +69,15 @@
               : { name: row.path, title: row.title, count: row.hits }
           )), { isPath: true })]
         : []),
+      // Woher abgerufen wird. "Abruftage", nicht "Abonnenten": Eine Zeile je
+      // Abrufer und Tag, über den Zeitraum summiert. Als Verhältnis
+      // aussagekräftig, als Zahl nicht — und bei den Diensten ist es das Land
+      // ihres Rechenzentrums, nicht das ihrer Nutzer.
+      ...((data.feedCountries || []).length
+        ? [statsBreakdownPanel("Woher abgerufen wird", data.feedCountries.map((row) => ({
+            name: row.country, count: row.hits
+          })))]
+        : []),
       // Nur solange es unerkannte Kennungen gibt. Sie sind die Arbeitsliste,
       // aus der die Erkennung wächst — und die Antwort auf die Frage, ob hinter
       // "unbekannt" Menschen oder Maschinen stecken.

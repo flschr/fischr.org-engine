@@ -86,7 +86,7 @@ export async function onRequest(context) {
     });
   }
 
-  const [series, totals, visitors, pages, pageVisitors, refs, feed, feedReads, readers, feedBots, abos, feedPages, agents, since] = await Promise.all([
+  const [series, totals, visitors, pages, pageVisitors, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents, since] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -177,6 +177,17 @@ export async function onRequest(context) {
        GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`,
       start, end
     ),
+    // Woher abgerufen wird. Eine Zeile je Abrufer und Tag, über den Zeitraum
+    // summiert — das sind Abruftage je Land, keine Personen. Als Verhältnis
+    // aussagekräftig, als absolute Zahl nicht; bei den Diensten ist es
+    // ohnehin das Land ihres Rechenzentrums. Das Dashboard beschriftet es
+    // entsprechend.
+    all(
+      `SELECT country, COUNT(*) AS n FROM feed_fetchers
+       WHERE country IS NOT NULL AND day BETWEEN ?1 AND ?2
+       GROUP BY country ORDER BY n DESC LIMIT ${LIMIT}`,
+      start, end
+    ),
     // Die Kennungen hinter "unbekannt" — der größte Posten der Leserliste.
     // Mehr als die Anzeige braucht, weil unten aussortiert wird, was das Muster
     // inzwischen kennt.
@@ -214,6 +225,7 @@ export async function onRequest(context) {
       name: row.ref_host || "(direkt)",
       hits: Number(row.hits) || 0
     })),
+    feedCountries: feedCountries.map((row) => ({ country: row.country, hits: Number(row.n) || 0 })),
     feedPages: feedPages.map((row) => ({ path: row.path, title: row.title || null, hits: Number(row.hits) || 0 })),
     // Eine Kennung bleibt in feed_agents stehen, auch nachdem sie zugeordnet
     // wurde — die Zeilen von gestern wissen nichts vom Muster von heute. Ohne

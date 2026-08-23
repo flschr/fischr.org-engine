@@ -117,11 +117,17 @@ CREATE TABLE IF NOT EXISTS feed_readers (
 -- Feed einmal für alle ihre Nutzer und melden ihre Zahl selbst; eine
 -- selbstgehostete Installation holt ihn für genau einen Menschen und meldet
 -- nichts. Beide zusammen ergeben die Schätzung.
+-- country steht hier und nicht in den Rohdaten: Ein Feed-Abruf schreibt keine
+-- Rohzeile, und eine Zeile je Abrufer und Tag reicht für die Frage, wo die
+-- Abonnenten sitzen. Bei den Diensten ist es das Land ihres Rechenzentrums,
+-- nicht das ihrer Nutzer — die Verteilung taugt deshalb als Verhältnis, nicht
+-- als Landkarte.
 CREATE TABLE IF NOT EXISTS feed_fetchers (
   day         TEXT    NOT NULL,
   fetcher     TEXT    NOT NULL,
   reader      TEXT    NOT NULL,
   subscribers INTEGER,
+  country     TEXT,
   PRIMARY KEY (day, fetcher)
 );
 

@@ -10,7 +10,7 @@
 // Eine kaputte Statistik darf keine Seite stören. Fehlt die Datenbank-Anbindung,
 // zählt die Seite eben nicht — sie bricht nicht.
 
-import { berlinDay, classify, dailySalt, feedReader, normalizePath, recordHit, referrer, visitorHash } from "../_analytics.js";
+import { berlinDay, classify, dailySalt, normalizePath, recordHit, referrer, visitorHash } from "../_analytics.js";
 
 const MAX_BODY = 2048;
 
@@ -55,18 +55,15 @@ export async function onRequestGet(context) {
 async function storeFeedRead(env, request, pfad) {
   const path = normalizePath(pfad);
   if (path.startsWith("/admin")) return;
-  const cf = request.cf || {};
-  const userAgent = request.headers.get("User-Agent") || "";
 
+  // Land und Anbieter stehen bewusst nicht dabei: recordHit schriebe sie nur in
+  // die Rohzeile, die hier entfällt — und beim Pixel wäre es ohnehin das Land
+  // des Bildproxys eines Dienstes, nicht das seines Nutzers.
   await recordHit(env.ANALYTICS, {
     day: berlinDay(),
     kind: "feedread",
     path,
     refHost: "",
-    country: cf.country || null,
-    asn: typeof cf.asn === "number" ? cf.asn : null,
-    asOrg: cf.asOrganization || null,
-    client: feedReader(userAgent).reader,
     verdict: { class: "feed", reason: "feed-lesen" },
     visitor: null,
     raw: false

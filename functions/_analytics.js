@@ -297,13 +297,14 @@ export async function recordHit(db, hit) {
 // Ein Programm, ein Eintrag pro Tag. Zusammen mit den gemeldeten Abo-Zahlen
 // ergibt das die Abonnentenschätzung; ohne diese Tabelle wüsste man nur, wie oft
 // gefragt wurde, nicht von wie vielen.
-export async function recordFeedFetcher(db, day, fetcher, reader, subscribers) {
+export async function recordFeedFetcher(db, day, fetcher, reader, subscribers, country) {
   await db.prepare(
-    `INSERT INTO feed_fetchers (day, fetcher, reader, subscribers) VALUES (?, ?, ?, ?)
+    `INSERT INTO feed_fetchers (day, fetcher, reader, subscribers, country) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (day, fetcher) DO UPDATE SET
        reader = excluded.reader,
-       subscribers = COALESCE(excluded.subscribers, feed_fetchers.subscribers)`
-  ).bind(day, fetcher, reader, subscribers).run();
+       subscribers = COALESCE(excluded.subscribers, feed_fetchers.subscribers),
+       country = COALESCE(excluded.country, feed_fetchers.country)`
+  ).bind(day, fetcher, reader, subscribers, country || null).run();
 }
 
 // Nur für Kennungen ohne erkanntes Leseprogramm. Gekürzt, weil eine Kennung

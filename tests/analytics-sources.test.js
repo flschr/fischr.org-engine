@@ -329,3 +329,18 @@ test("die Arbeitsliste wird mit den Rohdaten aufgeräumt", async () => {
   const uebrig = db.prepare("SELECT agent FROM feed_agents").all().map((r) => r.agent);
   assert.deepEqual(uebrig, ["frische Kennung"]);
 });
+
+test("das Land landet beim Abrufer, nicht in den Rohdaten", async () => {
+  // Ein Feed-Abruf schreibt keine Rohzeile. Das Land vorher an recordHit zu
+  // reichen hiess, es zu ermitteln und wegzuwerfen — es gehoert dorthin, wo
+  // eine Zeile je Abrufer und Tag ohnehin entsteht.
+  const db = datenbank();
+  await analyticsModul.recordFeedFetcher(d1(db), "2026-08-24", "hash-a", "freshrss", null, "DE");
+  await analyticsModul.recordFeedFetcher(d1(db), "2026-08-24", "hash-b", "feedbin", 2, "US");
+  // Ein zweiter Abruf desselben Abrufers ohne Landangabe darf sie nicht loeschen.
+  await analyticsModul.recordFeedFetcher(d1(db), "2026-08-24", "hash-a", "freshrss", null, null);
+
+  const zeilen = db.prepare("SELECT fetcher, reader, country FROM feed_fetchers ORDER BY fetcher").all();
+  assert.deepEqual(zeilen.map((z) => z.country), ["DE", "US"]);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM hits").get().n, 0, "Feeds schreiben keine Rohzeilen");
+});
