@@ -1,7 +1,7 @@
-// Kalenderrechnung ist die eine Stelle in diesem Dashboard, an der ein
-// Off-by-one nicht auffällt: Eine Woche, die am Sonntag beginnt, oder ein
-// Quartal, das im falschen Monat startet, liefert plausible Zahlen — nur eben
-// die falschen. Deshalb werden die Grenzen hier wirklich ausgerechnet und nicht
+// Zeitraumrechnung ist die eine Stelle in diesem Dashboard, an der ein
+// Off-by-one nicht auffällt: Ein Fenster, das einen Tag zu kurz ist oder am
+// Monatsersten zusammenklappt, liefert plausible Zahlen — nur eben die
+// falschen. Deshalb werden die Grenzen hier wirklich ausgerechnet und nicht
 // bloß im Quelltext wiedererkannt.
 process.env.TZ = "Europe/Berlin";
 
@@ -44,40 +44,42 @@ const local = (iso) => {
 
 const preset = (name) => ({ preset: name, from: "", to: "" });
 
-test("Woche beginnt am Montag, auch am Samstag und am Sonntag", () => {
-  const saturday = moduleAt("2026-08-22T14:30:00+02:00");
-  assert.deepEqual(local(saturday.statsPeriodBounds(preset("week")).start), [2026, 8, 17, 0]);
-
-  const sunday = moduleAt("2026-08-23T09:00:00+02:00");
-  assert.deepEqual(local(sunday.statsPeriodBounds(preset("week")).start), [2026, 8, 17, 0]);
-
-  const monday = moduleAt("2026-08-17T06:00:00+02:00");
-  assert.deepEqual(local(monday.statsPeriodBounds(preset("week")).start), [2026, 8, 17, 0]);
+test("jedes Fenster zählt den heutigen Tag mit", () => {
+  const module = moduleAt("2026-08-24T09:15:00+02:00");
+  assert.deepEqual(local(module.statsPeriodBounds(preset("7d")).start), [2026, 8, 18, 0]);
+  assert.deepEqual(local(module.statsPeriodBounds(preset("30d")).start), [2026, 7, 26, 0]);
+  assert.deepEqual(local(module.statsPeriodBounds(preset("90d")).start), [2026, 5, 27, 0]);
+  assert.deepEqual(local(module.statsPeriodBounds(preset("365d")).start), [2025, 8, 25, 0]);
 });
 
-test("Monat, Quartal und Jahr beginnen am Kalenderanfang", () => {
-  const august = moduleAt("2026-08-22T14:30:00+02:00");
-  assert.deepEqual(local(august.statsPeriodBounds(preset("month")).start), [2026, 8, 1, 0]);
-  assert.deepEqual(local(august.statsPeriodBounds(preset("quarter")).start), [2026, 7, 1, 0]);
-  assert.deepEqual(local(august.statsPeriodBounds(preset("year")).start), [2026, 1, 1, 0]);
+// Der Grund für die ganze Umstellung: Kalenderzeiträume fielen am Wochen-,
+// Monats- und Jahreswechsel auf einen einzigen Tag zusammen und zeigten eine
+// Null, die zwar stimmte, aber nichts erzählte.
+test("das Fenster klappt am Wochen-, Monats- und Jahreswechsel nicht zusammen", () => {
+  const montagFrueh = moduleAt("2026-08-24T00:20:00+02:00");
+  assert.deepEqual(local(montagFrueh.statsPeriodBounds(preset("7d")).start), [2026, 8, 18, 0]);
+
+  const monatsErster = moduleAt("2026-09-01T08:00:00+02:00");
+  assert.deepEqual(local(monatsErster.statsPeriodBounds(preset("30d")).start), [2026, 8, 3, 0]);
+
+  const neujahr = moduleAt("2027-01-01T10:00:00+01:00");
+  assert.deepEqual(local(neujahr.statsPeriodBounds(preset("90d")).start), [2026, 10, 4, 0]);
+  assert.deepEqual(local(neujahr.statsPeriodBounds(preset("365d")).start), [2026, 1, 2, 0]);
 });
 
-test("jedes Quartal startet im richtigen Monat", () => {
-  const starts = {
-    "2026-02-11T12:00:00+01:00": 1,
-    "2026-05-31T23:30:00+02:00": 4,
-    "2026-09-01T00:30:00+02:00": 7,
-    "2026-12-24T18:00:00+01:00": 10
-  };
-  for (const [now, month] of Object.entries(starts)) {
-    const module = moduleAt(now);
-    assert.deepEqual(local(module.statsPeriodBounds(preset("quarter")).start)[1], month, now);
-  }
+// Über die Zeitumstellung hinweg zählt das Fenster Kalendertage, nicht
+// 24-Stunden-Blöcke: Sonst begänne es nach der Umstellung um 23 oder 1 Uhr.
+test("die Zeitumstellung verschiebt den Fensterbeginn nicht", () => {
+  const nachSommerzeit = moduleAt("2026-03-30T12:00:00+02:00");
+  assert.deepEqual(local(nachSommerzeit.statsPeriodBounds(preset("7d")).start), [2026, 3, 24, 0]);
+
+  const nachWinterzeit = moduleAt("2026-10-26T12:00:00+01:00");
+  assert.deepEqual(local(nachWinterzeit.statsPeriodBounds(preset("7d")).start), [2026, 10, 20, 0]);
 });
 
 test("das Ende ist die laufende Stunde, nicht der Tagesbeginn", () => {
   const module = moduleAt("2026-08-22T14:37:12+02:00");
-  const { end } = module.statsPeriodBounds(preset("month"));
+  const { end } = module.statsPeriodBounds(preset("30d"));
   assert.deepEqual(local(end), [2026, 8, 22, 14]);
 });
 
@@ -102,19 +104,43 @@ test("der Cache-Schlüssel trennt zwei verschiedene freie Zeiträume", () => {
   const first = { preset: "custom", from: "2026-01-01", to: "2026-03-31" };
   const second = { preset: "custom", from: "2026-04-01", to: "2026-06-30" };
   assert.notEqual(module.statsPeriodKey(first), module.statsPeriodKey(second));
-  assert.equal(module.statsPeriodKey(preset("week")), "week");
+  assert.equal(module.statsPeriodKey(preset("7d")), "7d");
 });
 
+// Die alten Kalendernamen sind keine Presets mehr. Bliebe "week" gültig,
+// lieferte statsPeriodBounds dafür null und die Ansicht bliebe leer.
 test("nur bekannte Presets werden akzeptiert", () => {
   const module = moduleAt("2026-08-22T14:30:00+02:00");
-  assert.equal(module.statsIsPreset("quarter"), true);
-  assert.equal(module.statsIsPreset("7"), false);
-  assert.equal(module.statsIsPreset(""), false);
+  for (const name of ["7d", "30d", "90d", "365d", "custom"]) {
+    assert.equal(module.statsIsPreset(name), true, name);
+  }
+  for (const name of ["week", "month", "quarter", "year", "7", ""]) {
+    assert.equal(module.statsIsPreset(name), false, name);
+  }
+});
+
+test("die Beschriftung nennt Fensterlänge und Grenzen", () => {
+  const module = moduleAt("2026-08-24T09:15:00+02:00");
+  assert.equal(module.statsPeriodLabel(preset("7d")), "Letzte 7 Tage · 18. Aug. – 24. Aug.");
+  // Ein Jahresfenster beginnt im Vorjahr — ohne Jahreszahl läse sich
+  // "25. Aug – 24. Aug" wie ein einziger Tag mit Tippfehler.
+  assert.equal(module.statsPeriodLabel(preset("365d")), "Letzte 365 Tage · 25. Aug. 2025 – 24. Aug. 2026");
 });
 
 test("die Beschriftung benennt den unvollständigen Zeitraum, statt zu schweigen", () => {
   const module = moduleAt("2026-08-22T14:30:00+02:00");
   assert.match(module.statsPeriodLabel({ preset: "custom", from: "2026-01-05", to: "" }), /Von und Bis/);
   assert.match(module.statsPeriodLabel({ preset: "custom", from: "2026-02-01", to: "2026-01-09" }), /liegt nach/);
-  assert.match(module.statsPeriodLabel(preset("quarter")), /Q3 2026/);
+  assert.equal(module.statsPeriodLabel(preset("nonsense")), "");
+});
+
+// Ein Objektliteral hätte für "constructor" die geerbte Funktion geliefert;
+// daraus wurde ein Invalid Date, das erst im toISOString auffliegt.
+test("geerbte Objektschlüssel sind keine Zeitfenster", () => {
+  const module = moduleAt("2026-08-22T14:30:00+02:00");
+  for (const name of ["constructor", "toString", "hasOwnProperty"]) {
+    assert.equal(module.statsIsPreset(name), false, name);
+    assert.equal(module.statsPeriodBounds(preset(name)), null, name);
+    assert.equal(module.statsPeriodLabel(preset(name)), "", name);
+  }
 });

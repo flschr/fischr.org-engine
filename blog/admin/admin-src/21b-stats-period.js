@@ -1,29 +1,43 @@
 // --- Statistik-Zeiträume ---------------------------------------------------
 //
-// Die Presets sind Kalenderzeiträume, keine rollenden Fenster: "Woche" ist die
-// laufende ISO-Woche ab Montag, nicht "die letzten sieben Tage". Die Buttons
-// hießen schon vorher so — die Rechnung dahinter war eine andere.
+// Die Presets sind rollende Fenster, keine Kalenderzeiträume: "7 Tage" ist
+// heute und die sechs Tage davor, nicht die laufende Woche ab Montag.
+//
+// Kalenderzeiträume waren die erste Fassung, und sie hatten einen Montag-
+// morgen-Fehler: Am Wochenwechsel begann "Diese Woche" wieder bei null, am
+// Monatsersten der Monat, am 1. Januar das Jahr. Die Ansicht zeigte dann eine
+// Null, die zwar stimmte, aber nichts erzählte — und das ausgerechnet zu dem
+// Zeitpunkt, an dem man nachsieht, wie es läuft. Ein rollendes Fenster hat
+// immer dieselbe Länge und fällt deshalb nie in sich zusammen.
 //
 // Alles hier ist Client-Rechnung. /api/admin/stats kennt nur start und end und
 // behält damit eine einzige, stabile Signatur, egal wie viele Presets oben
 // dazukommen. Ein freier Zeitraum ist deshalb kein Sonderfall, sondern nur ein
 // weiteres Paar Datumsgrenzen.
 
-const STATS_PRESETS = ["week", "month", "quarter", "year", "custom"];
+// Die Fensterlänge zählt den heutigen Tag mit: "7 Tage" beginnt vor sechs
+// Tagen um 0 Uhr und endet jetzt.
+//
+// Map und nicht Objektliteral: Ein Nachschlagen mit "constructor" oder
+// "toString" fände dort die geerbte Funktion, aus days - 1 würde NaN und
+// daraus ein Invalid Date, das erst im toISOString auffliegt.
+const STATS_WINDOWS = new Map([["7d", 7], ["30d", 30], ["90d", 90], ["365d", 365]]);
+const STATS_PRESETS = [...STATS_WINDOWS.keys(), "custom"];
 const statsDayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-const statsMonthFormat = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
 export const statsShortDayFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" });
+// Ein Fenster über 365 Tage beginnt im Vorjahr. Ohne Jahreszahl läse sich
+// "25. Aug – 24. Aug" wie ein einziger Tag mit Tippfehler.
+const statsShortYearFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" });
 
 export function statsIsPreset(value) {
   return STATS_PRESETS.includes(value);
 }
 
-// Montag als Wochenanfang (ISO 8601), auch wenn der Sonntag davor liegt.
-function statsStartOfWeek(date) {
-  const start = new Date(date);
-  const weekday = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - weekday);
+// Der erste Tag des rollenden Fensters, ab 0 Uhr.
+function statsWindowStart(now, days) {
+  const start = new Date(now);
   start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (days - 1));
   return start;
 }
 
@@ -47,30 +61,17 @@ export function statsPeriodBounds(period) {
   const now = new Date();
   const end = new Date(now);
   end.setMinutes(0, 0, 0);
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
 
-  switch (period.preset) {
-    case "week":
-      return { start: statsStartOfWeek(now).toISOString(), end: end.toISOString() };
-    case "month":
-      start.setDate(1);
-      return { start: start.toISOString(), end: end.toISOString() };
-    case "quarter":
-      start.setMonth(Math.floor(start.getMonth() / 3) * 3, 1);
-      return { start: start.toISOString(), end: end.toISOString() };
-    case "year":
-      start.setMonth(0, 1);
-      return { start: start.toISOString(), end: end.toISOString() };
-    case "custom": {
-      const from = statsParseDate(period.from);
-      const to = statsParseDate(period.to);
-      if (!from || !to || from > to) return null;
-      return { start: from.toISOString(), end: statsEndOfDay(to).toISOString() };
-    }
-    default:
-      return null;
+  const days = STATS_WINDOWS.get(period.preset);
+  if (days) return { start: statsWindowStart(now, days).toISOString(), end: end.toISOString() };
+
+  if (period.preset === "custom") {
+    const from = statsParseDate(period.from);
+    const to = statsParseDate(period.to);
+    if (!from || !to || from > to) return null;
+    return { start: from.toISOString(), end: statsEndOfDay(to).toISOString() };
   }
+  return null;
 }
 
 // Cache, laufende Anfrage und AbortController hängen an diesem Schlüssel. Ein
@@ -82,25 +83,18 @@ export function statsPeriodKey(period) {
 
 export function statsPeriodLabel(period) {
   const now = new Date();
-  switch (period.preset) {
-    case "week": {
-      const from = statsStartOfWeek(now);
-      return `Diese Woche · ${statsShortDayFormat.format(from)} – ${statsShortDayFormat.format(now)}`;
-    }
-    case "month":
-      return `Dieser Monat · ${statsMonthFormat.format(now)}`;
-    case "quarter":
-      return `Dieses Quartal · Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
-    case "year":
-      return `Dieses Jahr · ${now.getFullYear()}`;
-    case "custom": {
-      const from = statsParseDate(period.from);
-      const to = statsParseDate(period.to);
-      if (!from || !to) return "Freier Zeitraum · bitte Von und Bis wählen";
-      if (from > to) return "Freier Zeitraum · Von liegt nach Bis";
-      return `${statsDayFormat.format(from)} – ${statsDayFormat.format(to)}`;
-    }
-    default:
-      return "";
+  const days = STATS_WINDOWS.get(period.preset);
+  if (days) {
+    const from = statsWindowStart(now, days);
+    const format = from.getFullYear() === now.getFullYear() ? statsShortDayFormat : statsShortYearFormat;
+    return `Letzte ${days} Tage · ${format.format(from)} – ${format.format(now)}`;
   }
+  if (period.preset === "custom") {
+    const from = statsParseDate(period.from);
+    const to = statsParseDate(period.to);
+    if (!from || !to) return "Freier Zeitraum · bitte Von und Bis wählen";
+    if (from > to) return "Freier Zeitraum · Von liegt nach Bis";
+    return `${statsDayFormat.format(from)} – ${statsDayFormat.format(to)}`;
+  }
+  return "";
 }

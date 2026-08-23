@@ -81,7 +81,7 @@ export const state = {
   socialConfigPromise: null,
   socialConfigDraft: null,
   socialConfigLoaded: "",
-  statsPeriod: { preset: "week", from: "", to: "" },
+  statsPeriod: { preset: "7d", from: "", to: "" },
   statsRequest: 0,
   statsCache: new Map(),
   statsPromises: new Map(),

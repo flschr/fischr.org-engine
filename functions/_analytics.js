@@ -68,9 +68,9 @@ const dayFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit"
 });
 
-// Der Tag ist Berliner Lokaldatum, nicht UTC. Damit ist jede Auswertung nach
-// Woche, Monat oder Quartal ein simples BETWEEN — und die Grenze liegt dort,
-// wo sie für den Leser dieses Blogs auch gefühlt liegt.
+// Der Tag ist Berliner Lokaldatum, nicht UTC. Damit ist jede Auswertung über
+// ein Zeitfenster ein simples BETWEEN — und die Grenze liegt dort, wo sie für
+// den Leser dieses Blogs auch gefühlt liegt.
 export function berlinDay(date = new Date()) {
   return dayFormatter.format(date);
 }

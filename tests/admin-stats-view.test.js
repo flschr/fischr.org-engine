@@ -22,7 +22,7 @@ function statsAnsicht(namen, els = {}) {
     escapeHtml: (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])),
     window: { RWIcons: null },
     state: {
-      statsPeriod: { preset: "week", from: "", to: "" },
+      statsPeriod: { preset: "7d", from: "", to: "" },
       statsCache: new Map(), statsPromises: new Map(), statsControllers: new Map(), statsRequest: 0,
       socialConfig: { siteUrl: "https://example.com" }
     },
@@ -200,7 +200,7 @@ function wähler(von, bis) {
 test("ein unvollständiger Zeitraum bleibt im Wähler stehen und sagt, was fehlt", () => {
   const { applyStatsPicker, kontext } = wähler("2026-08-01", "");
   applyStatsPicker();
-  assert.equal(kontext.state.statsPeriod.preset, "week", "die Ansicht dahinter bleibt, wie sie war");
+  assert.equal(kontext.state.statsPeriod.preset, "7d", "die Ansicht dahinter bleibt, wie sie war");
   assert.equal(kontext.els.statsCustom.hidden, false, "der Wähler bleibt offen");
   assert.match(kontext.els.statsCustomHint.textContent, /Beide Tage/);
 });
@@ -208,7 +208,7 @@ test("ein unvollständiger Zeitraum bleibt im Wähler stehen und sagt, was fehlt
 test("ein verdrehter Zeitraum wird abgefangen, nicht geladen", () => {
   const { applyStatsPicker, kontext } = wähler("2026-08-20", "2026-08-01");
   applyStatsPicker();
-  assert.equal(kontext.state.statsPeriod.preset, "week");
+  assert.equal(kontext.state.statsPeriod.preset, "7d");
   assert.match(kontext.els.statsCustomHint.textContent, /liegt nach/);
 });
 
@@ -223,8 +223,12 @@ test("der Wähler öffnet mit dem Zeitraum, der gerade zu sehen ist", () => {
   const { openStatsPicker, kontext } = wähler("", "");
   // Ein Wähler, der bei "TT.MM.JJJJ" beginnt, verlangt zwei vollständige Daten,
   // obwohl meist nur eine Grenze verschoben werden soll.
-  kontext.state.statsPeriod = { preset: "month", from: "", to: "" };
+  kontext.state.statsPeriod = { preset: "30d", from: "", to: "" };
   openStatsPicker();
-  assert.match(kontext.els.statsFrom.value, /^\d{4}-\d{2}-01$/, "der Monatserste steht schon im Feld");
-  assert.match(kontext.els.statsTo.value, /^\d{4}-\d{2}-\d{2}$/);
+  const erwartet = new Date();
+  erwartet.setHours(12, 0, 0, 0);
+  erwartet.setDate(erwartet.getDate() - 29);
+  const tagWert = (datum) => `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
+  assert.equal(kontext.els.statsFrom.value, tagWert(erwartet), "der erste Tag des Fensters steht schon im Feld");
+  assert.equal(kontext.els.statsTo.value, tagWert(new Date()), "der letzte Tag ist heute");
 });

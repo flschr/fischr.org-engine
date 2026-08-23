@@ -34,8 +34,8 @@ export function applyStatsTabVisibility() {
 }
 
 export async function openStats() {
-  // Always land on the current week, regardless of the last range picked.
-  state.statsPeriod = { preset: "week", from: "", to: "" };
+  // Always land on the last seven days, regardless of the last range picked.
+  state.statsPeriod = { preset: "7d", from: "", to: "" };
   closeStatsPicker();
   showView("stats");
   replaceNav();
