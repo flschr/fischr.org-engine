@@ -16,7 +16,8 @@
     ["Return to the main branch before persisting automation state", "Veröffentlichten Stand übernehmen"],
     ["Commit updated media manifest", "Medien-Manifest aktualisieren"],
     ["Check the published commit is still main's tip", "Prüfen, ob der Stand noch aktuell ist"],
-    ["Deploy to Cloudflare Pages", "Website zu Cloudflare übertragen"],
+    ["Prepare the Worker bundle", "Auslieferung vorbereiten"],
+    ["Deploy to Cloudflare Workers", "Website zu Cloudflare übertragen"],
     ["Rebuild main instead of deploying stale output", "Neuen Build anstoßen statt veralteten Stand zu übertragen"],
     ["Sync drafts to deployed commit", "Neuere Entwürfe erhalten und Warteschlange abgleichen"],
     ["Pull the manifest fold across to drafts", "Medien-Manifest in die Entwürfe nachziehen"],
@@ -48,7 +49,7 @@
     const steps = job?.steps || [];
     const step = (name) => steps.find((candidate) => candidate.name === name);
     const validation = step("Validate production site");
-    const deployment = step("Deploy to Cloudflare Pages");
+    const deployment = step("Deploy to Cloudflare Workers");
     const currentIso = new Date(now).toISOString();
     return {
       waitingMs: millisecondsBetween(run?.created_at, job?.started_at),
