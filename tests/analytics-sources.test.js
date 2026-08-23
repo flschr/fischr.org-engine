@@ -78,6 +78,29 @@ test("eine Lücke im Parallelbetrieb fällt auf den Import zurück", () => {
   assert.equal(aufrufe(db, "page", "2026-09-05"), 44);
 });
 
+test("die Feed-Kurve liest jeden Tag aus einer Quelle und liefert Tageswerte", () => {
+  // Der Feed hat jetzt denselben Verlauf wie die Website. Er liest dieselbe
+  // Tabelle, also gilt für ihn dieselbe Regel — ohne sie zeigten die Tage des
+  // Parallelbetriebs ungefähr doppelte Ausschläge.
+  const db = datenbank();
+  seite(db, "2026-09-07", "goatcounter", "feed", 120);
+  seite(db, "2026-09-07", "live", "feed", 402);
+  seite(db, "2026-09-08", "goatcounter", "feed", 88);
+  // Seitenaufrufe desselben Tages gehören nicht in die Feed-Kurve.
+  seite(db, "2026-09-08", "live", "page", 5);
+  const reihe = db.prepare(
+    `SELECT day, SUM(hits) AS hits FROM daily_page
+     WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}
+     GROUP BY day ORDER BY day`
+  ).all("2026-09-07", "2026-09-08").map((zeile) => ({ day: zeile.day, hits: zeile.hits }));
+  assert.deepEqual(reihe, [{ day: "2026-09-07", hits: 402 }, { day: "2026-09-08", hits: 88 }]);
+
+  // Und der Endpunkt liefert sie auch: Ohne eigene Reihe zeichnete das
+  // Dashboard für den Feed nichts.
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /feedSeries: feedSeries\.map/, "die Antwort trägt die Feed-Reihe");
+});
+
 test("Quellen und Seite-mal-Quelle folgen den Seitenaufrufen", () => {
   const db = datenbank();
   seite(db, "2026-09-06", "goatcounter", "page", 12);

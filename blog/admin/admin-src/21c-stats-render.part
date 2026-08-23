@@ -18,12 +18,21 @@
       statsSection("Website", statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
         statsChart(statsSeries(data.series, data.range))
       ], statsWebsitePanels(data)),
-      statsSection("Feed", statsFeedKennzahlen(total), [], statsFeedPanels(data))
+      // Der Feed bekommt denselben Verlauf, weil er dieselbe Frage hat: Die
+      // Zahl darüber sagt, wie viel — nicht, wann. Beschriftet mit "Abrufe",
+      // denn gezählt werden Programme beim Abholen, nicht Menschen beim Lesen.
+      //
+      // Fehlt die Reihe — eine ältere Antwort aus dem Zwischenspeicher —,
+      // bleibt die Stelle leer. Eine Kurve aus lauter Nullen behauptete einen
+      // Feed, den niemand geholt hat.
+      statsSection("Feed", statsFeedKennzahlen(total), Array.isArray(data.feedSeries)
+        ? [statsChart(statsSeries(data.feedSeries, data.range), "Abrufe")]
+        : [], statsFeedPanels(data))
     ].join("");
     // The page rows carry chevron icons rendered after innerHTML — inject them.
     if (window.RWIcons) window.RWIcons.inject(els.statsBody);
-    // Dasselbe für den Verlauf: Er entsteht bei jedem Laden neu, seine
-    // Bedienung hängt deshalb an ihm und nicht an der Ansicht darüber.
+    // Dasselbe für die Verläufe: Sie entstehen bei jedem Laden neu, ihre
+    // Bedienung hängt deshalb an ihnen und nicht an der Ansicht darüber.
     wireStatsChart(els.statsBody);
   }
 

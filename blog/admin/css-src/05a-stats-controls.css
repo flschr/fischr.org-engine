@@ -41,11 +41,20 @@
 /* Waagerecht am abgelesenen Punkt, senkrecht auf fester Höhe: So steht die Zahl
    über ihrem Punkt, ohne mit der Kurve auf und ab zu wandern. Die Klammer hält
    sie an den Rändern in der Fläche — dort ist sie dann nicht mehr mittig über
-   dem Punkt, aber noch ganz zu lesen. */
+   dem Punkt, aber noch ganz zu lesen.
+
+   Das Randmaß ist die halbe Breite der Beschriftung und wird gemessen, nicht
+   geraten (siehe --rand in 21e-stats-chart.part). Ein fester Wert kannte die
+   Breite nicht: Lag die Spitze am ersten Tag, stand "Höchster Wert 17. Aug.
+   239 Aufrufe" links über den Rand der Karte hinaus.
+
+   Das min()/max() um die Klammer fängt den Fall, dass die Beschriftung breiter
+   ist als die Fläche selbst — dann gibt es keine Position ohne Überstand, und
+   mittig ist die einzige, die nach beiden Seiten gleich viel abschneidet. */
 .stats-chart-read {
   position: absolute;
   top: 0;
-  left: clamp(5rem, var(--x, 50%), calc(100% - 5rem));
+  left: clamp(min(var(--rand, 5rem), 50%), var(--x, 50%), max(calc(100% - var(--rand, 5rem)), 50%));
   transform: translateX(-50%);
   display: flex;
   align-items: baseline;

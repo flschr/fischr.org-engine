@@ -74,13 +74,17 @@
     return punkt.bis && punkt.bis !== punkt.tag ? `${von} – ${statsTagKurz(punkt.bis)}` : von;
   }
 
-  function statsPunktWert(wert) {
-    return `${numberFormat.format(wert)} Aufrufe`;
+  // Website und Feed zählen Verschiedenes: Die eine Kurve trägt Aufrufe, die
+  // andere Abrufe. Die Einheit steht deshalb an der Kurve und nicht in dieser
+  // Funktion — eine mit "Aufrufe" beschriftete Feed-Kurve behauptete Menschen,
+  // wo Programme gezählt wurden.
+  function statsPunktWert(wert, einheit) {
+    return `${numberFormat.format(wert)} ${einheit}`;
   }
 
   const STATS_CHART_HOEHE = 40;
 
-  function statsChart(series) {
+  function statsChart(series, einheit = "Aufrufe") {
     const punkte = (series || []).map((punkt) => ({
       label: statsPunktLabel(punkt),
       wert: Number(punkt.daily) || 0
@@ -110,12 +114,12 @@
 
     return [
       `<figure class="stats-chart" tabindex="0" role="img" style="--x:${daten[spitze].x}%"`,
-      ` aria-label="Verlauf der Aufrufe. Höchster Wert: ${escapeHtml(punkte[spitze].label)}, ${escapeHtml(statsPunktWert(punkte[spitze].wert))}."`,
-      ` data-punkte="${escapeHtml(JSON.stringify(daten))}" data-spitze="${spitze}">`,
+      ` aria-label="Verlauf der ${escapeHtml(einheit)}. Höchster Wert: ${escapeHtml(punkte[spitze].label)}, ${escapeHtml(statsPunktWert(punkte[spitze].wert, einheit))}."`,
+      ` data-punkte="${escapeHtml(JSON.stringify(daten))}" data-spitze="${spitze}" data-einheit="${escapeHtml(einheit)}">`,
       `<figcaption class="stats-chart-read">`,
       `<span class="stats-chart-read-kind">Höchster Wert</span>`,
       `<span class="stats-chart-read-day">${escapeHtml(punkte[spitze].label)}</span>`,
-      `<span class="stats-chart-read-value">${escapeHtml(statsPunktWert(punkte[spitze].wert))}</span>`,
+      `<span class="stats-chart-read-value">${escapeHtml(statsPunktWert(punkte[spitze].wert, einheit))}</span>`,
       `</figcaption>`,
       `<div class="stats-chart-plot">`,
       `<svg class="stats-spark" viewBox="0 0 100 ${hoehe}" preserveAspectRatio="none" aria-hidden="true">`,
@@ -127,65 +131,4 @@
       `<div class="stats-chart-axis"><span>${escapeHtml(punkte[0].label)}</span><span>${escapeHtml(punkte.at(-1).label)}</span></div>`,
       `</figure>`
     ].join("");
-  }
-
-  // Die Beschriftung steht über der Kurve und wandert mit dem abgelesenen Punkt.
-  // Sie im Diagramm mitlaufen zu lassen, hätte sie mal auf die Kurve, mal über
-  // den Rand gelegt; eine feste Ecke wiederum ließ Zahl und Punkt am anderen
-  // Ende der Fläche liegen. Also: waagerecht am Punkt, senkrecht auf fester
-  // Höhe.
-  //
-  // Der Zeiger darf nicht zwischen den Punkten hängenbleiben: Gerechnet wird
-  // der Anteil der Breite, nicht der Abstand zum nächsten Punkt — so ist jeder
-  // Punkt gleich breit erreichbar, auch bei zweihundert davon.
-  //
-  // Beim Verlassen fällt die Ansicht auf die Spitze zurück. Ein Marker, der
-  // stehen bleibt, wo der Zeiger zufällig die Fläche verlassen hat, behauptete
-  // eine Auswahl, die niemand getroffen hat.
-  function wireStatsChart(wurzel) {
-    const chart = wurzel.querySelector(".stats-chart");
-    if (!chart) return;
-    let punkte;
-    try {
-      punkte = JSON.parse(chart.dataset.punkte);
-    } catch {
-      return;
-    }
-    if (!Array.isArray(punkte) || !punkte.length) return;
-
-    const spitze = Math.min(Math.max(Number(chart.dataset.spitze) || 0, 0), punkte.length - 1);
-    const flaeche = chart.querySelector(".stats-chart-plot");
-    const marker = chart.querySelector(".stats-chart-marker");
-    const art = chart.querySelector(".stats-chart-read-kind");
-    const tag = chart.querySelector(".stats-chart-read-day");
-    const wert = chart.querySelector(".stats-chart-read-value");
-    let aktiv = spitze;
-
-    const zeigen = (index) => {
-      aktiv = Math.min(Math.max(index, 0), punkte.length - 1);
-      const punkt = punkte[aktiv];
-      // Die Beschriftung steht über dem Punkt, den sie benennt, und liest
-      // deshalb dieselbe Position wie der Marker — sie hängt am Diagramm,
-      // nicht am Marker.
-      chart.style.setProperty("--x", `${punkt.x}%`);
-      marker.style.setProperty("--y", `${punkt.y}%`);
-      art.hidden = aktiv !== spitze;
-      tag.textContent = punkt.l;
-      wert.textContent = `${numberFormat.format(punkt.w)} Aufrufe`;
-      chart.classList.toggle("is-touched", aktiv !== spitze);
-    };
-
-    flaeche.addEventListener("pointermove", (event) => {
-      const kasten = flaeche.getBoundingClientRect();
-      if (!kasten.width) return;
-      const anteil = Math.min(Math.max((event.clientX - kasten.left) / kasten.width, 0), 1);
-      zeigen(Math.round(anteil * (punkte.length - 1)));
-    });
-    flaeche.addEventListener("pointerleave", () => zeigen(spitze));
-    chart.addEventListener("blur", () => zeigen(spitze));
-    chart.addEventListener("keydown", (event) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      zeigen(aktiv + (event.key === "ArrowRight" ? 1 : -1));
-    });
   }

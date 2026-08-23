@@ -170,7 +170,7 @@ export async function onRequest(context) {
     });
   }
 
-  const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedReads, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
+  const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedSeries, feedReads, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -217,6 +217,16 @@ export async function onRequest(context) {
     one(
       `SELECT COALESCE(SUM(hits), 0) AS hits FROM daily_page
        WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}`,
+      start, end
+    ),
+    // Derselbe Verlauf wie für die Seitenaufrufe, nur für den Feed — und
+    // getrennt geführt, weil er etwas anderes zählt: Abrufe durch Programme,
+    // nicht Aufrufe durch Menschen. Eine gemeinsame Kurve läge um den Faktor
+    // zehn auseinander und behauptete damit einen Vergleich, den es nicht gibt.
+    all(
+      `SELECT day, SUM(hits) AS hits FROM daily_page
+       WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}
+       GROUP BY day ORDER BY day`,
       start, end
     ),
     // Getrennt geführt: Die frühere Zählung zählte das Lesen einzelner Beiträge
@@ -322,6 +332,7 @@ export async function onRequest(context) {
       abosInstallationen: Number(abos?.installationen) || 0
     },
     series: series.map((row) => ({ day: row.day, hits: Number(row.hits) || 0 })),
+    feedSeries: feedSeries.map((row) => ({ day: row.day, hits: Number(row.hits) || 0 })),
     pages: pages.map((row) => ({
       path: row.path,
       title: row.title || null,

@@ -20,7 +20,7 @@ function statsAnsicht(namen, els = {}) {
     .map((name) => fs.readFileSync(path.join(verzeichnis, name), "utf8"))
     .join("\n");
   const kontext = {
-    els: { statsBody: { innerHTML: "", querySelector: () => null }, ...els },
+    els: { statsBody: { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] }, ...els },
     escapeHtml: (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])),
     window: { RWIcons: null },
     state: {
@@ -98,6 +98,54 @@ test("der Verlauf gibt jedem Punkt seine Beschriftung mit, nicht nur der Spitze"
   assert.equal(daten.length, 3, "drei Kalendertage, drei ablesbare Punkte");
   assert.deepEqual(daten.map((punkt) => punkt.w), [4, 141, 0]);
   assert.ok(daten.every((punkt) => typeof punkt.l === "string" && punkt.l), "jeder Punkt ist benannt");
+});
+
+test("der Feed-Verlauf zählt Abrufe, nicht Aufrufe", () => {
+  // Zwei Kurven, zwei Einheiten: Die Website zählt Menschen beim Aufrufen, der
+  // Feed Programme beim Abholen. Eine mit "Aufrufe" beschriftete Feed-Kurve
+  // behauptete Leser, wo Abrufe gemessen wurden.
+  const { statsChart, statsSeries } = statsAnsicht(["statsChart", "statsSeries"]);
+  const reihe = statsSeries(
+    [{ day: "2026-08-01", hits: 40 }, { day: "2026-08-02", hits: 402 }],
+    { start: "2026-08-01", end: "2026-08-02" }
+  );
+  const feed = statsChart(reihe, "Abrufe");
+  assert.match(feed, /402 Abrufe/);
+  assert.match(feed, /aria-label="Verlauf der Abrufe\./);
+  assert.match(feed, /data-einheit="Abrufe"/, "die Einheit steht auch für die Bedienung an der Kurve");
+  assert.doesNotMatch(feed, /Aufrufe/);
+  // Ohne Angabe bleibt es bei den Aufrufen der Website.
+  assert.match(statsChart(reihe), /402 Aufrufe/);
+});
+
+test("beide Abschnitte bekommen ihren Verlauf, jeder mit seiner Einheit", () => {
+  const { renderStats, kontext } = statsAnsicht(["renderStats"]);
+  renderStats({
+    range: { start: "2026-08-01", end: "2026-08-03" },
+    total: { hits: 12, visitors: 4, feed: 30 },
+    series: [{ day: "2026-08-01", hits: 12 }],
+    feedSeries: [{ day: "2026-08-02", hits: 30 }],
+    pages: [], refs: [], countries: [], feedCountries: [], feedPages: [], feedReaders: []
+  });
+  const markup = kontext.els.statsBody.innerHTML;
+  assert.equal(markup.match(/class="stats-chart"/g).length, 2, "Website und Feed haben je eine Kurve");
+  assert.match(markup, /data-einheit="Aufrufe"/);
+  assert.match(markup, /data-einheit="Abrufe"/);
+});
+
+test("ohne Feed-Reihe bleibt die Stelle leer statt eine Nulllinie zu zeichnen", () => {
+  // Eine ältere Antwort aus dem Zwischenspeicher kennt die Reihe noch nicht.
+  // Eine Kurve aus lauter Nullen behauptete einen Feed, den niemand geholt hat.
+  const { renderStats, kontext } = statsAnsicht(["renderStats"]);
+  renderStats({
+    range: { start: "2026-08-01", end: "2026-08-03" },
+    total: { hits: 12, visitors: 4, feed: 30 },
+    series: [{ day: "2026-08-01", hits: 12 }],
+    pages: [], refs: [], countries: [], feedCountries: [], feedPages: [], feedReaders: []
+  });
+  const markup = kontext.els.statsBody.innerHTML;
+  assert.equal(markup.match(/class="stats-chart"/g).length, 1);
+  assert.doesNotMatch(markup, /data-einheit="Abrufe"/);
 });
 
 test("eine Kurve aus einem einzigen Punkt wird nicht gezeichnet", () => {
