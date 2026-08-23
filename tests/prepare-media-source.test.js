@@ -72,9 +72,56 @@ function writeManifest(root, manifest) {
   fs.writeFileSync(path.join(root, "automation/media-manifest.json"), JSON.stringify(manifest));
 }
 
+// The three R2 variables decide which route downloadMediaFile takes, so a test must state them
+// rather than inherit them: on a machine that exports them for real use, every delivery-domain
+// test here would otherwise quietly exercise the bucket instead and prove nothing.
+const credentialVariables = [
+  "CLOUDFLARE_ACCOUNT_ID",
+  "CLOUDFLARE_R2_ACCESS_KEY_ID",
+  "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
+];
+
 async function runPrepare(root, env) {
-  return execFileAsync("node", ["scripts/prepare-media-source.js"], { cwd: root, env: { ...process.env, ...env } });
+  const scrubbed = { ...process.env };
+  for (const name of credentialVariables) delete scrubbed[name];
+  return execFileAsync("node", ["scripts/prepare-media-source.js"], { cwd: root, env: { ...scrubbed, ...env } });
 }
+
+// A minimal stand-in for R2's S3 endpoint. Answers GET /<bucket>/<key> with whatever the test
+// registered; the signature is not checked, since what these tests are about is which host the
+// bytes come from, not aws4fetch's signing (which the upload tests already cover).
+function startFakeBucketServer(objects) {
+  const requests = [];
+  const server = http.createServer((req, res) => {
+    requests.push(req.url);
+    const key = decodeURIComponent(req.url.replace(/^\/[^/]+\//, "").split("?")[0]);
+    const body = objects[key];
+    if (!body) {
+      res.writeHead(404);
+      res.end("not found");
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/octet-stream" });
+    res.end(body);
+  });
+
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      resolve({
+        baseUrl: `http://127.0.0.1:${port}`,
+        requests,
+        close: () => new Promise((done) => server.close(done))
+      });
+    });
+  });
+}
+
+const bucketCredentials = {
+  CLOUDFLARE_ACCOUNT_ID: "test-account",
+  CLOUDFLARE_R2_ACCESS_KEY_ID: "test-key",
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: "test-secret"
+};
 
 test("restores a missing manifest-listed file from the delivery domain, leaves present files and build output alone", async () => {
   const root = setupProject();
@@ -290,4 +337,127 @@ test("leaves no partial file behind when a download never succeeds", async () =>
 
   const uploads = path.join(root, "blog/assets/images/uploads");
   assert.deepEqual(fs.existsSync(uploads) ? fs.readdirSync(uploads) : [], []);
+});
+
+test("with R2 credentials the bytes come from the bucket and the delivery domain is not asked", async () => {
+  const root = setupProject();
+  const buffer = Buffer.from("bytes-from-the-bucket");
+
+  writeManifest(root, {
+    "images/uploads/only-in-bucket.webp": {
+      sourcePath: "blog/assets/images/uploads/only-in-bucket.webp",
+      sha256: hash(buffer)
+    }
+  });
+
+  const bucket = await startFakeBucketServer({ "images/uploads/only-in-bucket.webp": buffer });
+  // Deliberately empty: any request that reaches it 404s, so a fallback would fail the run.
+  const delivery = await startFakeDeliveryServer({});
+
+  try {
+    const { stdout } = await runPrepare(root, {
+      ...bucketCredentials,
+      R2_S3_ENDPOINT: bucket.baseUrl,
+      MEDIA_DELIVERY_BASE_URL: delivery.baseUrl
+    });
+
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, "blog/assets/images/uploads/only-in-bucket.webp")),
+      buffer
+    );
+    assert.equal(delivery.requests.length, 0, "the cached delivery domain must stay out of the CI path");
+    assert.equal(bucket.requests.length, 1);
+    // The summary line is the only place a CI log says which route ran, so it is worth holding
+    // to its wording rather than letting a rename quietly blind the build log.
+    assert.match(stdout, /restored from R2 bucket \(signed S3 API\)/);
+  } finally {
+    await bucket.close();
+    await delivery.close();
+  }
+});
+
+// The 2026-08-23 outage, reduced to its mechanism: the bucket holds the replacement, the edge
+// cache still answers with the bytes it took before the PUT, and the manifest describes the
+// replacement. Reading the delivery domain fails the build on a cache entry; reading the bucket
+// compares the manifest against the thing it actually describes.
+test("a stale delivery-domain copy no longer fails a build that has credentials", async () => {
+  const replacement = Buffer.from("the-new-icon-bytes");
+  const staleEdgeCopy = Buffer.from("the-old-icon-bytes-still-cached");
+  const manifest = {
+    "images/apple-touch-icon.png": {
+      sourcePath: "blog/assets/images/apple-touch-icon.png",
+      sha256: hash(replacement)
+    }
+  };
+
+  const withoutCredentials = setupProject();
+  writeManifest(withoutCredentials, manifest);
+  const staleDelivery = await startFakeDeliveryServer({ "images/apple-touch-icon.png": staleEdgeCopy });
+
+  try {
+    await assert.rejects(
+      runPrepare(withoutCredentials, { MEDIA_DELIVERY_BASE_URL: staleDelivery.baseUrl }),
+      /does not match the manifest's sha256/,
+      "without credentials the stale copy must still be refused rather than written"
+    );
+    assert.equal(
+      fs.existsSync(path.join(withoutCredentials, "blog/assets/images/apple-touch-icon.png")),
+      false
+    );
+  } finally {
+    await staleDelivery.close();
+  }
+
+  const withCredentials = setupProject();
+  writeManifest(withCredentials, manifest);
+  const bucket = await startFakeBucketServer({ "images/apple-touch-icon.png": replacement });
+  const stillStaleDelivery = await startFakeDeliveryServer({ "images/apple-touch-icon.png": staleEdgeCopy });
+
+  try {
+    await runPrepare(withCredentials, {
+      ...bucketCredentials,
+      R2_S3_ENDPOINT: bucket.baseUrl,
+      MEDIA_DELIVERY_BASE_URL: stillStaleDelivery.baseUrl
+    });
+
+    assert.deepEqual(
+      fs.readFileSync(path.join(withCredentials, "blog/assets/images/apple-touch-icon.png")),
+      replacement
+    );
+  } finally {
+    await bucket.close();
+    await stillStaleDelivery.close();
+  }
+});
+
+// An incomplete set is the state of every clone and of local development, and it has to stay a
+// routine fallback rather than an error — otherwise `npm run media:source` stops turning a
+// checkout into a buildable copy, which is the property the public route exists for.
+test("a partial credential set falls back to the delivery domain instead of failing", async () => {
+  const root = setupProject();
+  const buffer = Buffer.from("bytes-from-the-public-domain");
+
+  writeManifest(root, {
+    "images/uploads/public.webp": {
+      sourcePath: "blog/assets/images/uploads/public.webp",
+      sha256: hash(buffer)
+    }
+  });
+
+  const delivery = await startFakeDeliveryServer({ "images/uploads/public.webp": buffer });
+
+  try {
+    const { stdout } = await runPrepare(root, {
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      CLOUDFLARE_R2_ACCESS_KEY_ID: "test-key",
+      // secret deliberately absent
+      MEDIA_DELIVERY_BASE_URL: delivery.baseUrl
+    });
+    assert.match(stdout, /restored from public delivery domain/);
+
+    assert.deepEqual(fs.readFileSync(path.join(root, "blog/assets/images/uploads/public.webp")), buffer);
+    assert.equal(delivery.requests.length, 1);
+  } finally {
+    await delivery.close();
+  }
 });

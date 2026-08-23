@@ -14,7 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { loadManifest, downloadMediaFile } = require("./lib/r2-media");
+const { loadManifest, downloadMediaFile, optionalCredentialsFromEnv } = require("./lib/r2-media");
 
 const root = process.cwd();
 const ephemeralSourcePrefix = "_site/";
@@ -51,7 +51,15 @@ async function main() {
   const total = Object.values(manifest).filter(
     (entry) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix)
   ).length;
-  console.log(`Media source prepare: ${missing.length} file(s) restored from R2, ${total - missing.length} already present.`);
+  // Naming the route is what makes a CI run evidence rather than inference: both routes end in
+  // the same success line, but only one of them is immune to an edge cache answering for an
+  // object that has since been replaced. If this ever reads "public delivery domain" in a
+  // production build, the credentials stopped reaching the gate — see
+  // .github/actions/validate-site/action.yml.
+  const route = optionalCredentialsFromEnv() ? "R2 bucket (signed S3 API)" : "public delivery domain";
+  console.log(
+    `Media source prepare: ${missing.length} file(s) restored from ${route}, ${total - missing.length} already present.`
+  );
 }
 
 main().catch((error) => {

@@ -183,6 +183,19 @@ function credentialsFromEnv(env = process.env) {
   return { accountId, accessKeyId, secretAccessKey };
 }
 
+// The same three variables, but absence is an expected state rather than a defect: only CI
+// holds them. Every other caller — a fresh clone, local `npm start` — is meant to read media
+// from the public delivery domain, so an incomplete set means "use the public path", not
+// "fail". Kept separate from credentialsFromEnv so the write path keeps throwing a named error
+// for each missing variable; silently degrading an *upload* to some other route is never right.
+function optionalCredentialsFromEnv(env = process.env) {
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
+  const accessKeyId = env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretAccessKey = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  if (!accountId || !accessKeyId || !secretAccessKey) return null;
+  return { accountId, accessKeyId, secretAccessKey };
+}
+
 // AwsClient retries 5xx and 429 itself and returns anything else straight away — exactly the
 // classification an upload wants, so this needs no retry wrapper of its own. Its default of 10
 // retries is more than this pipeline has any use for: the exponential backoff alone would spend
@@ -217,6 +230,31 @@ async function putObject({ accountId, accessKeyId, secretAccessKey, key, buffer,
     const detail = await response.text().catch(() => "");
     throw new Error(`R2 upload failed for ${key}: ${response.status} ${detail}`.trim());
   }
+}
+
+// The read half of putObject, against the same bucket over the same signed S3 API. This is the
+// path CI takes, and the point of it is what it does *not* go through: the public delivery
+// domain answers from an edge cache holding `max-age=31536000`, so it can serve bytes that no
+// longer match the object behind it. A build that verifies against the manifest then fails on a
+// cache entry rather than on anything real — see downloadMediaFile.
+//
+// Needs no retry wrapper of its own: AwsClient repeats 5xx and 429 and surfaces everything else
+// at once, the same classification the upload side relies on.
+async function getObject({ accountId, accessKeyId, secretAccessKey, key, env }) {
+  const client = s3Client({ accessKeyId, secretAccessKey });
+  const url = `${s3Endpoint(accountId, env)}/${bucketName}/${key}`;
+
+  const response = await client.fetch(url, {
+    method: "GET",
+    signal: AbortSignal.timeout(downloadTimeoutMs)
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`R2 download failed for ${key}: ${response.status} ${detail}`.trim());
+  }
+
+  return Buffer.from(await response.arrayBuffer());
 }
 
 // Uploads a single local file to R2 if its content differs from the manifest's last known
@@ -267,41 +305,31 @@ function deliveryUrlForKey(key, env = process.env, sha256 = null) {
 }
 
 // Restores a manifest-listed file that is missing from the local checkout (once Git no longer
-// carries migrated media) by fetching it back from the public delivery domain — R2 is a
-// publicly-readable bucket via its Custom Domain, so this needs no credentials, unlike
-// publishMediaFile's write path. Verifies the downloaded bytes against the manifest's recorded
-// hash before writing, since a corrupt or unexpected response must never silently become the
-// new "local original" for image-dimension reads / responsive-variant generation.
+// carries migrated media). Verifies the bytes against the manifest's recorded hash before
+// writing, since a corrupt or unexpected response must never silently become the new "local
+// original" for image-dimension reads / responsive-variant generation.
+//
+// Two routes, and which one is taken matters more than it looks:
+//
+//   * With R2 credentials (CI) the bytes come from the bucket over the signed S3 API. The
+//     bucket is the thing the manifest actually describes, so this compares like with like.
+//   * Without them (a fresh clone, local dev) they come from the public delivery domain, which
+//     needs no credentials — the property that lets `npm run media:source` turn any clone into
+//     a buildable copy, and worth keeping for exactly that.
+//
+// The public route reads through an edge cache serving `max-age=31536000`, and that cache
+// learns nothing from an R2 PUT. Replacing an object under an existing key therefore leaves the
+// old bytes being served for up to a year, and a build verifying against the manifest fails on
+// the cache rather than on anything real. That is not hypothetical: on 2026-08-23 a replaced
+// apple-touch-icon.png made every push to main fail with "does not match the manifest's sha256",
+// and because validation runs before the deploy step, nothing shipped at all. The `?v=` below
+// moves the cache entry with the bytes and keeps that from stranding a clone; taking CI off the
+// cached path altogether is what keeps it from ever stranding a deploy.
 async function downloadMediaFile({ key, destinationPath, expectedSha256, env = process.env }) {
-  const url = deliveryUrlForKey(key, env, expectedSha256);
-
-  const buffer = await withRetry(`Media download ${key}`, async () => {
-    const response = await fetch(url, { signal: AbortSignal.timeout(downloadTimeoutMs) });
-    if (!response.ok) {
-      return {
-        ok: false,
-        // A 404 is the manifest and the bucket disagreeing — a real defect worth surfacing at
-        // once, not something another request will fix.
-        retryable: isRetryableStatus(response.status),
-        error: new Error(`Media download failed for ${key}: ${response.status} ${url}`)
-      };
-    }
-
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (expectedSha256 && hashBuffer(bytes) !== expectedSha256) {
-      return {
-        ok: false,
-        // A truncated body reads as a hash mismatch, and that is the common case here — worth
-        // one more try before declaring the object itself wrong.
-        retryable: true,
-        error: new Error(
-          `Downloaded content for ${key} does not match the manifest's sha256 — refusing to write ${destinationPath}`
-        )
-      };
-    }
-
-    return { ok: true, value: bytes };
-  });
+  const credentials = optionalCredentialsFromEnv(env);
+  const buffer = credentials
+    ? await downloadFromBucket({ credentials, key, destinationPath, expectedSha256, env })
+    : await downloadFromDeliveryDomain({ key, destinationPath, expectedSha256, env });
 
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
   // Write-then-rename, because the half-written file an interrupted run leaves behind would
@@ -318,11 +346,71 @@ async function downloadMediaFile({ key, destinationPath, expectedSha256, env = p
   }
 }
 
+// Shared by both routes so neither can quietly skip the check. Returns an error to hand back to
+// withRetry rather than throwing, because the caller decides whether this attempt is worth
+// repeating.
+function hashMismatch(key, bytes, expectedSha256, destinationPath) {
+  if (!expectedSha256 || hashBuffer(bytes) === expectedSha256) return null;
+  return new Error(
+    `Downloaded content for ${key} does not match the manifest's sha256 — refusing to write ${destinationPath}`
+  );
+}
+
+async function downloadFromBucket({ credentials, key, destinationPath, expectedSha256, env }) {
+  return withRetry(`Media download ${key}`, async () => {
+    // AwsClient has already repeated the retryable statuses by the time this rejects, so a
+    // failure arriving here is final — repeating it would only multiply the two budgets
+    // together, the same reason the upload side carries no wrapper of its own.
+    let bytes;
+    try {
+      bytes = await getObject({ ...credentials, key, env });
+    } catch (error) {
+      return { ok: false, retryable: false, error };
+    }
+
+    // A truncated body reads as a hash mismatch, and against the bucket that is the only way
+    // this can fire at all — the stale-cache case cannot reach here.
+    const mismatch = hashMismatch(key, bytes, expectedSha256, destinationPath);
+    if (mismatch) return { ok: false, retryable: true, error: mismatch };
+
+    return { ok: true, value: bytes };
+  });
+}
+
+async function downloadFromDeliveryDomain({ key, destinationPath, expectedSha256, env }) {
+  const url = deliveryUrlForKey(key, env, expectedSha256);
+
+  return withRetry(`Media download ${key}`, async () => {
+    const response = await fetch(url, { signal: AbortSignal.timeout(downloadTimeoutMs) });
+    if (!response.ok) {
+      return {
+        ok: false,
+        // A 404 is the manifest and the bucket disagreeing — a real defect worth surfacing at
+        // once, not something another request will fix.
+        retryable: isRetryableStatus(response.status),
+        error: new Error(`Media download failed for ${key}: ${response.status} ${url}`)
+      };
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const mismatch = hashMismatch(key, bytes, expectedSha256, destinationPath);
+    if (mismatch) {
+      // A truncated body reads as a hash mismatch too, so one more try is worth it before
+      // declaring the object wrong. A genuinely stale edge copy survives the retries and fails
+      // the run, which is the correct outcome for a route that cannot tell the two apart.
+      return { ok: false, retryable: true, error: mismatch };
+    }
+
+    return { ok: true, value: bytes };
+  });
+}
+
 module.exports = {
   bucketName,
   // Exported for scripts/report-media-drift.js, which signs its own ListObjectsV2 request
   // rather than going through publishMediaFile.
   credentialsFromEnv,
+  optionalCredentialsFromEnv,
   s3Endpoint,
   removePendingUploads,
   contentTypeFor,
