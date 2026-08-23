@@ -51,7 +51,8 @@ const { documentRkey } = require("./lib/atproto");
 const { extractFirstImageAlt, imageMimeType, resolveSocialImage } = require("./lib/eleventy/social");
 const { sitemapLastModified } = require("./lib/eleventy/sitemap");
 const { buildRecipeStructuredData, buildReviewStructuredData } = require("./lib/eleventy/structured-data");
-const { adminVendorBundles, leafletRuntimeAssets } = require("./lib/eleventy/runtime-vendors");
+const { adminBundleVersion, adminDeployedFiles } = require("./lib/eleventy/admin-bundle");
+const { leafletRuntimeAssets } = require("./lib/eleventy/runtime-vendors");
 
 const production = process.env.ELEVENTY_ENV === "production";
 const publishAdmin = process.env.PUBLISH_ADMIN !== "0";
@@ -75,26 +76,6 @@ function adminAssetUrl(value = "") {
   if (!fs.existsSync(filePath)) return pathname;
   const hash = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex").slice(0, 12);
   return `${pathname}?v=${hash}`;
-}
-
-function adminBundleVersion() {
-  const adminRoot = path.resolve(__dirname, "blog/admin");
-  const hash = crypto.createHash("sha256");
-  const visit = (directory) => {
-    fs.readdirSync(directory, { withFileTypes: true })
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .forEach((entry) => {
-        if (entry.name === "editor-src") return;
-        const entryPath = path.join(directory, entry.name);
-        if (entry.isDirectory()) visit(entryPath);
-        else if (entry.isFile()) {
-          hash.update(path.relative(adminRoot, entryPath));
-          hash.update(fs.readFileSync(entryPath));
-        }
-      });
-  };
-  visit(adminRoot);
-  return hash.digest("hex").slice(0, 12);
 }
 
 function isPublished(item) {
@@ -284,15 +265,13 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addPassthroughCopy({ [source]: destination });
   }
   if (publishAdmin) {
-    // index.html is a Nunjucks template so its local assets receive automatic
-    // content fingerprints. Copy the generated vendor bundles explicitly so a
-    // stale, ignored dependency directory can never leak into a deployment.
-    for (const entry of fs.readdirSync(path.join(__dirname, "blog/admin"))) {
-      if (["index.html", "editor-src", "admin-src", "css-src", "vendor"].includes(entry)) continue;
-      eleventyConfig.addPassthroughCopy({ [`blog/admin/${entry}`]: `admin/${entry}` });
-    }
-    for (const source of Object.values(adminVendorBundles)) {
-      eleventyConfig.addPassthroughCopy({ [source]: source.replace(/^blog\//, "") });
+    // index.html is a Nunjucks template so its local assets receive automatic content
+    // fingerprints. Everything else is named file by file, so a stale, ignored dependency
+    // directory can never leak into a deployment — and the very same list feeds
+    // adminBundleVersion, so the service-worker hash covers what is copied here and nothing
+    // else. Copying directories instead would leave the two sides to agree by coincidence.
+    for (const file of adminDeployedFiles(__dirname)) {
+      eleventyConfig.addPassthroughCopy({ [file]: file.replace(/^blog\//, "") });
     }
   } else {
     eleventyConfig.ignores.add("blog/admin/**");
@@ -456,7 +435,7 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addFilter("faIcon", renderFontAwesomeIcon);
   eleventyConfig.addFilter("adminAssetUrl", adminAssetUrl);
-  eleventyConfig.addFilter("adminBundleVersion", adminBundleVersion);
+  eleventyConfig.addFilter("adminBundleVersion", () => adminBundleVersion(__dirname));
 
   eleventyConfig.addShortcode("year", () => String(new Date().getFullYear()));
 
