@@ -112,3 +112,96 @@ test("an upload whose content hash already matches the manifest never reaches th
 
   assert.equal(server.attempts, 0);
 });
+
+// Nimmt jeden PUT an und merkt sich, unter welchem Schlüssel er ankam.
+function startAcceptingEndpoint() {
+  const puts = [];
+  const server = http.createServer((req, res) => {
+    puts.push(decodeURIComponent(req.url.replace(/^\/[^/]+\//, "")));
+    res.writeHead(200);
+    res.end();
+  });
+
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      resolve({
+        endpoint: `http://127.0.0.1:${server.address().port}`,
+        puts,
+        close: () => new Promise((done) => server.close(done))
+      });
+    });
+  });
+}
+
+// Der Kern der Inhaltsadressierung, und bis hierher nur auf Helfer-Ebene geprüft: Wird eines der
+// alten, pfadbenannten Bilder wirklich ersetzt, wandert dieser eine Eintrag auf eine
+// Inhaltsadresse — und merkt sich die alte. Ohne dieses Gedächtnis meldete der Drift-Report das
+// zurückbehaltene Objekt als Waise, obwohl veröffentlichte Feed-Items und rund 1.400 absolute
+// URLs im Bestand es weiterhin ansteuern.
+test("replacing a legacy path-keyed image moves it to a content address and remembers the old one", async () => {
+  const server = await startAcceptingEndpoint();
+  const manifest = {
+    "images/sample.webp": {
+      sourcePath: "blog/assets/images/sample.webp",
+      sha256: "0".repeat(64),
+      size: 1,
+      contentType: "image/webp"
+      // kein objectKey: genau die Form, die jeder Eintrag von vor der Umstellung hat
+    }
+  };
+
+  try {
+    const result = await publishMediaFile({
+      localPath: stagedFile(),
+      publicPath: "/assets/images/sample.webp",
+      sourcePath: "blog/assets/images/sample.webp",
+      manifest,
+      env: envFor(server.endpoint)
+    });
+
+    assert.equal(result, "uploaded");
+
+    // Der Manifest-Schlüssel bleibt die Identität; nur die Adresse hat sich bewegt.
+    assert.deepEqual(Object.keys(manifest), ["images/sample.webp"]);
+
+    const entry = manifest["images/sample.webp"];
+    assert.match(entry.objectKey, /^cas\/[0-9a-f]{2}\/[0-9a-f]{64}\.webp$/);
+    assert.deepEqual(server.puts, [entry.objectKey], "die neuen Bytes dürfen nur unter der Inhaltsadresse landen");
+    assert.deepEqual(entry.supersededObjectKeys, ["images/sample.webp"]);
+    assert.equal(entry.sourcePath, "blog/assets/images/sample.webp");
+  } finally {
+    await server.close();
+  }
+});
+
+// Und die Fortsetzung: Ein zweites Ersetzen darf die erste Adresse nicht vergessen. Sonst fiele
+// das mittlere Objekt aus der Buchführung, und der Drift-Report zählte es als Waise.
+test("a second replacement keeps every address the entry was ever served from", async () => {
+  const server = await startAcceptingEndpoint();
+  const first = "cas/ab/" + "ab".repeat(32) + ".webp";
+  const manifest = {
+    "images/sample.webp": {
+      sourcePath: "blog/assets/images/sample.webp",
+      objectKey: first,
+      sha256: "0".repeat(64),
+      supersededObjectKeys: ["images/sample.webp"],
+      contentType: "image/webp"
+    }
+  };
+
+  try {
+    await publishMediaFile({
+      localPath: stagedFile(),
+      publicPath: "/assets/images/sample.webp",
+      sourcePath: "blog/assets/images/sample.webp",
+      manifest,
+      env: envFor(server.endpoint)
+    });
+
+    const entry = manifest["images/sample.webp"];
+    assert.notEqual(entry.objectKey, first);
+    assert.deepEqual(entry.supersededObjectKeys, ["images/sample.webp", first]);
+  } finally {
+    await server.close();
+  }
+});
