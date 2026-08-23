@@ -3,12 +3,21 @@
 const fs = require("fs");
 const path = require("path");
 
-const { readMergedManifest } = require("../lib/media-manifest");
+const { objectKeysForEntry, readMergedManifest } = require("../lib/media-manifest");
 
 const siteRoot = path.resolve(process.cwd(), "_site");
 const siteUrl = "https://mysite.example";
 const mediaUrl = "https://media.mysite.example";
 const mediaManifest = readMergedManifest(process.cwd());
+// Jede Adresse, unter der das Manifest etwas ausliefert — nicht die Schlüssel, unter denen es
+// die Einträge führt. Das war dasselbe, solange ein Objekt unter seinem Pfad lag; seit Uploads
+// inhaltsadressiert sind, lautet die URL eines neuen Bildes cas/<hash>, und ein solcher
+// Schlüssel steht in keinem Manifest. Gegen die Schlüssel zu prüfen hiesse: der erste Beitrag
+// mit frisch hochgeladenem Vorschaubild wird als "nicht im Manifest" gemeldet und hält den
+// Deploy an. Abgelöste Adressen zählen mit, weil ältere Beiträge sie weiterhin tragen.
+const deliveredObjectKeys = new Set(
+  Object.entries(mediaManifest).flatMap(([manifestKey, entry]) => objectKeysForEntry(entry, manifestKey))
+);
 
 if (!fs.existsSync(siteRoot)) {
   console.error("Missing _site. Run npm run build first.");
@@ -44,7 +53,7 @@ for (const file of articleFiles) {
       // Media-hosted images live in R2, not in _site — verify against the migration
       // manifest (the record of what was actually uploaded) instead of the filesystem.
       const key = decodeURI(new URL(imageUrl).pathname).slice(1);
-      if (!mediaManifest[key]) {
+      if (!deliveredObjectKeys.has(key)) {
         problems.push(`${relativeFile}: ${label} is not in the media manifest (${imageUrl})`);
       }
       continue;

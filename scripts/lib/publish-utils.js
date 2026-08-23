@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const matter = require("gray-matter");
 
+const { deliveryAddressIndex, readMergedManifest } = require("../../lib/media-manifest");
+
 const root = process.cwd();
 const postsRoot = path.join(root, "blog/posts");
 
@@ -295,10 +297,23 @@ function ruleImageCount(rule = {}) {
 // URL back to that repo-relative path so social attachments can still read the file locally.
 const mediaDeliveryOrigin = "https://media.mysite.example";
 
+// Erst gebaut, wenn wirklich eine Auslieferungs-URL aufgelöst werden muss: Die meisten Beiträge
+// nennen ihr Bild als /assets/…-Pfad, und das Manifest hat über 6.000 Einträge.
+let deliveryIndex = null;
+
 function fromMediaDeliveryPath(pathValue) {
   if (!pathValue.startsWith(mediaDeliveryOrigin)) return pathValue;
   const pathname = pathValue.slice(mediaDeliveryOrigin.length);
   if (pathname.startsWith("/images/") || pathname.startsWith("/videos/")) return `/assets${pathname}`;
+
+  // Eine Inhaltsadresse lässt sich nicht aus dem Pfad ableiten — cas/<hash> sagt nichts darüber,
+  // wo die Datei liegt. Ohne diesen Blick ins Manifest fände localImageFromPath die Datei nicht
+  // und der Beitrag ginge ohne Bild raus: kein Fehler, keine Meldung, nur ein Foto-Beitrag ohne
+  // Foto bei GoToSocial und Bluesky.
+  if (!deliveryIndex) deliveryIndex = deliveryAddressIndex(readMergedManifest(root));
+  const manifestKey = deliveryIndex.get(pathname.replace(/^\//, ""));
+  if (manifestKey) return `/assets/${manifestKey}`;
+
   return pathname;
 }
 

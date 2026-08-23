@@ -646,3 +646,81 @@ test("does not deploy the media trees that are only materialized for the build",
   // its own and must survive the removal of the tree it happens to live in.
   assert.ok(passthroughs.includes("blog/assets/images/favicon.ico"));
 });
+
+// Eine Auslieferungs-URL im Markdown muss auf die lokale Datei zurückführen, sonst bekommt das
+// Bild weder Abmessungen noch responsive Varianten noch ein Platzhalterbild.
+//
+// Bei den rund 1.400 absoluten URLs im Bestand geht das über die Pfadform. Seit Uploads
+// inhaltsadressiert sind, kann eine solche URL aber auch cas/<hash> lauten — und dafür gibt es
+// keine Prefix-Regel, aus der sich der lokale Pfad ableiten liesse. Die Zuordnung steht nur im
+// Manifest, also muss sie von dort kommen.
+test("a content-addressed delivery URL in the source resolves back to the local file", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-cas-reverse-"));
+  const imageRoot = path.join(tmp, "blog/assets/images");
+  fs.mkdirSync(imageRoot, { recursive: true });
+
+  const imagePath = path.join(imageRoot, "sample.webp");
+  await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 1, g: 2, b: 3 } } })
+    .webp()
+    .toFile(imagePath);
+
+  const objectKey = `cas/aa/${"aa".repeat(32)}.webp`;
+  const media = createMediaAssetHelpers({
+    root: tmp,
+    localImageRoot: imageRoot,
+    localVideoRoot: path.join(tmp, "blog/assets/videos"),
+    outputRoot: path.join(tmp, "_site"),
+    responsiveImageCacheRoot: path.join(tmp, ".cache/responsive-images"),
+    mediaManifest: {
+      "images/sample.webp": { sha256: "recorded", objectKey }
+    }
+  });
+
+  const html = await media.addMediaPerformanceAttributes(
+    `<main><img src="https://media.mysite.example/${objectKey}" alt="Sample"></main>`,
+    { url: "/post/" }
+  );
+
+  // Aufgelöst heisst: die echten Abmessungen stehen dran und es gibt ein srcset. Ohne Auflösung
+  // bliebe das Bild ein nacktes img-Element mit einer fremden URL.
+  assert.match(html, /width="800"/);
+  assert.match(html, /height="600"/);
+  assert.match(html, /srcset="/);
+});
+
+// Der Fall, der bei einem ersetzten Bild entsteht: Ein veröffentlichter Beitrag trägt die
+// Adresse von vorher, das Manifest führt sie nur noch unter supersededObjectKeys. Auch die muss
+// auf dieselbe lokale Datei führen — sonst verliert ausgerechnet der ältere Bestand seine
+// Varianten, während der neue sie behält.
+test("a superseded delivery address still resolves to the local file", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-cas-superseded-"));
+  const imageRoot = path.join(tmp, "blog/assets/images");
+  fs.mkdirSync(imageRoot, { recursive: true });
+
+  const imagePath = path.join(imageRoot, "sample.webp");
+  await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 4, g: 5, b: 6 } } })
+    .webp()
+    .toFile(imagePath);
+
+  const current = `cas/bb/${"bb".repeat(32)}.webp`;
+  const previous = `cas/cc/${"cc".repeat(32)}.webp`;
+
+  const media = createMediaAssetHelpers({
+    root: tmp,
+    localImageRoot: imageRoot,
+    localVideoRoot: path.join(tmp, "blog/assets/videos"),
+    outputRoot: path.join(tmp, "_site"),
+    responsiveImageCacheRoot: path.join(tmp, ".cache/responsive-images"),
+    mediaManifest: {
+      "images/sample.webp": { sha256: "recorded", objectKey: current, supersededObjectKeys: [previous] }
+    }
+  });
+
+  const html = await media.addMediaPerformanceAttributes(
+    `<main><img src="https://media.mysite.example/${previous}" alt="Sample"></main>`,
+    { url: "/post/" }
+  );
+
+  assert.match(html, /width="800"/);
+  assert.match(html, /srcset="/);
+});
