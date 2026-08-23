@@ -43,7 +43,7 @@ function runSyncOutbox(changes) {
     "guardMediaReadyForPublish", "recoverPendingMediaOperations", "renderQueue", "hasGithubAccess",
     "requireGithubAccess", "openQueue", "focusGithubConnection", "ensureDraftsBranch", "github",
     "repo", "window", "changeSignature", "persistPublishRequest", "renderSyncState",
-    "pollPublishCompletion",
+    "pollPublishCompletion", "starteVeroeffentlichung",
     `return (${source});`
   )(
     state,
@@ -65,7 +65,10 @@ function runSyncOutbox(changes) {
     (change) => `${change.kind}:${change.path}`,
     (request) => persisted.push(request),
     () => {},
-    (token, request) => polled.push({ token, request })
+    (token, request) => polled.push({ token, request }),
+    // Seit der Umstellung startet der Admin nicht mehr selbst per Dispatch, sondern über den
+    // eigenen Endpunkt. Was hier gezählt wird, ist damit der Start, nicht mehr der Dispatch.
+    async (anfrage) => { dispatches.push({ endpoint: "/api/admin/publish", options: { body: anfrage } }); return { id: "wf-1" }; }
   );
   return syncOutbox().then(() => ({ dispatches, statuses, persisted, polled, state }));
 }

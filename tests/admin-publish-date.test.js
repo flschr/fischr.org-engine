@@ -8,7 +8,10 @@ function extractBlock(source, anchor) {
   const anchorIndex = source.indexOf(anchor);
   assert.notEqual(anchorIndex, -1, `Missing anchor: ${anchor}`);
 
-  const blockStart = source.indexOf("{", anchorIndex);
+  // Hinter dem Anker suchen, nicht ab seinem Anfang: bei einem destrukturierten Parameter
+  // (`function f({ a, b })`) läge die erste Klammer sonst im Anker selbst, und der Test
+  // prüfte die Parameterliste statt des Rumpfs — grün, aber ohne Aussage.
+  const blockStart = source.indexOf("{", anchorIndex + anchor.length);
   assert.notEqual(blockStart, -1, `Missing block for anchor: ${anchor}`);
 
   let depth = 0;
@@ -139,15 +142,23 @@ test("admin field collection does not mutate auto-generated slug", () => {
   assert.match(source, /els\.slugInput\.addEventListener\("input", \(\) => \{\s*state\.autoSlug = false;/);
 });
 
-test("immediate admin sync dispatches the exact drafts commit already reviewed", () => {
+// Was gesendet wird, muss der Stand sein, den jemand geprüft hat — nicht einer, der beim Senden
+// gerade aktuell ist. Die Form hat sich geändert (der Admin startet über den eigenen Endpunkt
+// statt selbst zu dispatchen), die Bedingung nicht.
+test("immediate admin sync sends the exact reviewed commits, not whatever is current", () => {
   const source = adminSource();
   const syncOutbox = extractBlock(source, "async function syncOutbox()");
 
   assert.match(syncOutbox, /const draftsHead = state\.tree && state\.treeHeadSha\s*\? state\.treeHeadSha/);
   assert.match(syncOutbox, /const mainHead = state\.mainTree && state\.mainTreeHeadSha\s*\? state\.mainTreeHeadSha/);
-  assert.match(syncOutbox, /request_id: requestId/);
-  assert.match(syncOutbox, /main_sha: mainHead/);
-  assert.match(syncOutbox, /draft_sha: draftsHead/);
+  assert.match(syncOutbox, /starteVeroeffentlichung\(\{ requestId, mainHead, draftsHead, changeCount: changes\.length \}\)/);
+
+  // Und der Start geht an den eigenen Endpunkt, nicht mehr per Dispatch aus dem Browser.
+  const starter = extractBlock(source, "async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount })");
+  assert.match(starter, /fetch\("\/api\/admin\/publish"/);
+  assert.match(starter, /mainSha: mainHead/);
+  assert.match(starter, /draftSha: draftsHead/);
+  assert.doesNotMatch(source, /actions\/workflows\/admin-publish\.yml\/dispatches/);
 });
 
 test("admin restores an in-flight publish after reload", () => {

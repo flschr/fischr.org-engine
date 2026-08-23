@@ -13,44 +13,31 @@ import { waitForMediaCommits } from "./26e-media-recovery-state.js";
 import { persistPublishRequest, pollPublishCompletion, refreshCurrentSilent } from "./27a-publish-state.js";
 import { changeSignature, openQueue, renderQueue } from "./27c-queue-render.js";
 
-export async function discardUnusedMedia() {
-  await waitForMediaCommits();
-  const changes = await loadChanges();
-  if (!changes.length) return;
-  const orphans = orphanMediaChanges();
-  if (!orphans.length) return;
-  if (!guardMediaIdle("Unbenutzte Uploads verwerfen")) return;
-  const confirmedOrphanSet = changeSetSignature(orphans);
-  const confirmedDraftHead = state.treeHeadSha;
-  const confirmed = await askDiscardAction({
-    title: "Discard unused uploads?",
-    text: orphans.length === 1
-      ? "1 Bild, das in keinem Artikel verwendet wird, wird aus der Queue entfernt."
-      : `${orphans.length} Bilder, die in keinem Artikel verwendet werden, werden aus der Queue entfernt.`,
-    actionLabel: "Verwerfen"
+// Startet die Veröffentlichung über den eigenen Endpunkt.
+//
+// Ein veralteter Stand kommt als 409 zurück und ist kein Ausfall, sondern eine Auskunft: In der
+// Zwischenzeit wurde etwas anderes veröffentlicht. Sie muss als solche ankommen, sonst sucht man
+// den Fehler bei sich.
+async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount }) {
+  const antwort = await fetch("/api/admin/publish", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ requestId, mainSha: mainHead, draftSha: draftsHead, changeCount })
   });
-  if (!confirmed) return;
-  setBusy(true);
+
+  if (antwort.ok) return antwort.json().catch(() => ({}));
+
+  let koerper = null;
   try {
-    const confirmedChanges = await loadFreshChanges();
-    if (!confirmedChanges.length) return;
-    if (!guardMediaIdle("Unbenutzte Uploads verwerfen")) return;
-    const confirmedOrphans = orphanMediaChanges();
-    if (!confirmedOrphans.length) return;
-    if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedOrphans) !== confirmedOrphanSet) {
-      showStatus("Die unbenutzten Uploads wurden zwischenzeitlich aktualisiert. Bitte erneut prüfen und verwerfen.", "error");
-      return;
-    }
-    await discardUnusedMediaChanges(confirmedOrphans);
-    await loadChanges();
-    await refreshCurrentSilent();
-    showStatus(confirmedOrphans.length === 1 ? "1 unbenutzter Upload entfernt." : `${confirmedOrphans.length} unbenutzte Uploads entfernt.`);
-  } catch (error) {
-    showStatus(`Verwerfen fehlgeschlagen: ${error.message}`, "error");
-  } finally {
-    setBusy(false);
-    renderQueue();
+    koerper = await antwort.json();
+  } catch {
+    koerper = null;
   }
+
+  const fehler = new Error(koerper?.message || `Veröffentlichung konnte nicht gestartet werden (${antwort.status}).`);
+  fehler.code = koerper?.code || `HTTP_${antwort.status}`;
+  throw fehler;
 }
 
 export async function syncOutbox() {
@@ -111,18 +98,15 @@ export async function syncOutbox() {
       signatures: changes.map(changeSignature),
       startedAt: new Date().toISOString()
     };
-    await github("actions/workflows/admin-publish.yml/dispatches", {
-      method: "POST",
-      body: {
-        ref: repo.publishBranch,
-        inputs: {
-          request_id: requestId,
-          main_sha: mainHead,
-          draft_sha: draftsHead,
-          change_count: String(changes.length)
-        }
-      }
-    });
+    // Gestartet wird über den eigenen Endpunkt, nicht mehr per Dispatch von hier aus. Damit gibt
+    // es einen Ort, der weiss, dass eine Veröffentlichung läuft — und die Prüfung, ob der
+    // freigegebene Stand noch gilt, passiert dort, bevor etwas angestossen wird. Vorher konnte
+    // der Browser eine Veröffentlichung auf einen Stand loslassen, den es nicht mehr gab, und
+    // das fiel erst im Bau auf.
+    // Die Kennung der Instanz gehört in die Anfrage: Sie ist der einzige Faden zurück zu dem
+    // Vorgang, falls nie ein Actions-Lauf erscheint — und sie überlebt so auch ein Neuladen.
+    const gestartet = await starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount: changes.length });
+    request.workflowId = gestartet?.id || "";
     state.publishInFlight = true;
     state.publishStartedCount = changes.length;
     state.publishStartedSignatures = new Set(changes.map(changeSignature));

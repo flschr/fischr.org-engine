@@ -98,8 +98,11 @@ test("a failed startup image recovery leaves its queue repair actions available"
   expect(recoveryDispatches()).toBe(1);
   await page.locator("#pushButton").click();
   await expect.poll(recoveryDispatches).toBe(2);
+  // Die Adresse muss die des Starts sein, nicht die des alten Dispatchs: Seit der Admin gar
+  // nicht mehr dispatcht, wäre die alte Zusicherung immer erfüllt — auch dann, wenn hier
+  // sehr wohl eine Veröffentlichung begonnen hätte.
   expect(requests.some((request) =>
-    request.method === "POST" && request.url.includes("admin-publish.yml/dispatches")
+    request.method === "POST" && request.url.endsWith("/api/admin/publish")
   )).toBe(false);
 });
 

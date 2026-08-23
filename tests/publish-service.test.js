@@ -49,3 +49,29 @@ test("publish service does not resurrect a completed failed run", async () => {
   }), "main");
   assert.equal(request, null);
 });
+
+// Der Workflow ist die einzige Stelle, die weiss, dass er gar nicht erst bauen wird. Ohne diese
+// Auskunft sähe „entschieden, nicht zu bauen" genauso aus wie „Lauf noch nicht sichtbar".
+test("der Workflow-Zustand wird über den eigenen Endpunkt gelesen", async () => {
+  const service = loadService();
+  const aufrufe = [];
+  const zustand = await service.fetchWorkflowState("wf 1", async (url, optionen) => {
+    aufrufe.push({ url, optionen });
+    return { ok: true, json: async () => ({ id: "wf 1", status: "complete", output: { status: "veraltet" } }) };
+  });
+
+  assert.equal(aufrufe.length, 1);
+  assert.equal(aufrufe[0].url, "/api/admin/publish/wf%201");
+  assert.equal(aufrufe[0].optionen.credentials, "same-origin");
+  assert.equal(zustand.output.status, "veraltet");
+});
+
+// Eine Nebenauskunft darf die Statusabfrage nicht mitreissen: Fällt sie aus, bleibt der bisher
+// gelesene Zustand gültig, statt eine laufende Veröffentlichung als gescheitert zu melden.
+test("ein Ausfall der Workflow-Abfrage bleibt folgenlos", async () => {
+  const service = loadService();
+
+  assert.equal(await service.fetchWorkflowState(""), null, "ohne Kennung wird nicht gefragt");
+  assert.equal(await service.fetchWorkflowState("wf-1", async () => { throw new Error("offline"); }), null);
+  assert.equal(await service.fetchWorkflowState("wf-1", async () => ({ ok: false, status: 503 })), null);
+});

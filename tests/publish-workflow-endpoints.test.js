@@ -10,8 +10,18 @@ test.before(async () => {
   zustand = await import("../functions/api/admin/publish/[id].js");
 });
 
-const angemeldet = { readSession: async () => ({ token: "gh-token" }) };
-const abgemeldet = { readSession: async () => null };
+// Standardmässig antwortet die Standprüfung mit genau dem Stand, den die Anfrage mitbringt —
+// sonst müsste jeder Test, der die Prüfung gar nicht meint, sie trotzdem bedienen.
+function kopfStub(sha) {
+  return async (url) => {
+    if (!/git\/ref\/heads\/main$/.test(String(url))) throw new Error(`Unerwarteter Aufruf: ${url}`);
+    if (sha === null) return new Response("nope", { status: 500 });
+    return new Response(JSON.stringify({ object: { sha } }), { status: 200 });
+  };
+}
+
+const angemeldet = { readSession: async () => ({ token: "gh-token" }), fetch: kopfStub("aaa") };
+const abgemeldet = { readSession: async () => null, fetch: kopfStub("aaa") };
 
 function anfrage(body) {
   return new Request("https://mysite.example/api/admin/publish", {
@@ -104,4 +114,43 @@ test("eine unbekannte Kennung ist ein 404, kein Fehler", async () => {
     angemeldet
   );
   assert.equal(antwort.status, 404);
+});
+
+// Der Admin schickt den Stand mit, den jemand geprüft hat. Ist main seither weitergewandert,
+// gehört das sofort beantwortet und nicht erst nach einem angestossenen Bau: Der Workflow
+// würde dasselbe feststellen, aber der Admin sähe bis dahin eine laufende Veröffentlichung.
+test("ein veralteter Stand wird sofort abgelehnt, nicht angestossen", async () => {
+  const { binding, erzeugt } = workflowStub();
+  const antwort = await start.handlePublishStart(
+    {
+      request: anfrage({ requestId: "r1", mainSha: "aaa", draftSha: "bbb", changeCount: 3 }),
+      env: { PUBLISH: binding }
+    },
+    { readSession: async () => ({ token: "gh-token" }), fetch: kopfStub("ccc") }
+  );
+
+  assert.equal(antwort.status, 409);
+  assert.deepEqual(await antwort.json(), {
+    message: "Der geprüfte Stand ist nicht mehr aktuell. Bitte neu laden und die Änderungen prüfen.",
+    code: "STAND_VERALTET",
+    erwartet: "aaa",
+    gefunden: "ccc"
+  });
+  assert.equal(erzeugt.length, 0, "eine abgelehnte Anfrage darf keine Instanz hinterlassen");
+});
+
+// Die Prüfung ist eine Vorsichtsmassnahme. Scheitert sie selbst, darf sie die Veröffentlichung
+// nicht mitreissen — der Workflow prüft ohnehin noch einmal, und zwar mit demselben Ergebnis.
+test("ein unlesbarer Stand blockiert die Veröffentlichung nicht", async () => {
+  const { binding, erzeugt } = workflowStub();
+  const antwort = await start.handlePublishStart(
+    {
+      request: anfrage({ requestId: "r1", mainSha: "aaa", draftSha: "bbb", changeCount: 3 }),
+      env: { PUBLISH: binding }
+    },
+    { readSession: async () => ({ token: "gh-token" }), fetch: kopfStub(null) }
+  );
+
+  assert.equal(antwort.status, 202);
+  assert.equal(erzeugt.length, 1);
 });

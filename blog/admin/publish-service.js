@@ -45,6 +45,25 @@
     return statusModule.describeRun(run, jobs, request);
   }
 
+  // Solange kein Actions-Lauf sichtbar ist, ist der Workflow die einzige Stelle, die etwas
+  // weiss. Das ist genau das Fenster, in dem er beschliessen kann, gar nicht erst zu bauen —
+  // etwa weil main seit der Freigabe weitergewandert ist. Ohne diese Abfrage sähe das aus wie
+  // eine Veröffentlichung, die vorgemerkt ist und nie beginnt, bis nach zwölf Minuten eine
+  // Zeitüberschreitung gemeldet wird, die keine ist.
+  //
+  // Sobald ein Lauf existiert, ist der Lauf die Wahrheit; dann wird hier nicht mehr gefragt.
+  async function fetchWorkflowState(id, holen = globalThis.fetch) {
+    if (!id) return null;
+    try {
+      const antwort = await holen(`/api/admin/publish/${encodeURIComponent(id)}`, { credentials: "same-origin" });
+      if (!antwort.ok) return null;
+      return await antwort.json();
+    } catch {
+      // Eine Nebenauskunft darf die Statusabfrage nicht mitreissen.
+      return null;
+    }
+  }
+
   async function poll({ read, delay, shouldContinue, onStatus, onError, attempts = 180 }) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       await delay(attempt === 0 ? 2500 : 4000);
@@ -64,6 +83,7 @@
     clearRequest,
     discoverActiveRequest,
     fetchStatus,
+    fetchWorkflowState,
     persistRequest,
     poll,
     storedRequest

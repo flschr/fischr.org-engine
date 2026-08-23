@@ -17,8 +17,8 @@ import { newEntry, queueEntryDelete } from "./25a-entry-actions.js";
 import { handleCurrentPublishAction, saveWithProgress } from "./25b-publish-actions.js";
 import { queueGpxUpload, queueUploads } from "./26-media.js";
 import { renderMedia } from "./26b-media-render.js";
-import { discardAllChanges } from "./27a-publish-state.js";
-import { discardUnusedMedia, syncOutbox } from "./27b-publish-actions.js";
+import { syncOutbox } from "./27b-publish-actions.js";
+import { discardAllChanges, discardUnusedMedia } from "./27d-discard-changes.js";
 import { openQueue } from "./27c-queue-render.js";
 import { refreshCurrent } from "./29-events.js";
 

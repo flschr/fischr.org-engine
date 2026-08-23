@@ -247,10 +247,10 @@ test("a standalone poster repair stays visible and publishable", async ({ page }
   await expect(page.locator(".queue-card")).not.toContainText(poster.path);
   await page.locator("#pushButton").click();
   await expect.poll(() => requests.some((request) =>
-    request.method === "POST" && request.url.includes("admin-publish.yml/dispatches")
+    request.method === "POST" && request.url.endsWith("/api/admin/publish")
   )).toBe(true);
-  const dispatch = requests.find((request) => request.url.includes("admin-publish.yml/dispatches"));
-  expect(dispatch.body.inputs.change_count).toBe("1");
+  const start = requests.find((request) => request.url.endsWith("/api/admin/publish"));
+  expect(start.body.changeCount).toBe(1);
 });
 
 test("a standalone poster repair can be discarded without exposing its path", async ({ page }) => {

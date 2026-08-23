@@ -49,6 +49,31 @@ function mockAuthenticatedGithub(page, requests = [], initialTree = [], options 
         blobs
       })
     })),
+    // Der Admin stösst den Bau nicht mehr selbst an, sondern startet eine Workflow-Instanz über
+    // den eigenen Endpunkt. Was der Workflow danach tut — den Bau in Actions dispatchen —,
+    // bildet dieser Stub gleich mit ab, damit der Rest des Ablaufs (Fortschritt, Erfolg) über
+    // dieselbe Actions-Abfrage läuft wie im Betrieb.
+    page.route("**/api/admin/publish", (route) => {
+      const body = route.request().postDataJSON?.() || {};
+      requests.push({ url: route.request().url(), method: route.request().method(), body });
+      workflowRuns.set("admin-publish.yml", `Publish ${body.requestId}`);
+      workflowInputs.set("admin-publish.yml", {
+        request_id: body.requestId,
+        main_sha: body.mainSha,
+        draft_sha: body.draftSha,
+        change_count: String(body.changeCount)
+      });
+      return route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ id: "workflow-instance-1", status: "gestartet" })
+      });
+    }),
+    page.route("**/api/admin/publish/*", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ id: "workflow-instance-1", status: "running", output: null, error: null })
+    })),
     page.route("**/api/github/**", (route) => {
       const url = route.request().url();
       const method = route.request().method();

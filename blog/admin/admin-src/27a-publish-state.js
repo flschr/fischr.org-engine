@@ -68,8 +68,9 @@ async function refreshPublishRequest(request, signal) {
   const publishGithub = signal
     ? (endpoint, options = {}) => github(endpoint, { ...options, signal })
     : github;
-  const status = await window.RWPublishService.fetchStatus(
-    publishGithub, window.RWPublishStatus, repo.publishBranch, request
+  const status = await workflowGeprueft(
+    await window.RWPublishService.fetchStatus(publishGithub, window.RWPublishStatus, repo.publishBranch, request),
+    request
   );
   state.publishStatus = status;
   state.publishInFlight = status.state === "queued" || status.state === "running";
@@ -95,6 +96,23 @@ async function refreshPublishRequest(request, signal) {
   }
 
   renderSyncState(Array.from(state.changes.values()));
+  return status;
+}
+
+// Ein „vorgemerkt" ohne Lauf kann zweierlei heissen: Der Lauf ist noch nicht sichtbar, oder er
+// wird nie kommen, weil der Workflow entschieden hat, gar nicht zu bauen. Nur der Workflow kann
+// die beiden auseinanderhalten — bis ein Lauf existiert, ist er die einzige Quelle.
+async function workflowGeprueft(status, request) {
+  if (status.state !== "queued" || status.runId || !request.workflowId) return status;
+  const lauf = await window.RWPublishService.fetchWorkflowState(request.workflowId);
+  if (!lauf) return status;
+
+  if (lauf.output?.status === "veraltet") {
+    return { state: "failed", message: "Der geprüfte Stand war nicht mehr aktuell. Bitte neu laden und erneut veröffentlichen." };
+  }
+  if (lauf.status === "errored" || lauf.status === "terminated") {
+    return { state: "failed", message: `Die Veröffentlichung wurde abgebrochen: ${lauf.error?.message || lauf.status}` };
+  }
   return status;
 }
 
@@ -141,67 +159,3 @@ export async function resumePublish() {
   renderSyncState(Array.from(state.changes.values()));
   pollPublishCompletion(state.publishPollToken, request);
 }
-
-export async function discardAllChanges() {
-  await waitForMediaCommits();
-  const changes = await getAllChanges();
-  if (!changes.length) return;
-  if (!guardMediaIdle("Alle Änderungen verwerfen")) return;
-  const confirmedChangeSet = changeSetSignature(changes);
-  const confirmedDraftHead = state.treeHeadSha;
-  const visibleCount = visibleQueueChanges(changes).length;
-  const confirmed = await askDiscardAction({
-    title: "Discard all changes?",
-    text: visibleCount === 1
-      ? "1 change is permanently removed from the queue."
-      : `${visibleCount} changes are permanently removed from the queue.`,
-    actionLabel: "Discard all"
-  });
-  if (!confirmed) return;
-  setBusy(true);
-  try {
-    const confirmedChanges = await loadFreshChanges();
-    if (!confirmedChanges.length) return;
-    if (!guardMediaIdle("Alle Änderungen verwerfen")) return;
-    if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedChanges) !== confirmedChangeSet) {
-      showStatus("Die Warteschlange wurde zwischenzeitlich aktualisiert. Bitte erneut prüfen und verwerfen.", "error");
-      return;
-    }
-    // Create an ordinary forward-moving snapshot commit whose tree equals
-    // main. The exact reviewed drafts head is the first parent, so branch
-    // protection stays intact and a concurrent save makes the CAS fail rather
-    // than being silently discarded.
-    await ensureDraftsBranch();
-    const draftsHead = state.treeHeadSha
-      || (await github(`git/ref/heads/${encodeURIComponent(repo.branch)}`)).object.sha;
-    const mainRef = await github(`git/ref/heads/${encodeURIComponent(repo.publishBranch)}`);
-    const mainCommit = await github(`git/commits/${mainRef.object.sha}`);
-    const discardCommit = await github("git/commits", {
-      method: "POST",
-      body: {
-        message: `Discard all admin changes [skip ci]`,
-        tree: mainCommit.tree.sha,
-        parents: [draftsHead, mainRef.object.sha]
-      }
-    });
-    await github(`git/refs/heads/${encodeURIComponent(repo.branch)}`, {
-      method: "PATCH",
-      body: { sha: discardCommit.sha, force: false }
-    });
-    state.tree = null;
-    state.treeHeadSha = "";
-    state.treeParentHeadSha = "";
-    state.changeCache = null;
-    await loadChanges();
-    await refreshCurrentSilent();
-    showStatus("All changes discarded.");
-  } catch (error) {
-    showStatus(`Verwerfen fehlgeschlagen — möglicherweise wurde parallel gespeichert. Bitte Queue neu laden: ${error.message}`, "error");
-  } finally {
-    setBusy(false);
-    renderQueue();
-  }
-}
-
-// Drop every queued upload that no article references — restoring main's
-// version per file (or removing it if it was new) in a single drafts commit.
