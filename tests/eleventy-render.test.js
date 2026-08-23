@@ -21,6 +21,12 @@ const eleventyConfigSource = fs.readFileSync(path.join(__dirname, "../.eleventy.
 const gpxViewerSource = fs.readFileSync(path.join(__dirname, "../blog/assets/js/gpx-viewer.js"), "utf8");
 const baseLayoutSource = fs.readFileSync(path.join(__dirname, "../blog/_includes/layouts/base.njk"), "utf8");
 
+// Built from a plain "media.mysite.example" literal on purpose: scripts/export-public-engine.js
+// rewrites that string in the exported snapshot, so these expectations travel with the files
+// they check. A regex literal that escapes the dots survives the rewrite untouched and then
+// fails only in the export, never here.
+const deliveryHost = "media.mysite.example".replace(/\./g, "\\.");
+
 function assertSnapshot(name, actual) {
   assert.equal(actual, snapshots[name]);
 }
@@ -557,4 +563,86 @@ test("skips the blur-up placeholder for transparent images", async () => {
   );
 
   assert.doesNotMatch(actual, /background-image/);
+});
+
+// The delivered variants are content-addressed: their filename falls out of the source hash,
+// the width and the quality, so a variant the manifest already records needs no bytes at all
+// to be named in a srcset. Producing it anyway meant every build re-materialized ~5200 files
+// that the emitted HTML points at media.mysite.example — which then had to be uploaded to
+// Cloudflare Pages on every deploy and counted against its per-site file limit.
+test("skips producing a responsive variant the manifest already records", async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fischr-variant-skip-"));
+  const imageRoot = path.join(tmp, "blog/assets/images");
+  fs.mkdirSync(imageRoot, { recursive: true });
+
+  const imagePath = path.join(imageRoot, "sample.webp");
+  await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 7, g: 8, b: 9 } } })
+    .webp()
+    .toFile(imagePath);
+
+  const hash = require("node:crypto")
+    .createHash("sha256")
+    .update(fs.readFileSync(imagePath))
+    .digest("hex")
+    .slice(0, 12);
+  // Every stage a 800 px source produces: the configured widths under the cap, plus the cap
+  // itself (the source width), plus the extra stage the first in-content image gets.
+  const widths = [420, 680, 760, 800];
+  const variantKeys = widths.map((width) => `images/responsive/sample-${hash}-${width}.webp`);
+
+  function helpers(manifest) {
+    return createMediaAssetHelpers({
+      root: tmp,
+      localImageRoot: imageRoot,
+      localVideoRoot: path.join(tmp, "blog/assets/videos"),
+      outputRoot: path.join(tmp, "_site"),
+      responsiveImageCacheRoot: path.join(tmp, ".cache/responsive-images"),
+      mediaManifest: manifest
+    });
+  }
+
+  const known = Object.fromEntries(
+    [...variantKeys, "images/sample.webp"].map((key) => [key, { sha256: "recorded" }])
+  );
+  const html = await helpers(known).addMediaPerformanceAttributes(
+    '<main><img src="/assets/images/sample.webp" alt="Sample"></main>',
+    { url: "/post/" }
+  );
+
+  for (const width of widths) {
+    assert.match(html, new RegExp(`https://${deliveryHost}/images/responsive/sample-${hash}-${width}\\.webp ${width}w`));
+  }
+  assert.doesNotMatch(html, /"\/assets\/images\/responsive\//);
+  assert.equal(fs.existsSync(path.join(tmp, "_site/assets/images/responsive")), false);
+  assert.equal(fs.existsSync(path.join(tmp, ".cache/responsive-images")), false);
+
+  // The other half of the same rule: a variant the manifest does not know is still produced and
+  // still served locally, which is the one-build lag a brand-new image depends on.
+  const freshHtml = await helpers({ "images/sample.webp": { sha256: "recorded" } })
+    .addMediaPerformanceAttributes('<main><img src="/assets/images/sample.webp" alt="Sample"></main>', { url: "/post/" });
+
+  assert.match(freshHtml, new RegExp(`/assets/images/responsive/sample-${hash}-680\\.webp 680w`));
+  assert.deepEqual(
+    fs.readdirSync(path.join(tmp, "_site/assets/images/responsive")).sort(),
+    widths.map((width) => `sample-${hash}-${width}.webp`).sort()
+  );
+});
+
+// Nothing under the media roots may be copied wholesale into _site any more: every file there
+// is materialized from R2 purely so sharp and ffprobe can read it, and the emitted HTML names
+// media.mysite.example for all of it. Copying it anyway shipped ~735 MB across ~6400 files to
+// Cloudflare Pages that no visitor could ever request. Video posters stay, for the same
+// one-build lag the freshly generated responsive variants have.
+test("does not deploy the media trees that are only materialized for the build", () => {
+  const passthroughs = Array.from(
+    eleventyConfigSource.matchAll(/addPassthroughCopy\(\{\s*"([^"]+)":/g),
+    (match) => match[1]
+  );
+
+  assert.ok(!passthroughs.includes("blog/assets/images"), "blog/assets/images must not be copied wholesale");
+  assert.ok(!passthroughs.includes("blog/assets/videos"), "blog/assets/videos must not be copied wholesale");
+  assert.ok(passthroughs.includes("blog/assets/images/video-posters"), "video posters need a local fallback");
+  // The favicon is referenced from the site root rather than under /assets, so it is copied on
+  // its own and must survive the removal of the tree it happens to live in.
+  assert.ok(passthroughs.includes("blog/assets/images/favicon.ico"));
 });

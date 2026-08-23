@@ -14,7 +14,7 @@
   transform: translateY(0);
 }
 
-.back-to-top {
+.page-start-link {
   position: fixed;
   right: max(2rem, env(safe-area-inset-right, 0px));
   bottom: max(2rem, env(safe-area-inset-bottom, 0px));
@@ -40,13 +40,13 @@
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.back-to-top.is-visible {
+.page-start-link.is-visible {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
 
-.back-to-top svg {
+.page-start-link svg {
   flex: 0 0 auto;
   overflow: visible;
   fill: none;
@@ -56,13 +56,13 @@
   stroke-linejoin: round;
 }
 
-.back-to-top:hover {
+.page-start-link:hover {
   color: var(--background-color);
   background: var(--heading-color);
   opacity: 1;
 }
 
-.back-to-top:focus-visible {
+.page-start-link:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
@@ -194,7 +194,7 @@
     scroll-behavior: auto;
   }
 
-  .back-to-top {
+  .page-start-link {
     transition: none;
   }
 }

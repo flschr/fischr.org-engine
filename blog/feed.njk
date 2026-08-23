@@ -14,8 +14,8 @@ eleventyExcludeFromCollections: true
     {% for post in collections.publishedPosts | limit(30) %}
       {% set feedContent = post.templateContent | withoutDuplicateTitle(post.data.title) | feedEmbeds %}
       {% set feedTrackingPixel = "" %}
-      {% if env.environment == "production" and site.analytics.goatcounter %}
-        {% set feedTrackingPixel = post | feedReadTrackingPixel(site.analytics.goatcounter.endpoint) %}
+      {% if env.environment == "production" and site.analytics.own %}
+        {% set feedTrackingPixel = post | feedReadTrackingPixel(site.url ~ site.analytics.own.endpoint) %}
       {% endif %}
       <item>
         <title>{{ post.data.title | ratingTitle | escape }}</title>

@@ -38,7 +38,7 @@ Start with these generated example files:
 
 - `blog/_data/site.json` for the site name, author, URL and social metadata
 - `blog/about.njk` and `blog/projects.njk` for static pages
-- `blog/posts/welcome.md` for the first post
+- `blog/posts/2026-01-01-welcome.md` for the first post
 - `blog/_includes/partials/` for navigation, footer and profile presentation
 
 The example domain `mysite.example`, repository coordinates and author details are placeholders. Search for `example` before deploying. The admin editor also needs a GitHub OAuth integration and repository configuration appropriate for your deployment.

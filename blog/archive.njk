@@ -23,7 +23,7 @@ hidePageHeading: true
       <ul class="post-list">
         {% for post in group.posts %}
           <li>
-            <time datetime="{{ post.date | htmlDate }}">{{ post.date | date }}</time>
+            <time datetime="{{ post.data.displayDate | htmlDate }}">{{ post.data.displayDate | date }}</time>
             <a href="{{ post.url }}" aria-label="{{ post.data.title | ratingTitleAria }}">{{ post.data.title | ratingTitleHtml | safe }}</a>
           </li>
         {% endfor %}

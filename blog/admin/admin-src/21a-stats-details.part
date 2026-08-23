@@ -10,10 +10,12 @@
     panel.dataset.state = "loading";
     panel.innerHTML = `<p class="stats-substate">Wird geladen …</p>`;
     try {
-      const { start, end } = statsRange(state.statsDays);
+      const bounds = statsPeriodBounds(state.statsPeriod);
+      if (!bounds) throw new Error("Zeitraum unvollständig");
+      const { start, end } = bounds;
       const drill = `${toggle.dataset.drillKey}=${encodeURIComponent(toggle.dataset.drillId)}`;
       const query = `${drill}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
-      const response = await fetch(`/api/admin/stats?${query}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
+      const response = await fetch(`/api/admin/analytics?${query}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
       if (!response.ok) throw new Error(`Anfrage fehlgeschlagen (${response.status})`);
       const data = await response.json();
       panel.innerHTML = statsSubList(data.rows || []);
@@ -27,8 +29,8 @@
   function statsSubList(rows) {
     const items = (rows || [])
       .filter((row) => Number(row.count) > 0)
-      .map((row) => ({ name: row.name || "(unknown)", count: Number(row.count) }));
-    if (!items.length) return `<p class="stats-substate">No further detail.</p>`;
+      .map((row) => ({ name: row.name || "(unbekannt)", count: Number(row.count) }));
+    if (!items.length) return `<p class="stats-substate">Keine weiteren Angaben.</p>`;
     const max = items.reduce((peak, row) => Math.max(peak, row.count), 0);
     const list = items.map((row) => {
       const width = max > 0 ? Math.max(2, Math.round((row.count / max) * 100)) : 0;
@@ -43,8 +45,23 @@
     return `<ol class="stats-rows stats-subrows">${list}</ol>`;
   }
 
-  function statsStat(stat) {
-    return { name: stat.name || "(unknown)", count: Number(stat.count || 0) };
+  // Listen enden nach zehn Zeilen. Die Seitenliste hatte fünfundzwanzig
+  // Einträge und machte die Ansicht länger als alles andere zusammen; unten
+  // stehen ohnehin Zeilen mit einem einzigen Treffer. Der Rest bleibt im
+  // Markup und wird nur ausgeblendet — ein Klick zeigt ihn, ohne dass eine
+  // zweite Anfrage nötig wäre.
+  const STATS_ZEILEN = 10;
+
+  function statsPanelRahmen(title, zeilen) {
+    const versteckt = Math.max(0, zeilen.length - STATS_ZEILEN);
+    const liste = zeilen.map((zeile, index) =>
+      index < STATS_ZEILEN ? zeile : zeile.replace("<li ", `<li hidden data-stats-mehr="1" `)
+    ).join("");
+    const mehr = versteckt
+      ? `<button type="button" class="stats-more">${versteckt} weitere anzeigen</button>`
+      : "";
+    return `<section class="stats-panel"><h2 class="stats-panel-title">${escapeHtml(title)}</h2>` +
+      `<ol class="stats-rows">${liste}</ol>${mehr}</section>`;
   }
 
   function statsBreakdownPanel(title, rows, options = {}) {
@@ -64,9 +81,9 @@
             `<span class="stats-row-count">${numberFormat.format(count)}</span>`,
             `</li>`
           ].join("");
-        }).join("")
-      : `<li class="stats-row stats-row-empty">No data</li>`;
-    return `<section class="stats-panel"><h2 class="stats-panel-title">${escapeHtml(title)}</h2><ol class="stats-rows">${body}</ol></section>`;
+        })
+      : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
+    return statsPanelRahmen(title, body);
   }
 
   // A compact inline sparkline of the daily visit series.

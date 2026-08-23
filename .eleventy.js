@@ -31,7 +31,12 @@ const {
   normalizePath
 } = require("./lib/eleventy/aliases");
 const { createAssetHelpers } = require("./lib/eleventy/assets");
-const { formatSiteDate, siteHtmlDate, siteYear } = require("./lib/eleventy/dates");
+const {
+  calendarYear,
+  formatCalendarDate,
+  isCalendarDate,
+  postDisplayDate
+} = require("./lib/eleventy/dates");
 const {
   buildMetaDescription,
   removeDuplicateTitleParagraph,
@@ -163,10 +168,16 @@ function buildImagePreloadLink(img = "") {
   const asset = media.getLocalImageAsset(src);
   if (!asset) return "";
 
+  // Same delivery mapping the <img> itself already went through. Emitting the local
+  // /assets/... path here instead pointed the preload at a different origin than the image it
+  // was supposed to warm: browsers that honour imagesrcset ignored the href and preconnected
+  // to nothing useful, and for an image with no srcset (a GIF, anything outside
+  // responsiveImageExtensions) the href *is* the preload — so the LCP image was fetched twice,
+  // once from mysite.example and once from media.mysite.example.
   const attributes = [
     ["rel", "preload"],
     ["as", "image"],
-    ["href", asset.publicPath]
+    ["href", media.toDeliveryUrl(asset.publicPath)]
   ];
   const type = imageMimeType(asset.publicPath);
   const srcset = getHtmlAttribute(img, "srcset");
@@ -242,15 +253,18 @@ function getGoatCounterCountUrl(endpoint = "", params = {}) {
   return url.toString();
 }
 
+// Der Zählpixel im Feed, seit jeher vorhanden — bisher zeigte er auf
+// GoatCounter, also auf dieselbe Domain, die von Sperrlisten geführt wird und
+// mit der Abschaltung verschwinden würde. Er zeigt jetzt auf die eigene Domain.
+//
+// Anders als früher trägt er den echten Beitragspfad statt eines Ereignisnamens.
+// Damit sagt die Zahl etwas pro Beitrag aus, und genau das ist ihr Wert: Wie oft
+// ein Feed absolut geöffnet wird, hängt an der Bildeinstellung fremder Software;
+// welcher Beitrag im Vergleich zu den anderen öfter erscheint, nicht.
 function buildFeedReadTrackingPixel(post = {}, endpoint = "") {
-  const src = getGoatCounterCountUrl(endpoint, {
-    p: getFeedReadEventPath(post.url),
-    t: `Feed: ${post.data?.title || post.url || "Unbenannter Beitrag"}`,
-    e: "1"
-  });
+  if (!endpoint || !post.url) return "";
 
-  if (!src) return "";
-
+  const src = `${endpoint}?p=${encodeURIComponent(post.url)}&k=feedread`;
   return `<img src="${escapeHtml(src)}" width="1" height="1" alt="">`;
 }
 
@@ -267,8 +281,20 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addPassthroughCopy({ "blog/assets/files": "assets/files" });
   eleventyConfig.addPassthroughCopy({ "blog/assets/fonts": "assets/fonts" });
-  eleventyConfig.addPassthroughCopy({ "blog/assets/images": "assets/images" });
-  eleventyConfig.addPassthroughCopy({ "blog/assets/videos": "assets/videos" });
+  // blog/assets/images and blog/assets/videos as a whole are deliberately NOT copied. Every
+  // file under them is materialized from R2 before the build (npm run media:source) purely so
+  // sharp and ffprobe can read the real bytes — the emitted HTML names media.mysite.example for
+  // all of them, so copying them into _site only re-uploaded ~735 MB across ~6400 files to
+  // Pages that nothing would ever request, and counted against the per-site file limit.
+  // scripts/check-media-delivery.js is what makes this safe to leave out: it fails the build
+  // if anything in the manifest is still referenced from mysite.example, and check:links still
+  // fails if a local reference has no file behind it.
+  //
+  // Video posters are the one exception, and only for the same one-build lag the responsive
+  // variants have: generate-video-posters.js may produce a poster this build already names in
+  // a `poster=` attribute while publish-build-media.js only uploads it afterwards. Eleven small
+  // files, and without them a new video's poster would 404 for exactly one deploy.
+  eleventyConfig.addPassthroughCopy({ "blog/assets/images/video-posters": "assets/images/video-posters" });
   for (const [source, destination] of leafletRuntimeAssets) {
     eleventyConfig.addPassthroughCopy({ [source]: destination });
   }
@@ -307,9 +333,23 @@ module.exports = function (eleventyConfig) {
     publishAdmin ? collectionApi.getFilteredByGlob("blog/posts/**/*.md").sort(sortNewestFirst) : []);
   eleventyConfig.addCollection("aliases", getAliasCollection);
 
-  eleventyConfig.addFilter("date", (date, locale = "de-DE") => formatSiteDate(date, locale));
+  // Templates pass a post's displayDate (a plain YYYY-MM-DD), which is rendered
+  // as written and cannot be shifted by the build machine's timezone. Instants
+  // keep the previous behaviour so non-post callers such as the sitemap's
+  // lastmod are untouched.
+  eleventyConfig.addFilter("date", (date, locale = "de-DE") => {
+    if (isCalendarDate(date)) return formatCalendarDate(date, locale);
+    return new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }).format(new Date(date));
+  });
 
-  eleventyConfig.addFilter("htmlDate", (date) => siteHtmlDate(date));
+  eleventyConfig.addFilter("htmlDate", (date) => {
+    if (isCalendarDate(date)) return date;
+    return new Date(date).toISOString().slice(0, 10);
+  });
 
   eleventyConfig.addFilter("isoDate", (date) => {
     return new Date(date).toISOString();
@@ -353,7 +393,8 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("groupByYear", (items) => {
     const grouped = new Map();
     (items || []).forEach((item) => {
-      const year = siteYear(item.date);
+      const year = calendarYear(item.data?.displayDate
+        || postDisplayDate(item.inputPath, item.date));
       if (!grouped.has(year)) grouped.set(year, []);
       grouped.get(year).push(item);
     });
@@ -377,8 +418,13 @@ module.exports = function (eleventyConfig) {
     return getRedirectSources(from);
   });
 
+  // toDeliveryUrl on the result, not just on the frontmatter value: the auto-detected fallback
+  // reads an already-rewritten <img> and the default is already absolute, so this only ever
+  // changes an explicit `image:`/`social_image:` that still names a local /assets/... path —
+  // which the admin is what writes for every new post. Without it those posts advertise an
+  // og:image/twitter:image/JSON-LD image on mysite.example while the file itself lives in R2.
   eleventyConfig.addFilter("socialImage", (image, content) => {
-    return resolveSocialImage(image, content);
+    return media.toDeliveryUrl(resolveSocialImage(image, content));
   });
 
   eleventyConfig.addFilter("firstImageAlt", (content) => {
@@ -427,7 +473,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("adminAssetUrl", adminAssetUrl);
   eleventyConfig.addFilter("adminBundleVersion", adminBundleVersion);
 
-  eleventyConfig.addShortcode("year", () => String(siteYear(new Date())));
+  eleventyConfig.addShortcode("year", () => String(new Date().getFullYear()));
 
   eleventyConfig.addTransform("mediaEmbeds", function (content) {
     if (!onlyHtmlPage(this.page)) return content;

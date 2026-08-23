@@ -60,7 +60,7 @@ a.ghost { text-decoration: none; }
 }
 .ghost:hover { background: var(--panel-2); border-color: transparent; color: var(--ink); }
 
-.danger { color: var(--red); }
+.danger { color: var(--red-ink); }
 .danger:hover { background: var(--red); border-color: var(--red); color: #fff; }
 
 .icon-button {
@@ -72,7 +72,6 @@ a.ghost { text-decoration: none; }
 }
 .icon-button:hover { background: var(--panel-2); color: var(--ink); }
 .icon-button svg { width: 1.15rem; height: 1.15rem; }
-.toggle-burger { display: inline-flex; }
 
 input,
 select,

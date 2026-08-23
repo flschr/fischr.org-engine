@@ -32,18 +32,15 @@ eleventyExcludeFromCollections: true
     <meta name="theme-color" content="#1c1e23" media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" href="{{ '/admin/vendor/styles/admin.css' | adminAssetUrl }}">
   </head>
-  <body class="admin-body is-sidebar-collapsed is-sidebar-initializing">
+  <body class="admin-body">
     <a class="skip-link" href="#content">Zum Inhalt springen</a>
 
     <div class="admin-shell">
-      <button id="sidebarToggle" class="sidebar-toggle icon-button" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Seitenleiste ausklappen">
-        <!-- Mobile-only hamburger button for the navigation drawer. -->
-        <span class="toggle-burger" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span>
-      </button>
-
       <div class="admin-layout">
-        <aside id="sidebar" class="admin-sidebar" aria-label="Navigation">
-          <nav class="sidebar-nav" aria-label="Bereiche">
+        <aside id="sidebar" class="admin-sidebar" role="navigation" aria-label="Navigation">
+          <!-- A div, not a nav: on phones this wrapper is display:contents so
+               its five tabs share one row, which would drop a landmark here. -->
+          <div class="sidebar-nav">
             <button class="nav-link is-active" type="button" data-collection="posts" aria-current="page">
               <span class="nav-icon" data-icon="file-text" aria-hidden="true"></span>
               <span class="nav-label">Artikel</span>
@@ -60,7 +57,7 @@ eleventyExcludeFromCollections: true
               <span class="nav-icon" data-icon="bar-chart-2" aria-hidden="true"></span>
               <span class="nav-label">Statistik</span>
             </button>
-          </nav>
+          </div>
           <button id="syncButton" class="sync-button" type="button">
             <span data-icon="refresh-cw" aria-hidden="true"></span>
             <span class="sync-label">Veröffentlichen</span>
@@ -71,8 +68,6 @@ eleventyExcludeFromCollections: true
             <span>Einstellungen</span>
           </button>
         </aside>
-
-        <div id="sidebarScrim" class="sidebar-scrim" hidden></div>
 
         <main id="content" class="admin-workspace">
           <!-- Library view: list of posts / pages -->
@@ -98,6 +93,12 @@ eleventyExcludeFromCollections: true
               <h1 id="editorViewTitle" class="view-title">New article</h1>
             </div>
             <nav class="editor-bar" aria-label="Editor">
+              <!-- Mobile-only: the bottom bar steps aside for the full-screen
+                   editor, and a standalone PWA has no browser back button, so
+                   this is the only way back to the list on a phone. -->
+              <button id="editorBackButton" class="tb-btn tb-back" type="button" aria-label="Zurück zur Liste" title="Zurück zur Liste">
+                <span data-icon="chevron-left" aria-hidden="true"></span>
+              </button>
               <button id="publishButton" class="tb-btn tb-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
                 <span data-icon="send" aria-hidden="true"></span>
               </button>
@@ -307,10 +308,15 @@ eleventyExcludeFromCollections: true
               <h1 class="view-title">Statistics<a class="stats-external" href="https://stats.mysite.example" target="_blank" rel="noopener noreferrer" aria-label="Vollständiges GoatCounter-Dashboard öffnen" title="In GoatCounter öffnen"><span data-icon="external-link" aria-hidden="true"></span></a></h1>
               <div class="library-tools">
                 <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
-                  <button type="button" class="stats-range-btn is-active" data-days="7">Woche</button>
-                  <button type="button" class="stats-range-btn" data-days="30">Monat</button>
-                  <button type="button" class="stats-range-btn" data-days="90">Quartal</button>
-                  <button type="button" class="stats-range-btn" data-days="365">Jahr</button>
+                  <button type="button" class="stats-range-btn is-active" data-period="week">Woche</button>
+                  <button type="button" class="stats-range-btn" data-period="month">Monat</button>
+                  <button type="button" class="stats-range-btn" data-period="quarter">Quartal</button>
+                  <button type="button" class="stats-range-btn" data-period="year">Jahr</button>
+                  <button type="button" class="stats-range-btn" data-period="custom">Frei</button>
+                </div>
+                <div id="statsCustom" class="stats-custom" hidden>
+                  <label class="stats-custom-field"><span>Von</span><input id="statsFrom" type="date"></label>
+                  <label class="stats-custom-field"><span>Bis</span><input id="statsTo" type="date"></label>
                 </div>
                 <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>

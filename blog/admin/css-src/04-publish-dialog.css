@@ -117,7 +117,7 @@
 .editor-preview blockquote { padding-left: 1.05rem; border-left: 3px solid var(--line-2); color: var(--ink-soft); }
 .editor-preview .admonition { --adm-accent: var(--accent-ink); margin: 0 0 1.05rem; padding: 1rem 1.15rem; border: 1px solid var(--line-2); border-left: 4px solid var(--adm-accent); border-radius: var(--radius); color: var(--ink); background: var(--panel-2); }
 .editor-preview .admonition-warning { --adm-accent: var(--amber); }
-.editor-preview .admonition-caution { --adm-accent: var(--red); }
+.editor-preview .admonition-caution { --adm-accent: var(--red-ink); }
 .editor-preview .admonition-title { margin-bottom: 0.45rem; color: var(--adm-accent); font-weight: 800; }
 .editor-preview .admonition-icon { display: inline-block; width: 1em; height: 1em; margin-right: 0.5rem; vertical-align: -0.125em; fill: currentColor; }
 .editor-preview .admonition > :last-child { margin-bottom: 0; }

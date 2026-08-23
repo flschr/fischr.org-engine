@@ -21,6 +21,9 @@
 }
 .editor-bar-spacer { flex: 1 1 auto; }
 .tb-divider { flex: 0 0 auto; width: 1px; height: 1.6rem; margin: 0 0.1rem; background: var(--line-2); }
+/* Back out of the editor — phones only, where the bottom bar steps aside for
+   the full-screen editor. On desktop the sidebar is always there instead. */
+.tb-back { display: none; }
 .format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 
 .preview-gpx {

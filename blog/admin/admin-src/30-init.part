@@ -38,8 +38,6 @@
   }
 
   async function init() {
-    setSidebar(!isMobile());
-    requestAnimationFrame(() => document.body.classList.remove("is-sidebar-initializing"));
     renderFormatToolbar();
     await refreshSession();
     await verifyStoredTokenAccess();

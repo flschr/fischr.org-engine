@@ -6,7 +6,7 @@
       <header class="stream-entry-header">
         <h2><a href="{{ post.url }}" aria-label="{{ post.data.title | ratingTitleAria }}">{{ post.data.title | ratingTitleHtml | safe }}</a></h2>
         <p class="post-meta">
-          <time datetime="{{ post.date | htmlDate }}">{{ post.date | date }}</time>
+          <time datetime="{{ post.data.displayDate | htmlDate }}">{{ post.data.displayDate | date }}</time>
         </p>
       </header>
 

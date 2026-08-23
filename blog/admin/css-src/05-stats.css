@@ -14,9 +14,20 @@
 }
 .stats-range-btn:hover { color: var(--ink); }
 .stats-range-btn.is-active { background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+.stats-custom { display: inline-flex; gap: 0.5rem; align-items: center; }
+.stats-custom-field { display: inline-flex; gap: 0.35rem; align-items: center; color: var(--ink-faint); font-size: 0.82rem; }
+.stats-custom-field input {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.28rem 0.45rem;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
 .stats-range-label { margin: 0.1rem 0 1rem; color: var(--ink-faint); font-size: 0.82rem; }
 .stats-state { margin: 2rem 0; color: var(--ink-soft); text-align: left; }
-.stats-state-error { color: var(--red); }
+.stats-state-error { color: var(--red-ink); }
 
 .stats-total {
   display: grid;
@@ -117,3 +128,41 @@
 .stats-subrow .stats-row-path { font-weight: 500; color: var(--ink-soft); }
 .stats-subrow .stats-row-bar { background: var(--accent-weak-2); }
 .stats-substate { margin: 0.3rem 0 0.4rem 1.45rem; color: var(--ink-faint); font-size: 0.8rem; }
+
+/* Drei Kennzahlen statt einer: Aufrufe, Besucher, Feed-Abrufe. */
+.stats-total-head { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; align-items: baseline; }
+.stats-total-cell { display: inline-flex; flex-direction: column; gap: 0.15rem; }
+.stats-total-label { display: inline-flex; flex-direction: column; gap: 0.05rem; }
+.stats-total-hint { color: var(--ink-faint); font-size: 0.72rem; font-weight: 500; }
+
+/* Website und Feed als zwei Abschnitte statt zweier Tabs: Der Feed ist hier
+   der größere Kanal, und was man wegklicken muss, schaut man seltener an. */
+.stats-section + .stats-section { margin-top: 2rem; }
+.stats-section-title {
+  margin: 0 0 0.6rem;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* "Weitere anzeigen": Die Zeilen darunter stehen im Markup und sind nur
+   ausgeblendet — die Seitenliste hatte fünfundzwanzig Einträge und war länger
+   als alles andere zusammen. */
+.stats-more {
+  display: block;
+  width: 100%;
+  margin: 0.2rem 0 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.stats-more:hover { background: var(--panel-2); color: var(--ink); }

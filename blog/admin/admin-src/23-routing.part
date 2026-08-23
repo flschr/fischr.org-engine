@@ -14,37 +14,6 @@
     // Social and Stats aren't tied to a content collection.
     if (name === "social" || name === "stats") els.navButtons.forEach((button) => button.classList.remove("is-active"));
     else updateNav();
-    if (isMobile() && state.sidebarOpen) closeSidebar();
-  }
-
-  function setSidebar(open) {
-    const mobile = isMobile();
-    const nextOpen = mobile ? open : true;
-    state.sidebarOpen = nextOpen;
-    document.body.classList.toggle("is-sidebar-collapsed", !nextOpen);
-    els.sidebarToggle.setAttribute("aria-expanded", nextOpen ? "true" : "false");
-    els.sidebarToggle.setAttribute("aria-label", nextOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen");
-    els.sidebarScrim.hidden = !(nextOpen && mobile);
-  }
-
-  function openSidebar() {
-    if (!isMobile() || state.sidebarOpen) return;
-    setSidebar(true);
-    // On mobile, push a tagged history entry so the browser back button/gesture
-    // closes the drawer instead of leaving the view. (Standalone has no back, so
-    // this is simply inert there; the swipe handles open/close.)
-    if (isMobile()) {
-      try { history.pushState({ ...currentNavState(), rwSidebar: true }, ""); } catch (error) { /* ignore */ }
-    }
-  }
-
-  function closeSidebar() {
-    if (!isMobile() || !state.sidebarOpen) return;
-    setSidebar(false);
-    // Don't touch history here: a back press is handled in handlePopState (it
-    // closes the drawer), and any leftover drawer entry just routes to its own
-    // underlying view when popped. Calling history.back() here would race with
-    // the synchronous pushNav() that navigation does and desync view/history.
   }
 
   function updateNav() {

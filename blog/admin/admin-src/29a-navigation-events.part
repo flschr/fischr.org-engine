@@ -1,10 +1,4 @@
   function wireNavigationEvents() {
-    let sidebarWasMobile = isMobile();
-    els.sidebarToggle.addEventListener("click", () => {
-      if (isMobile()) (state.sidebarOpen ? closeSidebar() : openSidebar());
-    });
-    els.sidebarScrim.addEventListener("click", () => closeSidebar());
-
     els.navButtons.forEach((button) => {
       button.addEventListener("click", async () => {
         const next = button.dataset.collection;
@@ -12,14 +6,8 @@
         // when we are on another view (e.g. the Sync queue) with the same
         // collection still selected.
         const targetView = next === "media" ? "media" : "library";
-        if (next === state.collection && state.view === targetView) {
-          if (isMobile()) closeSidebar();
-          return;
-        }
-        if (await confirmLeaveEditor()) {
-          setCollection(next);
-          if (isMobile()) closeSidebar();
-        }
+        if (next === state.collection && state.view === targetView) return;
+        if (await confirmLeaveEditor()) setCollection(next);
       });
     });
 
@@ -71,14 +59,5 @@
         showStatus("Disconnected.");
       });
     }
-    window.addEventListener("resize", () => {
-      resizeTitleInput();
-      const mobile = isMobile();
-      if (mobile !== sidebarWasMobile) {
-        setSidebar(!mobile);
-        sidebarWasMobile = mobile;
-      } else {
-        els.sidebarScrim.hidden = !(state.sidebarOpen && mobile);
-      }
-    });
+    window.addEventListener("resize", resizeTitleInput);
   }

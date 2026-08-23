@@ -6,49 +6,112 @@
      sideways on focus. Pin form controls to 16px on touch-sized screens. */
   input, select, textarea,
   .setup-card input { font-size: 16px; }
-  /* Mobile: each view starts with a title row; the menu button sits in that row
-     instead of floating above the page content. */
-  .sidebar-toggle {
-    display: inline-flex;
-    top: calc(1rem + env(safe-area-inset-top));
-    right: calc(1rem + env(safe-area-inset-right));
-    bottom: auto;
-    left: auto;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
-    z-index: 40;
+  /* ---- Bottom tab bar ---------------------------------------------------
+   * Five destinations do not need a full-screen drawer. The sidebar becomes a
+   * tab bar instead: nothing to open or close, no overlay, no history entry,
+   * and the targets sit where the thumb already is rather than diagonally
+   * across the screen from the button that revealed them.
+   *
+   * `display: contents` on .sidebar-nav lifts the four collection buttons out
+   * of their wrapper so they share one row with Einstellungen. That drops the
+   * wrapper from the accessibility tree, which is why the landmark lives on
+   * the <aside role="navigation"> around it and the wrapper is a plain div. */
+  /* How much fixed chrome the bottom edge is carrying right now. The bar, the
+     publish strip and the status toast all measure from this one value instead
+     of each re-deriving it, so they can never drift apart. */
+  :root {
+    --tabbar-h: 3.4rem;
+    --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   }
-  .admin-body:not(.is-sidebar-collapsed) .sidebar-toggle { display: none; }
-  .sidebar-toggle .toggle-burger svg { width: 1.15rem; height: 1.15rem; }
-  .admin-body.is-sidebar-collapsed .admin-workspace,
-  .admin-body.is-sidebar-collapsed .admin-workspace:has(.editor-form:not([hidden])) {
-    padding-top: calc(1rem + env(safe-area-inset-top));
+  /* :not(.is-editor-view) is load-bearing, not decoration: :has() inherits its
+     argument's specificity, so without it these two rules would outrank the
+     editor rule below and reserve room in the editor for chrome that is hidden
+     there. Keeping the conditions mutually exclusive settles it by meaning
+     rather than by specificity. */
+  .admin-body:not(.is-editor-view):has(.sync-button.has-changes),
+  .admin-body:not(.is-editor-view):has(.sync-button.is-publishing) {
+    --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 3.45rem);
   }
-  .admin-layout,
-  .admin-body.is-sidebar-collapsed .admin-layout { display: block; }
+  /* The editor hides the bar, so its chrome is just the home indicator. */
+  .admin-body.is-editor-view { --bottom-chrome: env(safe-area-inset-bottom); }
+
+  .admin-layout { display: block; }
   .admin-sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: min(17rem, 84vw);
+    inset: auto 0 0;
     z-index: 30;
-    padding: calc(0.9rem + env(safe-area-inset-top)) 0.6rem calc(0.85rem + env(safe-area-inset-bottom));
-    box-shadow: var(--shadow);
-    transform: translateX(0);
-    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    width: auto;
+    height: auto;
+    padding: 0 max(0.3rem, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(0.3rem, env(safe-area-inset-left));
+    border-right: 0;
+    border-top: 1px solid var(--line);
   }
-  .admin-body.is-sidebar-collapsed .admin-sidebar {
-    width: min(17rem, 84vw);
+  .sidebar-nav { display: contents; }
+  .nav-link,
+  .sidebar-settings {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
     min-width: 0;
-    padding: calc(0.9rem + env(safe-area-inset-top)) 0.6rem calc(0.85rem + env(safe-area-inset-bottom));
-    border-right: 1px solid var(--line);
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-102%);
+    min-height: var(--tabbar-h);
+    padding: 0.3rem 0.15rem;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink-faint);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
-  .admin-workspace { padding: calc(1rem + env(safe-area-inset-top)) 1rem 3rem; }
+  /* A filled pill reads as a button; in a tab bar the accent alone reads as
+     "you are here" and keeps the row calm. */
+  .nav-link.is-active,
+  .nav-link:hover,
+  .sidebar-settings.is-active,
+  .sidebar-settings:hover { background: transparent; color: var(--accent-ink); }
+  .nav-link.is-active .nav-icon,
+  .sidebar-settings.is-active svg { color: var(--accent); }
+  .nav-link .nav-icon { flex: 0 0 auto; }
+  .nav-link .nav-icon svg,
+  .sidebar-settings svg { width: 1.35rem; height: 1.35rem; }
+  .nav-label,
+  .sidebar-settings span:not([data-icon]) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Publish is an action with a state, not a destination, so it sits above the
+     tabs rather than in them — and only when there is something to publish.
+     A permanent bar reading "0" would cost a row of screen for no information;
+     hidden in the drawer, the count was invisible exactly when it mattered. */
+  .sync-button {
+    position: fixed;
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 0.55rem);
+    z-index: 31;
+    justify-content: center;
+    width: auto;
+    min-height: 2.85rem;
+    margin: 0;
+    box-shadow: var(--shadow);
+  }
+  .sync-button .sync-label { flex: 0 0 auto; }
+  .sync-button:not(.has-changes):not(.is-publishing) { display: none; }
+
+  /* Everything fixed to the bottom edge floats over the content, so the
+     workspace and the status toast both end above it. */
+  .admin-workspace { padding: calc(1rem + env(safe-area-inset-top)) 1rem calc(var(--bottom-chrome) + 1.5rem); }
+  .status-bar { bottom: calc(var(--bottom-chrome) + 0.9rem); }
+
+  /* The editor is full-screen on a phone: the tab bar would sit under the
+     keyboard anyway, so it steps aside and #editorBackButton leads out. */
+  .admin-body.is-editor-view .admin-sidebar { display: none; }
   .library-head,
   .queue-head,
   .editor-head {
@@ -66,7 +129,6 @@
     align-items: center;
     min-height: 2.25rem;
     margin: 0;
-    padding-right: calc(2.8rem + env(safe-area-inset-right));
     font-size: 1.45rem;
     line-height: 1.1;
     flex: 0 0 auto;
@@ -74,7 +136,6 @@
   .meta-panel { grid-template-columns: 1fr; }
   /* Keep the toolbar on a single row; scroll horizontally instead of wrapping. */
   .editor-bar {
-    top: calc(3.6rem + env(safe-area-inset-top));
     flex-wrap: nowrap;
     gap: 0.35rem;
     overflow-x: auto;
@@ -86,12 +147,12 @@
     -webkit-overflow-scrolling: touch;
   }
   .editor-bar::-webkit-scrollbar { display: none; }
-  /* Sit the toolbar flush at the top now that nothing overlaps the corner. */
-  .admin-body.is-sidebar-collapsed .editor-bar { margin-top: 0; padding-top: 0; }
+  .editor-bar { margin-top: 0; padding-top: 0; }
   .editor-bar > *,
   .format-toolbar > * { flex: 0 0 auto; }
   .format-toolbar { flex-wrap: nowrap; }
   .tb-divider { display: none; }
+  .tb-back { display: inline-flex; position: sticky; left: 0; z-index: 1; }
   .admin-body.is-editor-view {
     height: 100dvh;
     overflow: hidden;
@@ -181,43 +242,4 @@
   .publish-dialog-foot-spacer { display: none; }
   .publish-dialog-foot button { flex: 1 1 8rem; min-height: 2.75rem; }
   #publishDialogUnpublish { flex-basis: 100%; }
-}
-
-/* ---- Dark mode ---------------------------------------------------------
- * Follows the device's prefers-color-scheme. Everything above is driven by the
- * color tokens, so dark mode is just the palette restated: the chrome, the
- * dashboard, lists, settings, stats and the CodeMirror editor (which reads
- * --text / --heading / --muted / --accent-blue / --cm-selection) all follow. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* A lighter, clearly-stepped slate so surfaces, borders and the page
-       background don't all collapse into the same near-black murk. */
-    --bg: #1c1e23;
-    --panel: #282b32;
-    --panel-2: #333742;
-    --ink: #f3f4f6;
-    --ink-soft: #c4c9d2;
-    --ink-faint: #8b919c;
-    --line: #3d414b;
-    --line-2: #4d525d;
-    --accent: #8b84f5;
-    --accent-ink: #c3c8fe;
-    --accent-hover: #6a61e4;
-    --accent-weak: #30324c;
-    --accent-weak-2: #41446b;
-    --green: #41c059;
-    --green-weak: #1c3024;
-    --red: #f26159;
-    --red-weak: #3a2422;
-    --red-line: #6e3d39;
-    --amber: #e7b063;
-    --amber-weak: #352a18;
-    --amber-line: #66552f;
-    --brown: #cb945f;
-    --brown-weak: #332719;
-    --drop-veil: rgb(22 24 28 / 0.86);
-    --cm-selection: #393d72;
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.25);
-    --shadow: 0 16px 44px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.40);
-  }
 }

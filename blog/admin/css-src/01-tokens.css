@@ -17,7 +17,13 @@
   --accent-weak-2: #e4e7fd;
   --green: #15803d;
   --green-weak: #ecfdf3;
+  /* Red carries two jobs that pull in opposite directions, so it is two tokens.
+     --red fills a surface under white text (error toast, delete button); it has
+     to stay dark enough for #fff. --red-ink writes ON a panel and has to stay
+     far enough from it. One value cannot do both: #dc2626 as text missed 4.5:1
+     on --red-weak (4.41) and --bg (4.43). */
   --red: #dc2626;
+  --red-ink: #cf2222;
   --red-weak: #fef2f2;
   --red-line: #f6cdcd;
   --amber: #b45309;
@@ -63,4 +69,43 @@
   --accent-blue: var(--accent);
   --font-main: var(--font);
   --font-mono: var(--mono);
+}
+
+/* Dark mode is a palette, not a viewport: the whole admin — chrome, lists,
+ * settings, stats and the bundled CodeMirror editor (which reads --text /
+ * --heading / --muted / --accent-blue / --cm-selection) — is driven by these
+ * tokens, so restating them here is the entire dark theme. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* A lighter, clearly-stepped slate so surfaces, borders and the page
+       background don't all collapse into the same near-black murk. */
+    --bg: #1c1e23;
+    --panel: #282b32;
+    --panel-2: #333742;
+    --ink: #f3f4f6;
+    --ink-soft: #c4c9d2;
+    --ink-faint: #8b919c;
+    --line: #3d414b;
+    --line-2: #4d525d;
+    --accent: #8b84f5;
+    --accent-ink: #c3c8fe;
+    --accent-hover: #6a61e4;
+    --accent-weak: #30324c;
+    --accent-weak-2: #41446b;
+    --green: #41c059;
+    --green-weak: #1c3024;
+    --red: #cf3229;
+    --red-ink: #f68d86;
+    --red-weak: #3a2422;
+    --red-line: #6e3d39;
+    --amber: #e7b063;
+    --amber-weak: #352a18;
+    --amber-line: #66552f;
+    --brown: #cb945f;
+    --brown-weak: #332719;
+    --drop-veil: rgb(22 24 28 / 0.86);
+    --cm-selection: #393d72;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.25);
+    --shadow: 0 16px 44px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.40);
+  }
 }

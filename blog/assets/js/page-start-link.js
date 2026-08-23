@@ -1,4 +1,4 @@
-const link = document.querySelector(".back-to-top");
+const link = document.querySelector(".page-start-link");
 
 if (link) {
   const updateVisibility = () => {

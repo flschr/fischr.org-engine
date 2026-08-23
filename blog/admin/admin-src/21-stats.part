@@ -1,10 +1,13 @@
-  // --- Stats (GoatCounter) -------------------------------------------------
+  // --- Statistik ------------------------------------------------------------
   //
-  // A small read-only dashboard. The browser only ever talks to
-  // /api/admin/stats, which proxies GoatCounter server-side with the
-  // admin-level API token — that token never reaches the client.
+  // Ein kleines, lesendes Dashboard über die eigenen Zahlen. Der Browser spricht
+  // ausschließlich mit /api/admin/analytics, das hinter der Admin-Sitzung sitzt
+  // und die eigene Datenbank abfragt.
+  //
+  // Vor der Umstellung gemessene Zahlen stammen aus dem GoatCounter-Import und
+  // kennen nur Aufrufe. Wo Besucher fehlen, steht deshalb ein Strich und keine
+  // Null — eine Null würde behaupten, es sei niemand da gewesen.
 
-  const STATS_RANGES = { 7: "Last 7 days", 30: "Last 30 days", 90: "Last 90 days", 365: "Last 12 months" };
   const numberFormat = new Intl.NumberFormat("en-US");
 
   // The Stats tab is shown unless settings explicitly turn it off (default on).
@@ -19,19 +22,9 @@
     if (!statsEnabled() && state.view === "stats") setCollection("posts");
   }
 
-  // GoatCounter wants hour-rounded ISO timestamps.
-  function statsRange(days) {
-    const end = new Date();
-    end.setMinutes(0, 0, 0);
-    const start = new Date(end);
-    start.setDate(start.getDate() - Number(days));
-    start.setHours(0, 0, 0, 0);
-    return { start: start.toISOString(), end: end.toISOString() };
-  }
-
   async function openStats() {
-    // Always land on the weekly range, regardless of the last range picked.
-    state.statsDays = 7;
+    // Always land on the current week, regardless of the last range picked.
+    state.statsPeriod = { preset: "week", from: "", to: "" };
     showView("stats");
     pushNav();
     setStatsRangeButtons();
@@ -40,10 +33,14 @@
 
   function setStatsRangeButtons() {
     if (!els.statsRange) return;
+    const active = state.statsPeriod.preset;
     els.statsRange.querySelectorAll(".stats-range-btn").forEach((button) => {
-      button.classList.toggle("is-active", Number(button.dataset.days) === state.statsDays);
+      button.classList.toggle("is-active", button.dataset.period === active);
     });
-    if (els.statsRangeLabel) els.statsRangeLabel.textContent = STATS_RANGES[state.statsDays] || "";
+    if (els.statsCustom) els.statsCustom.hidden = active !== "custom";
+    if (els.statsFrom) els.statsFrom.value = state.statsPeriod.from || "";
+    if (els.statsTo) els.statsTo.value = state.statsPeriod.to || "";
+    if (els.statsRangeLabel) els.statsRangeLabel.textContent = statsPeriodLabel(state.statsPeriod);
   }
 
   // Numbers are fetched live, but cached in memory per range for a few minutes
@@ -51,7 +48,10 @@
   // doesn't hammer the GoatCounter API. The refresh button forces a live reload.
   const STATS_CACHE_TTL = 5 * 60 * 1000;
 
-  function sharedStatsRequest(days, force = false) {
+  function sharedStatsRequest(period, force = false) {
+    const bounds = statsPeriodBounds(period);
+    if (!bounds) return Promise.reject(Object.assign(new Error("incomplete range"), { incompleteRange: true }));
+    const days = statsPeriodKey(period);
     if (!force) {
       const cached = state.statsCache.get(days);
       if (cached && Date.now() - cached.at < STATS_CACHE_TTL) return Promise.resolve(cached.data);
@@ -60,14 +60,18 @@
     state.statsControllers.get(days)?.abort();
     const controller = new AbortController();
     state.statsControllers.set(days, controller);
-    const { start, end } = statsRange(days);
-    const promise = fetch(`/api/admin/stats?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`, {
+    const { start, end } = bounds;
+    const promise = fetch(`/api/admin/analytics?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`, {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
       signal: controller.signal
     }).then(async (response) => {
       if (!response.ok) {
-        const error = new Error(`Statistikanfrage fehlgeschlagen (${response.status})`);
+        // Der Endpunkt legt seiner Antwort eine Begründung bei. Sie zu
+        // verwerfen und nur den Status zu zeigen, verschenkt genau die
+        // Auskunft, die weiterhilft.
+        const grund = await response.json().then((body) => body?.error).catch(() => null);
+        const error = new Error(grund || `Statistikanfrage fehlgeschlagen (${response.status})`);
         error.status = response.status;
         throw error;
       }
@@ -88,59 +92,32 @@
 
     els.statsBody.innerHTML = `<p class="stats-state">Wird geladen …</p>`;
     try {
-      const data = await sharedStatsRequest(state.statsDays, force);
+      const data = await sharedStatsRequest(state.statsPeriod, force);
       if (request !== state.statsRequest) return;
       renderStats(data);
     } catch (error) {
       if (request !== state.statsRequest) return;
       if (error.name === "AbortError") return;
+      // Freier Zeitraum noch unvollständig oder verdreht: keine Fehlermeldung,
+      // die Beschriftung über der Fläche sagt bereits, was fehlt.
+      if (error.incompleteRange) {
+        els.statsBody.innerHTML = `<p class="stats-state">Wähle einen Von- und einen Bis-Tag.</p>`;
+        return;
+      }
       if (error.status === 401) {
         els.statsBody.innerHTML = `<p class="stats-state">Melde dich über die Einstellungen bei GitHub an, um die Statistik zu sehen.</p>`;
         return;
       }
       if (error.status === 503) {
-        els.statsBody.innerHTML = `<p class="stats-state">Der GoatCounter-API-Token ist noch nicht konfiguriert.</p>`;
+        els.statsBody.innerHTML = `<p class="stats-state">Die Analytics-Datenbank ist noch nicht angebunden.</p>`;
         return;
       }
       if (error.status === 403) {
         els.statsBody.innerHTML = `<p class="stats-state">Die Statistik ist in den Einstellungen deaktiviert.</p>`;
         return;
       }
-      els.statsBody.innerHTML = `<p class="stats-state stats-state-error">Stats could not be loaded: ${escapeHtml(error.message)}</p>`;
+      els.statsBody.innerHTML = `<p class="stats-state stats-state-error">Statistik konnte nicht geladen werden: ${escapeHtml(error.message)}</p>`;
     }
-  }
-
-  function renderStats(data) {
-    const total = data.total || {};
-    const totalVisits = Number(total.total || 0);
-    const series = Array.isArray(total.stats) ? total.stats : [];
-
-    const panels = [
-      statsExpandablePanel("Top pages", (data.hits?.hits || []).map((hit) => ({
-        name: hit.path || "/",
-        title: hit.title,
-        count: Number(hit.count) || 0,
-        drill: hit.path_id ? { key: "path_id", id: hit.path_id } : null
-      }))),
-      statsExpandablePanel("Top referrers", (data.toprefs?.stats || []).map((stat) => ({
-        name: stat.name || "(unknown)",
-        count: Number(stat.count) || 0,
-        drill: stat.id ? { key: "ref_id", id: stat.id } : null
-      }))),
-      statsBreakdownPanel("Browsers", (data.browsers?.stats || []).map(statsStat)),
-      statsBreakdownPanel("Systems", (data.systems?.stats || []).map(statsStat)),
-      statsBreakdownPanel("Locations", (data.locations?.stats || []).map(statsStat))
-    ];
-
-    els.statsBody.innerHTML = [
-      `<div class="stats-total">`,
-      `<div class="stats-total-head"><span class="stats-total-label">Total visits</span><span class="stats-total-value">${numberFormat.format(totalVisits)}</span></div>`,
-      statsSparkline(series),
-      `</div>`,
-      `<div class="stats-grid">${panels.join("")}</div>`
-    ].join("");
-    // The page rows carry chevron icons rendered after innerHTML — inject them.
-    if (window.RWIcons) window.RWIcons.inject(els.statsBody);
   }
 
   // A panel whose rows can expand to a lazily-loaded sub-list:
@@ -172,7 +149,7 @@
             `<div class="stats-subrefs" hidden></div>`,
             `</li>`
           ].join("");
-        }).join("")
-      : `<li class="stats-row stats-row-empty">No data</li>`;
-    return `<section class="stats-panel"><h2 class="stats-panel-title">${escapeHtml(title)}</h2><ol class="stats-rows">${body}</ol></section>`;
+        })
+      : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
+    return statsPanelRahmen(title, body);
   }

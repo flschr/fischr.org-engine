@@ -8,7 +8,7 @@
     <header class="post-header">
       <h1 class="p-name" data-pagefind-meta="title" aria-label="{{ title | ratingTitleAria }}">{{ title | ratingTitleHtml | safe }}</h1>
       <p class="post-meta" data-pagefind-ignore>
-        <time class="dt-published" datetime="{{ page.date | isoDate }}" data-pagefind-meta="date" data-pagefind-sort="date[datetime]">{{ page.date | date }}</time>
+        <time class="dt-published" datetime="{{ page.date | isoDate }}" data-pagefind-meta="date" data-pagefind-sort="date[datetime]">{{ displayDate | date }}</time>
       </p>
     </header>
 

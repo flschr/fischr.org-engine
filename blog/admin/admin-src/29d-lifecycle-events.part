@@ -22,7 +22,6 @@
         saveWithProgress("save");
         return;
       }
-      if (event.key === "Escape" && isMobile() && state.sidebarOpen) closeSidebar();
     }, { capture: true });
 
     window.addEventListener("beforeunload", (event) => {

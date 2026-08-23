@@ -14,5 +14,25 @@
       "binding": "MEDIA_BUCKET",
       "bucket_name": "fischr-media"
     }
+  ],
+
+  // ANALYTICS ist die eigene Zählung: functions/api/hit.js und
+  // functions/feed.xml.js schreiben hierhin. Fehlt die Bindung, zählen beide
+  // stillschweigend nicht — die Seite läuft trotzdem weiter.
+  //
+  // Die Datenbank ist an den EU-Rechtsraum gebunden (jurisdiction "eu"). Das
+  // lässt sich nur beim Anlegen setzen und nachträglich nicht ändern — ein
+  // Wechsel hieße: neue Datenbank, Daten umziehen.
+  //
+  // preview_database_id zeigt auf eine eigene, leere Datenbank. Zeigte es auf
+  // dieselbe wie die Produktion, landeten Testaufrufe aus `wrangler pages dev`
+  // und aus Vorschau-Bereitstellungen dauerhaft in den echten Zahlen.
+  "d1_databases": [
+    {
+      "binding": "ANALYTICS",
+      "database_name": "fischr-analytics-eu",
+      "database_id": "49a984ad-3f98-41d7-b968-7ddae2f8822c",
+      "preview_database_id": "87f5a68f-55dc-4208-bf1e-7e47c2122fbb"
+    }
   ]
 }

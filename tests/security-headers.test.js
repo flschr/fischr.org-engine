@@ -11,8 +11,8 @@ const workerPolicy = headers.slice(headers.indexOf("/pagefind/*"), headers.index
 
 // Built from a plain "media.mysite.example" literal on purpose: scripts/export-public-engine.js
 // rewrites that string in the exported snapshot, so these expectations travel with the files
-// they check. A regex literal with escaped dots (media\.fischr\.org) survives the rewrite
-// untouched and then fails only in the export, never here.
+// they check. A regex literal that escapes the dots survives the rewrite untouched and then
+// fails only in the export, never here.
 const deliveryHost = "media.mysite.example".replace(/\./g, "\\.");
 
 test("font assets remain cached across normal page refreshes", () => {
@@ -39,4 +39,14 @@ test("admin uses a strict path-specific script policy", () => {
   assert.match(adminPolicy, new RegExp(`img-src[^;]* https://${deliveryHost}`));
   assert.match(adminPolicy, new RegExp(`media-src[^;]* https://${deliveryHost}`));
   assert.doesNotMatch(adminPolicy, new RegExp(`(?:script|connect|frame)-src[^;]*${deliveryHost}`));
+});
+
+// Videos moved to the delivery domain with everything else, but media-src did not follow — so
+// every <video> on the site was blocked by the site's own CSP while the images beside them
+// loaded fine (img-src allows https: wholesale). Pinned here in both policies that serve
+// article content.
+test("self-hosted video is allowed to load from the delivery domain", () => {
+  assert.match(publicPolicy, new RegExp(`media-src[^;]* https://${deliveryHost}`));
+  assert.match(archivePolicy, new RegExp(`media-src[^;]* https://${deliveryHost}`));
+  assert.doesNotMatch(publicPolicy, new RegExp(`(?:script|connect|frame)-src[^;]*${deliveryHost}`));
 });

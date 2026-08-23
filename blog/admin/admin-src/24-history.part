@@ -55,10 +55,6 @@
   }
 
   async function handlePopState(event) {
-    // A back press/gesture while the drawer is open just closes it; the entry it
-    // popped is consumed here so we don't also navigate.
-    if (isMobile() && state.sidebarOpen) { closeSidebar(); return; }
-
     // A back press during a social-image pick cancels the pick and returns to
     // the editor (reopening the publish sheet) instead of tearing down the
     // still-open, unsaved editor underneath the gallery. Re-push so the history

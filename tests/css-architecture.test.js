@@ -79,17 +79,47 @@ test("actual admonition title colors remain readable on the public site and in a
 
   const adminTokens = read("blog/admin/css-src/01-tokens.css");
   const adminPreview = read("blog/admin/css-src/04-publish-dialog.css");
-  const [adminBackground] = declarationValues(adminTokens, ":root", "--panel-2");
+  // Both schemes, in file order: light first, then the dark block below it.
+  const adminBackgrounds = declarationValues(adminTokens, ":root", "--panel-2");
   const adminAssignments = [
     [".editor-preview .admonition", "--accent-ink"],
     [".editor-preview .admonition-warning", "--amber"],
-    [".editor-preview .admonition-caution", "--red"]
+    [".editor-preview .admonition-caution", "--red-ink"]
   ];
   for (const [selector, variable] of adminAssignments) {
-    const [accent] = declarationValues(adminTokens, ":root", variable);
-    assert.ok(contrastRatio(adminBackground, accent) >= 4.5, `${variable} lacks admin preview contrast on ${adminBackground}`);
+    const accents = declarationValues(adminTokens, ":root", variable);
+    assert.equal(accents.length, adminBackgrounds.length, `${variable} must define one accent per admin color scheme`);
+    for (let index = 0; index < accents.length; index += 1) {
+      assert.ok(contrastRatio(adminBackgrounds[index], accents[index]) >= 4.5, `${accents[index]} lacks admin preview contrast on ${adminBackgrounds[index]}`);
+    }
     assert.deepEqual(declarationValues(adminPreview, selector, "--adm-accent"), [`var(${variable})`], `${selector} must use the tested accent`);
   }
+});
+
+// The split that keeps the two reds honest: --red fills a surface under white
+// text, --red-ink writes on a panel. Before they were one token it failed both
+// jobs at once — 3.17:1 under white in dark mode, 4.41:1 as text on --red-weak
+// in light mode — so this pins each role to the background it actually meets.
+test("both red roles stay readable in both admin color schemes", () => {
+  const tokens = read("blog/admin/css-src/01-tokens.css");
+  const scheme = (name) => declarationValues(tokens, ":root", name);
+  const fills = scheme("--red");
+  const inks = scheme("--red-ink");
+  assert.equal(fills.length, 2, "--red must be defined per color scheme");
+  assert.equal(inks.length, 2, "--red-ink must be defined per color scheme");
+
+  // Fill role: white text sits on --red (error toast, delete button, .danger:hover).
+  for (const fill of fills) {
+    assert.ok(contrastRatio("#ffffff", fill) >= 4.5, `white text lacks contrast on --red ${fill}`);
+  }
+
+  // Text role: --red-ink is written on every surface a red label can land on.
+  const surfaces = ["--bg", "--panel", "--panel-2", "--red-weak"].map(scheme);
+  inks.forEach((ink, index) => {
+    for (const values of surfaces) {
+      assert.ok(contrastRatio(values[index], ink) >= 4.5, `--red-ink ${ink} lacks contrast on ${values[index]}`);
+    }
+  });
 });
 
 test("formatted admonition titles keep normal inline text flow", () => {

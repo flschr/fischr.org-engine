@@ -33,6 +33,15 @@
       if (!expanded) syncAutoSlug();
     });
 
+    // Leaving the editor without saving — the phone's only exit now that the
+    // bottom bar hides here. Routes like any other navigation so the history
+    // stack keeps matching the view.
+    els.editorBackButton?.addEventListener("click", async () => {
+      if (state.view !== "editor") return;
+      if (!(await confirmLeaveEditor())) return;
+      backToLibrary();
+      pushNav();
+    });
     els.saveButton.addEventListener("click", () => saveWithProgress("save"));
     els.publishButton.addEventListener("click", handleCurrentPublishAction);
     els.deleteButton.addEventListener("click", queueEntryDelete);

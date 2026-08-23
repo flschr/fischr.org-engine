@@ -49,7 +49,7 @@
 }
 .save-dialog.is-done .save-spinner { animation: none; border: none; background: var(--green); }
 .save-dialog.is-error .save-spinner { animation: none; border-color: var(--red-line); border-top-color: var(--red); }
-.save-dialog.is-error .save-dialog-body p { color: var(--red); }
+.save-dialog.is-error .save-dialog-body p { color: var(--red-ink); }
 @media (prefers-reduced-motion: reduce) { .save-spinner { animation: none; } }
 @keyframes save-spin { to { transform: rotate(360deg); } }
 .dialog form { display: grid; gap: 1rem; }

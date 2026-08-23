@@ -35,6 +35,67 @@ const rasterExtensions = new Set([".jpeg", ".jpg", ".png", ".webp"]);
 // beyond the edge cache's own TTL window).
 const cacheControl = "public, max-age=31536000";
 
+// A malformed override must not turn every transfer into a confusing failure: parseInt("x") is
+// NaN, and a NaN attempt count would skip the retry loop entirely while a NaN timeout makes
+// AbortSignal.timeout throw. Fall back to the default instead.
+function positiveIntEnv(name, fallback, env = process.env) {
+  const parsed = Number.parseInt(env[name] || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+// The download side is a plain global fetch with no retry of its own, and every production
+// build pulls ~1150 files through it before Eleventy can read a single image dimension. One
+// connection reset used to fail the whole deploy.
+//
+// The upload side needs none of this: AwsClient brings its own retry loop (see s3Client) whose
+// classification — repeat 5xx and 429, surface everything else at once — is exactly the one an
+// upload wants. Wrapping it again would multiply the two budgets together.
+const downloadAttempts = positiveIntEnv("R2_REQUEST_ATTEMPTS", 4);
+// Node's fetch has no default timeout: without one a stalled connection hangs the job until the
+// runner's own limit, which looks like a frozen build rather than a failed request.
+const downloadTimeoutMs = positiveIntEnv("R2_REQUEST_TIMEOUT_MS", 60000);
+// Bounds the whole upload including AwsClient's internal retries, so it has to leave room for
+// them — and for a 20 MB video on a slow link.
+const uploadTimeoutMs = positiveIntEnv("R2_UPLOAD_TIMEOUT_MS", 120000);
+const uploadRetries = positiveIntEnv("R2_UPLOAD_RETRIES", 4);
+
+function isRetryableStatus(status) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+// Runs `attempt()` until it reports success. `attempt` returns { ok, retryable, error } so the
+// caller can classify an HTTP status itself — a 404 means the manifest and the bucket disagree
+// and must surface at once, not after four identical retries.
+async function withRetry(label, attempt) {
+  let lastError;
+
+  for (let tryNumber = 1; tryNumber <= downloadAttempts; tryNumber += 1) {
+    if (tryNumber > 1) await sleep(Math.min(2000, 250 * 2 ** (tryNumber - 2)) + Math.random() * 250);
+
+    let outcome;
+    try {
+      outcome = await attempt();
+    } catch (error) {
+      // Network-level failures (reset, DNS, abort on timeout) are exactly the transient class
+      // this exists for, so they are always worth another try.
+      outcome = { ok: false, retryable: true, error };
+    }
+
+    if (outcome.ok) return outcome.value;
+    lastError = outcome.error;
+    if (!outcome.retryable) break;
+    if (tryNumber < downloadAttempts) {
+      console.warn(`${label} failed (attempt ${tryNumber}/${downloadAttempts}): ${lastError?.message || lastError}`);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 // Mirrors the delivery mapping in lib/eleventy/media-assets.js (toDeliveryUrl), minus the
 // https://media.mysite.example origin — this is the R2 object key, not the public URL.
 function objectKeyForPublicPath(publicPath = "") {
@@ -122,8 +183,13 @@ function credentialsFromEnv(env = process.env) {
   return { accountId, accessKeyId, secretAccessKey };
 }
 
+// AwsClient retries 5xx and 429 itself and returns anything else straight away — exactly the
+// classification an upload wants, so this needs no retry wrapper of its own. Its default of 10
+// retries is more than this pipeline has any use for: the exponential backoff alone would spend
+// close to a minute asleep before giving up. Four rides out a blip and still fails while the
+// operator is watching.
 function s3Client({ accessKeyId, secretAccessKey }) {
-  return new AwsClient({ accessKeyId, secretAccessKey, region: "auto", service: "s3" });
+  return new AwsClient({ accessKeyId, secretAccessKey, region: "auto", service: "s3", retries: uploadRetries });
 }
 
 // R2_S3_ENDPOINT lets tests point this at a local stub server instead of the real Cloudflare
@@ -135,10 +201,16 @@ function s3Endpoint(accountId, env) {
 async function putObject({ accountId, accessKeyId, secretAccessKey, key, buffer, contentType, env }) {
   const client = s3Client({ accessKeyId, secretAccessKey });
   const url = `${s3Endpoint(accountId, env)}/${bucketName}/${key}`;
+
+  // The signal bounds the whole call including AwsClient's internal retries, which is the
+  // semantic we want: an upload that cannot finish within the budget is a failure, not
+  // something to keep restarting from the top. Verified to be honoured — aws4fetch forwards
+  // `signal` through its signing step to the underlying fetch.
   const response = await client.fetch(url, {
     method: "PUT",
     headers: { "Content-Type": contentType, "Cache-Control": cacheControl },
-    body: buffer
+    body: buffer,
+    signal: AbortSignal.timeout(uploadTimeoutMs)
   });
 
   if (!response.ok) {
@@ -189,22 +261,56 @@ function deliveryUrlForKey(key, env = process.env) {
 // new "local original" for image-dimension reads / responsive-variant generation.
 async function downloadMediaFile({ key, destinationPath, expectedSha256, env = process.env }) {
   const url = deliveryUrlForKey(key, env);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Media download failed for ${key}: ${response.status} ${url}`);
-  }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (expectedSha256 && hashBuffer(buffer) !== expectedSha256) {
-    throw new Error(`Downloaded content for ${key} does not match the manifest's sha256 — refusing to write ${destinationPath}`);
-  }
+  const buffer = await withRetry(`Media download ${key}`, async () => {
+    const response = await fetch(url, { signal: AbortSignal.timeout(downloadTimeoutMs) });
+    if (!response.ok) {
+      return {
+        ok: false,
+        // A 404 is the manifest and the bucket disagreeing — a real defect worth surfacing at
+        // once, not something another request will fix.
+        retryable: isRetryableStatus(response.status),
+        error: new Error(`Media download failed for ${key}: ${response.status} ${url}`)
+      };
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (expectedSha256 && hashBuffer(bytes) !== expectedSha256) {
+      return {
+        ok: false,
+        // A truncated body reads as a hash mismatch, and that is the common case here — worth
+        // one more try before declaring the object itself wrong.
+        retryable: true,
+        error: new Error(
+          `Downloaded content for ${key} does not match the manifest's sha256 — refusing to write ${destinationPath}`
+        )
+      };
+    }
+
+    return { ok: true, value: bytes };
+  });
 
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-  fs.writeFileSync(destinationPath, buffer);
+  // Write-then-rename, because the half-written file an interrupted run leaves behind would
+  // otherwise be indistinguishable from a complete one: prepare-media-source.js decides what to
+  // restore with fs.existsSync, so a truncated image would silently become the source every
+  // later build reads dimensions and responsive variants from.
+  const temporaryPath = `${destinationPath}.tmp-${process.pid}-${crypto.randomBytes(4).toString("hex")}`;
+  try {
+    fs.writeFileSync(temporaryPath, buffer);
+    fs.renameSync(temporaryPath, destinationPath);
+  } catch (error) {
+    fs.rmSync(temporaryPath, { force: true });
+    throw error;
+  }
 }
 
 module.exports = {
   bucketName,
+  // Exported for scripts/report-media-drift.js, which signs its own ListObjectsV2 request
+  // rather than going through publishMediaFile.
+  credentialsFromEnv,
+  s3Endpoint,
   removePendingUploads,
   contentTypeFor,
   deliveryHost,

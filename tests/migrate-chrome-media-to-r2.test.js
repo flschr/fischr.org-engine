@@ -10,8 +10,8 @@ const { promisify } = require("node:util");
 
 // Built from a plain "media.mysite.example" literal on purpose: scripts/export-public-engine.js
 // rewrites that string in the exported snapshot, so these expectations travel with the files
-// they check. A regex literal with escaped dots (media\.fischr\.org) survives the rewrite
-// untouched and then fails only in the export, never here.
+// they check. A regex literal that escapes the dots survives the rewrite untouched and then
+// fails only in the export, never here.
 const deliveryHost = "media.mysite.example".replace(/\./g, "\\.");
 
 const execFileAsync = promisify(execFile);

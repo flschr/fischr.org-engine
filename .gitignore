@@ -18,3 +18,12 @@ blog/assets/css/generated/
 # automation/media-manifest.json.
 blog/assets/images
 blog/assets/videos
+
+# Lokaler Zustand von wrangler (pages dev, Caches). Ohne diese Regel landet der
+# Inhalt beim naechsten `git add -A` im Commit.
+.wrangler/
+
+# Bericht aus scripts/report-media-drift.js. Bewusst nicht eingecheckt: ein eingecheckter
+# Bericht veraltet still und wird dann geglaubt (siehe das entfernte
+# unreferenced-media-report.json). Der Workflow haengt ihn als Artefakt an den Lauf.
+automation/media-drift-report.json

@@ -168,10 +168,92 @@ test("refuses to write a download whose bytes don't match the manifest's recorde
 
   const fakeServer = await startFakeDeliveryServer({ "images/uploads/tampered.webp": Buffer.from("wrong-bytes") });
   try {
-    await assert.rejects(() => runPrepare(root, { MEDIA_DELIVERY_BASE_URL: fakeServer.baseUrl }));
+    // One attempt: a hash mismatch is retryable (a truncated body looks the same), and this
+    // test is about the refusal to write, not about how many times the request is repeated.
+    await assert.rejects(() =>
+      runPrepare(root, { MEDIA_DELIVERY_BASE_URL: fakeServer.baseUrl, R2_REQUEST_ATTEMPTS: "1" })
+    );
   } finally {
     await fakeServer.close();
   }
 
   assert.ok(!fs.existsSync(path.join(root, "blog/assets/images/uploads/tampered.webp")));
+});
+
+// A build that materializes ~1150 files from the network on every run meets a transient 5xx or
+// a reset connection sooner or later. Before the retry these tests cover, exactly one of them
+// failed the whole deploy.
+test("retries a transient delivery failure instead of failing the build", async () => {
+  const root = setupProject();
+  const buffer = Buffer.from("eventually-served");
+
+  writeManifest(root, {
+    "images/uploads/flaky.webp": { sourcePath: "blog/assets/images/uploads/flaky.webp", sha256: hash(buffer) }
+  });
+
+  let attempts = 0;
+  const server = http.createServer((req, res) => {
+    attempts += 1;
+    if (attempts < 3) {
+      res.writeHead(503);
+      res.end("try again");
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/octet-stream" });
+    res.end(buffer);
+  });
+  const baseUrl = await new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${server.address().port}`));
+  });
+
+  try {
+    await runPrepare(root, { MEDIA_DELIVERY_BASE_URL: baseUrl });
+  } finally {
+    await new Promise((done) => server.close(done));
+  }
+
+  assert.equal(attempts, 3);
+  assert.equal(fs.readFileSync(path.join(root, "blog/assets/images/uploads/flaky.webp")).toString(), buffer.toString());
+});
+
+// The mirror image: a 404 means the manifest and the bucket disagree. Repeating the request
+// cannot fix that, and burning the full retry budget on it only delays the report.
+test("does not retry a delivery 404, which means the manifest and the bucket disagree", async () => {
+  const root = setupProject();
+
+  writeManifest(root, {
+    "images/uploads/gone.webp": { sourcePath: "blog/assets/images/uploads/gone.webp", sha256: hash(Buffer.from("x")) }
+  });
+
+  const fakeServer = await startFakeDeliveryServer({});
+  try {
+    await assert.rejects(() => runPrepare(root, { MEDIA_DELIVERY_BASE_URL: fakeServer.baseUrl }));
+  } finally {
+    await fakeServer.close();
+  }
+
+  assert.deepEqual(fakeServer.requests, ["/images/uploads/gone.webp"]);
+  assert.ok(!fs.existsSync(path.join(root, "blog/assets/images/uploads/gone.webp")));
+});
+
+// Restoring is the only writer of these files and nothing else can tell a truncated one from a
+// whole one afterwards: prepare-media-source.js skips whatever fs.existsSync already reports.
+test("leaves no partial file behind when a download never succeeds", async () => {
+  const root = setupProject();
+
+  writeManifest(root, {
+    "images/uploads/half.webp": { sourcePath: "blog/assets/images/uploads/half.webp", sha256: hash(Buffer.from("whole")) }
+  });
+
+  const fakeServer = await startFakeDeliveryServer({ "images/uploads/half.webp": Buffer.from("truncated") });
+  try {
+    await assert.rejects(() =>
+      runPrepare(root, { MEDIA_DELIVERY_BASE_URL: fakeServer.baseUrl, R2_REQUEST_ATTEMPTS: "2" })
+    );
+  } finally {
+    await fakeServer.close();
+  }
+
+  const uploads = path.join(root, "blog/assets/images/uploads");
+  assert.deepEqual(fs.existsSync(uploads) ? fs.readdirSync(uploads) : [], []);
 });

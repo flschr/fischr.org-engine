@@ -1,0 +1,139 @@
+  // --- Darstellung der Statistik --------------------------------------------
+  //
+  // Getrennt vom Laden, weil beides unabhängig voneinander wächst: Hier stehen
+  // nur die Fragen "welche Zahl steht wo" und "was darf gar nicht behauptet
+  // werden", nicht das Abholen und Zwischenspeichern.
+
+  // Website und Feed sind zwei Welten, die nur den Zeitraum teilen.
+  //
+  // Die eine zählt Menschen über einen Beacon, die andere Programme beim
+  // Ausliefern; die Größenordnungen liegen um den Faktor zehn auseinander. In
+  // einer Reihe nebeneinander liest sich das, als seien die Zahlen vergleichbar
+  // — sie sind es nicht. Zwei Abschnitte statt zweier Tabs, weil der Feed hier
+  // der größere Kanal ist: Was man wegklicken muss, schaut man seltener an.
+  function renderStats(data) {
+    const total = data.total || {};
+
+    els.statsBody.innerHTML = [
+      statsSection("Website", statsWebsiteKennzahlen(total, data.visitorsFrom, data.range), [
+        statsSparkline(statsSeries(data.series, data.range))
+      ], statsWebsitePanels(data)),
+      statsSection("Feed", statsFeedKennzahlen(total), [], statsFeedPanels(data))
+    ].join("");
+    // The page rows carry chevron icons rendered after innerHTML — inject them.
+    if (window.RWIcons) window.RWIcons.inject(els.statsBody);
+  }
+
+  function statsSection(titel, zellen, extras, panels) {
+    return [
+      `<section class="stats-section">`,
+      `<h2 class="stats-section-title">${escapeHtml(titel)}</h2>`,
+      `<div class="stats-total">`,
+      statsHeadline(zellen),
+      extras.join(""),
+      `</div>`,
+      `<div class="stats-grid">${panels.join("")}</div>`,
+      `</section>`
+    ].join("");
+  }
+
+  function statsWebsitePanels(data) {
+    return [
+      statsExpandablePanel("Seiten", (data.pages || []).map((page) => ({
+        name: page.path || "/",
+        title: page.title,
+        count: page.hits,
+        // Aufgeklappt zeigt die Zeile, welche Quellen auf diese Seite geführt
+        // haben. Der Pfad ist der Schlüssel — anders als bei GoatCounter gibt
+        // es keine interne Seiten-ID mehr, die man mitschleppen müsste.
+        drill: { key: "path", id: page.path }
+      }))),
+      statsBreakdownPanel("Quellen", (data.refs || []).map((ref) => ({ name: ref.name, count: ref.hits })))
+    ];
+  }
+
+  function statsFeedPanels(data) {
+    return [
+      statsFeedPanel(data.feedReaders || [], Number(data.total?.feed) || 0),
+      // Löst die Zahl "Im Reader angezeigt" auf: Es sind Anzeigen, keine
+      // Beiträge — sehen drei Menschen denselben Beitrag, sind es drei.
+      //
+      // Die Summe der Liste muss deshalb die Zahl darüber ergeben. Der
+      // Sammelpfad der importierten Historie steht als eigene Zeile darin,
+      // benannt statt weggelassen; sonst ergäbe die Liste weniger als die Zahl,
+      // die sie erklären soll.
+      ...((data.feedPages || []).length
+        ? [statsBreakdownPanel("Beiträge im Reader", data.feedPages.map((row) => (
+            row.path === "/feed.xml"
+              ? { name: "ohne Beitragszuordnung", title: "aus der GoatCounter-Historie", count: row.hits }
+              : { name: row.path, title: row.title, count: row.hits }
+          )), { isPath: true })]
+        : []),
+      // Nur solange es unerkannte Kennungen gibt. Sie sind die Arbeitsliste,
+      // aus der die Erkennung wächst — und die Antwort auf die Frage, ob hinter
+      // "unbekannt" Menschen oder Maschinen stecken.
+      ...((data.feedAgents || []).length
+        ? [statsBreakdownPanel("Unerkannte Kennungen", data.feedAgents.map((row) => ({ name: row.agent, count: row.hits })))]
+        : [])
+    ];
+  }
+
+  // Die Abfrage liefert nur Tage mit Treffern. Gezeichnet werden die Punkte
+  // aber gleichmäßig verteilt — ohne Auffüllen läge zwischen dem letzten Tag
+  // vor einer Lücke und dem ersten danach ein einziger Schritt, und zwei Monate
+  // Stillstand sähen aus wie ein Tag. Die Kurve behauptete einen Verlauf, den
+  // es nicht gab. Deshalb bekommt jeder Tag des Zeitraums seinen Punkt, auch
+  // wenn er null ist.
+  //
+  // Lange Zeiträume werden zu Wochen gebündelt statt abgeschnitten. Eine feste
+  // Obergrenze an Punkten hätte den Rest des Zeitraums still verschluckt: Die
+  // gesamte Historie umfasst über 500 Tage und ist mit zwei Klicks im
+  // Datumswähler erreichbar.
+  const STATS_MAX_PUNKTE = 200;
+
+  function statsTage(range) {
+    const tage = [];
+    // Mittags gerechnet, damit die Sommerzeitumstellung keinen Tag verschluckt
+    // oder verdoppelt.
+    const tag = new Date(`${range.start}T12:00:00`);
+    const ende = new Date(`${range.end}T12:00:00`);
+    if (Number.isNaN(tag.getTime()) || Number.isNaN(ende.getTime())) return null;
+    while (tag <= ende) {
+      tage.push(`${tag.getFullYear()}-${String(tag.getMonth() + 1).padStart(2, "0")}-${String(tag.getDate()).padStart(2, "0")}`);
+      tag.setDate(tag.getDate() + 1);
+      if (tage.length > 4000) return null; // absurder Zeitraum, lieber ungefüllt
+    }
+    return tage;
+  }
+
+  function statsSeries(rows, range) {
+    const werte = new Map((rows || []).map((row) => [row.day, Number(row.hits) || 0]));
+    const roh = () => [...werte.values()].map((daily) => ({ daily }));
+    if (!range?.start || !range?.end) return roh();
+
+    const tage = statsTage(range);
+    if (!tage) return roh();
+
+    const punkte = tage.map((tag) => werte.get(tag) || 0);
+    if (punkte.length <= STATS_MAX_PUNKTE) return punkte.map((daily) => ({ daily }));
+
+    // Zusammenfassen statt weglassen: Jeder Eimer trägt die Summe seiner Tage,
+    // die Kurve behält damit ihre Form und ihr Ende.
+    const proEimer = Math.ceil(punkte.length / STATS_MAX_PUNKTE);
+    const gebuendelt = [];
+    for (let i = 0; i < punkte.length; i += proEimer) {
+      gebuendelt.push({ daily: punkte.slice(i, i + proEimer).reduce((summe, wert) => summe + wert, 0) });
+    }
+    return gebuendelt;
+  }
+
+  function statsFeedPanel(readers, totalFeed) {
+    const rows = readers.map((reader) => ({
+      name: reader.subscribers
+        ? `${reader.reader} · ${numberFormat.format(reader.subscribers)} Abos`
+        : reader.reader,
+      count: reader.hits
+    }));
+    if (!rows.length && totalFeed) rows.push({ name: "ohne erkennbaren Leser", count: totalFeed });
+    return statsBreakdownPanel("Feed-Leser", rows);
+  }

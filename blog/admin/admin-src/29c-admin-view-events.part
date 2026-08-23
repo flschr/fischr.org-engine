@@ -1,40 +1,52 @@
   function wireAdminViewEvents() {
     els.settingsNav?.addEventListener("click", async () => {
-      if (state.view === "social") {
-        if (isMobile()) closeSidebar();
-        return;
-      }
-      if (await confirmLeaveEditor()) {
-        openSocialConfig();
-        if (isMobile()) closeSidebar();
-      }
+      if (state.view === "social") return;
+      if (await confirmLeaveEditor()) openSocialConfig();
     });
 
     window.addEventListener("focus", refreshAfterTabResume);
     document.addEventListener("visibilitychange", refreshAfterTabResume);
 
     els.statsNav?.addEventListener("click", async () => {
-      if (state.view === "stats") {
-        if (isMobile()) closeSidebar();
-        return;
-      }
-      if (await confirmLeaveEditor()) {
-        openStats();
-        if (isMobile()) closeSidebar();
-      }
+      if (state.view === "stats") return;
+      if (await confirmLeaveEditor()) openStats();
     });
     els.statsRange?.addEventListener("click", (event) => {
       const button = event.target.closest(".stats-range-btn");
       if (!button) return;
-      const days = Number(button.dataset.days);
-      if (!days || days === state.statsDays) return;
-      state.statsDays = days;
+      const preset = button.dataset.period;
+      if (!statsIsPreset(preset) || preset === state.statsPeriod.preset) return;
+      state.statsPeriod = { ...state.statsPeriod, preset };
       setStatsRangeButtons();
+      // Ein frisch gewählter freier Zeitraum hat noch keine Grenzen; loadStats
+      // sagt das dann selbst, statt eine leere Anfrage zu schicken.
       loadStats();
     });
+    // Zwei Felder, ein Zeitraum: erst wenn beide stehen, wird geladen.
+    const applyCustomRange = () => {
+      state.statsPeriod = {
+        preset: "custom",
+        from: els.statsFrom?.value || "",
+        to: els.statsTo?.value || ""
+      };
+      setStatsRangeButtons();
+      loadStats();
+    };
+    els.statsFrom?.addEventListener("change", applyCustomRange);
+    els.statsTo?.addEventListener("change", applyCustomRange);
     els.statsRefresh?.addEventListener("click", () => loadStats(true));
     // Delegated: rows are re-rendered on every load, the container persists.
     els.statsBody?.addEventListener("click", toggleStatsRowDrill);
+    // Die versteckten Zeilen stehen schon im Markup — aufklappen kostet keine
+    // zweite Anfrage. Delegiert, weil die Listen bei jedem Laden neu entstehen.
+    els.statsBody?.addEventListener("click", (event) => {
+      const button = event.target.closest(".stats-more");
+      if (!button) return;
+      button.closest(".stats-panel")?.querySelectorAll("[data-stats-mehr]").forEach((zeile) => {
+        zeile.hidden = false;
+      });
+      button.remove();
+    });
     els.socialConfigSave?.addEventListener("click", saveSocialConfig);
     els.socialConfigReset?.addEventListener("click", resetSocialConfig);
     els.socialConfigAdd?.addEventListener("click", addSocialCategory);

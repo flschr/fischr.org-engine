@@ -1,4 +1,5 @@
-import { adminRepository, githubHeaders, jsonResponse, readSession } from "../../_admin-auth.js";
+import { jsonResponse, readSession } from "../../_admin-auth.js";
+import { readStatsConfig } from "../../_admin-settings.js";
 
 // GoatCounter stats proxy.
 //
@@ -14,7 +15,6 @@ import { adminRepository, githubHeaders, jsonResponse, readSession } from "../..
 // (the server-side source of truth), never trusted from the client, so the
 // admin token is only ever sent to the host the owner configured.
 const DEFAULT_BASE = "https://stats.mysite.example";
-const CONFIG_PATH = "automation/social-config.json";
 
 // The breakdown panels share the generic /stats/{page} shape.
 const BREAKDOWNS = ["toprefs", "browsers", "systems", "locations"];
@@ -135,38 +135,3 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Read the Stats settings (enabled + GoatCounter URL) from the committed config
-// on the published branch, using the admin's own GitHub token. Returns {} on any
-// failure so the dashboard falls back to env defaults rather than breaking.
-async function readStatsConfig(env, githubToken) {
-  if (!githubToken) return {};
-  try {
-    const repo = adminRepository(env);
-    const branch = env.ADMIN_PUBLISH_BRANCH || "main";
-    const response = await fetch(
-      `https://api.github.com/repos/${repo}/contents/${CONFIG_PATH}?ref=${encodeURIComponent(branch)}`,
-      { headers: githubHeaders(githubToken) }
-    );
-    if (!response.ok) return {};
-    const payload = await response.json();
-    const bytes = Uint8Array.from(atob(String(payload.content || "").replace(/\s/g, "")), (ch) => ch.charCodeAt(0));
-    const json = JSON.parse(new TextDecoder().decode(bytes));
-    const stats = json && typeof json === "object" ? json.stats : null;
-    if (!stats || typeof stats !== "object") return {};
-    const rawUrl = typeof stats.url === "string" ? stats.url.trim() : "";
-    return {
-      enabled: stats.enabled !== false, // default on when the key is absent
-      url: isHttpsUrl(rawUrl) ? rawUrl : ""
-    };
-  } catch {
-    return {};
-  }
-}
-
-function isHttpsUrl(value) {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-}

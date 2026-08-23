@@ -1,7 +1,16 @@
+const { postDisplayDate } = require("../../lib/eleventy/dates");
+
 module.exports = {
   layout: "layouts/post.njk",
   tags: ["posts"],
   eleventyComputed: {
+    // The calendar date the post is shown under. Read off the file name, which
+    // is the only value that agrees with the intended date across the whole
+    // archive — see lib/eleventy/dates.js. page.date stays the instant.
+    displayDate(data) {
+      return postDisplayDate(data.page?.inputPath, data.page?.date);
+    },
+
     permalink(data) {
       if (data.draft) return false;
 

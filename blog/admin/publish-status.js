@@ -6,22 +6,24 @@
   // are predictable enough for a remaining-time estimate.
   const phases = [
     ["Check out repository", "Geprüften Stand vorbereiten"],
-    ["Free disk space", "Speicherplatz für den Build freigeben"],
     ["Set up Node.js", "Build-Umgebung vorbereiten"],
     ["Install dependencies", "Abhängigkeiten installieren"],
     ["Prepare final publish commit", "Veröffentlichung prüfen"],
     ["Check out prepared publish commit", "Geprüftes Ergebnis fixieren"],
-    ["Restore responsive image cache", "Bild-Cache wiederherstellen"],
+    // Skipped on a content publish — only the full gate needs the headroom. The phase list has
+    // to stay in workflow order regardless, since it is matched against it 1:1.
+    ["Free disk space", "Speicherplatz für den Build freigeben"],
     ["Validate production site", "Website bauen und prüfen"],
     ["Push published commit to main", "Geprüfte Website übernehmen"],
     ["Publish build media to R2", "Medien zu R2 übertragen"],
     ["Return to the main branch before persisting automation state", "Veröffentlichten Stand übernehmen"],
     ["Commit updated media manifest", "Medien-Manifest aktualisieren"],
+    ["Check the published commit is still main's tip", "Prüfen, ob der Stand noch aktuell ist"],
     ["Deploy to Cloudflare Pages", "Website zu Cloudflare übertragen"],
+    ["Rebuild main instead of deploying stale output", "Neuen Build anstoßen statt veralteten Stand zu übertragen"],
     ["Sync drafts to deployed commit", "Neuere Entwürfe erhalten und Warteschlange abgleichen"],
     ["Pull the manifest fold across to drafts", "Medien-Manifest in die Entwürfe nachziehen"],
-    ["Publish pending social posts and wait", "Social-Post veröffentlichen und bestätigen"],
-    ["Kick off remaining post-publish workflows", "Weitere Verteilung und Backups starten"]
+    ["Kick off remaining post-publish workflows", "Verteilung und Backups starten"]
   ];
   const phaseMessages = new Map(phases);
 
@@ -74,7 +76,10 @@
     }
     if (run.status === "completed") {
       if (run.conclusion === "success") {
-        return { state: "success", message: "Veröffentlicht, verteilt und synchronisiert", runId: run.id, url: run.html_url, timings: timingBreakdown(run, jobsPayload) };
+        // Says only what this run actually established. Syndication is dispatched, not awaited:
+        // GoToSocial owns the social delivery (and its Bluesky crosspost) in its own queue,
+        // with its own retries and monitoring, and finishes minutes after this job is done.
+        return { state: "success", message: "Veröffentlicht und verteilt", runId: run.id, url: run.html_url, timings: timingBreakdown(run, jobsPayload) };
       }
       const failedStep = (jobsPayload?.jobs || [])
         .flatMap((job) => job.steps || [])

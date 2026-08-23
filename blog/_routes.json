@@ -1,5 +1,12 @@
 {
   "version": 1,
-  "include": ["/feed.xml", "/admin", "/admin/*", "/api/admin/*", "/api/github/*"],
+  "include": [
+    "/feed.xml",
+    "/admin",
+    "/admin/*",
+    "/api/admin/*",
+    "/api/github/*",
+    "/api/hit"
+  ],
   "exclude": []
 }

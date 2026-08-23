@@ -8,12 +8,6 @@
   min-height: calc(100vh - var(--topbar-h));
   padding: clamp(1.1rem, 2.6vw, 2.4rem) clamp(1rem, 3vw, 2.75rem);
 }
-/* When the sidebar is collapsed the floating toggle sits over the workspace's
-   top-left, so push the content's leading edge clear of it. The editor is the
-   exception: its toolbar shares the toggle's row (cleared sideways instead), so
-   it only needs a sliver of top room. */
-.admin-body.is-sidebar-collapsed .admin-workspace { padding-top: calc(3.2rem + env(safe-area-inset-top)); }
-.admin-body.is-sidebar-collapsed .admin-workspace:has(.editor-form:not([hidden])) { padding-top: calc(0.6rem + env(safe-area-inset-top)); }
 .view { min-width: 0; }
 
 .library-head {
@@ -88,8 +82,8 @@
   font-size: 0.68rem;
   font-weight: 650;
 }
-.entry-pill.is-delete { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
-.entry-pill.is-draft { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
+.entry-pill.is-delete { border-color: var(--red-line); background: var(--red-weak); color: var(--red-ink); }
+.entry-pill.is-draft { border-color: var(--red-line); background: var(--red-weak); color: var(--red-ink); }
 .entry-empty {
   max-width: var(--content-w);
   margin: 0 auto 0 0;

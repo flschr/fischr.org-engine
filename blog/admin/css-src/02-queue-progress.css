@@ -13,7 +13,7 @@
 .queue-card.is-delete { border-color: var(--red-line); background: var(--red-weak); }
 .queue-tags { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.4rem; }
 .queue-tags .entry-pill { margin-top: 0; border-color: var(--accent-weak-2); background: var(--accent-weak); color: var(--accent-ink); }
-.queue-card.is-delete .entry-pill { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
+.queue-card.is-delete .entry-pill { border-color: var(--red-line); background: var(--red-weak); color: var(--red-ink); }
 .queue-card.is-orphan { border-color: var(--amber-line); background: var(--amber-weak); }
 .queue-tags .entry-pill.is-orphan { border-color: var(--amber-line); background: var(--amber-weak); color: var(--amber); }
 .queue-collection { color: var(--ink-faint); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
@@ -76,6 +76,6 @@
   transition: width 300ms ease;
 }
 .queue-progress-text a { color: inherit; font-size: 0.8rem; font-weight: 650; }
-.queue-progress.is-error { border-color: var(--red-line); background: var(--red-weak); color: var(--red); }
+.queue-progress.is-error { border-color: var(--red-line); background: var(--red-weak); color: var(--red-ink); }
 .queue-progress.is-error > svg { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; }
 @media (prefers-reduced-motion: reduce) { .queue-progress-spinner { animation: none; } }
