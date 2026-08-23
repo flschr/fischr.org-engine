@@ -55,7 +55,8 @@
     <meta name="twitter:description" content="{{ metaDescription }}">
     <meta name="twitter:image" content="{{ previewImage | absoluteUrl(site.url) }}">
     <meta name="twitter:image:alt" content="{{ previewImageAlt }}">
-    <meta name="theme-color" content="{{ site.themeColor }}">
+    <meta name="theme-color" content="{{ site.themeColor }}" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="{{ site.themeColorDark }}" media="(prefers-color-scheme: dark)">
     <link rel="preload" href="/assets/fonts/dm-sans/dm-sans-variable.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ '/assets/css/generated/main.css' | assetUrl }}">
     {% set modifiedDate = updated if updated else page.date %}
