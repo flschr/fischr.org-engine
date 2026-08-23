@@ -25,7 +25,13 @@
   font: inherit;
   font-size: 0.82rem;
 }
-.stats-range-label { margin: 0.1rem 0 1rem; color: var(--ink-faint); font-size: 0.82rem; }
+.stats-range-label {
+  margin: 0 0 1.1rem;
+  color: var(--ink);
+  font-size: clamp(1.25rem, 2.4vw, 1.5rem);
+  font-weight: 660;
+  letter-spacing: -0.025em;
+}
 .stats-state { margin: 2rem 0; color: var(--ink-soft); text-align: left; }
 .stats-state-error { color: var(--red-ink); }
 
@@ -85,18 +91,6 @@
 .stats-row-title { color: var(--ink-faint); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stats-row-count { position: relative; z-index: 1; color: var(--ink-soft); font-size: 0.82rem; font-weight: 620; font-variant-numeric: tabular-nums; }
 .stats-row-empty { color: var(--ink-faint); font-size: 0.85rem; padding: 0.6rem 0.5rem; }
-
-/* External-link to the full GoatCounter dashboard, next to the Stats title. */
-.stats-external {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 0.5rem;
-  color: var(--ink-faint);
-  vertical-align: middle;
-  transition: color 130ms ease;
-}
-.stats-external:hover { color: var(--accent); }
-.stats-external svg { width: 1.05rem; height: 1.05rem; }
 
 /* Expandable rows (Top pages → referrers, Top referrers → source URLs). */
 .stats-row-group { display: block; }

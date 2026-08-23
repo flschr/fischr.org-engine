@@ -12,5 +12,6 @@ test("admin service worker updates the shell and serves an offline fallback", as
   await expect(page).toHaveTitle("fischr Admin");
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Articles", exact: true })).toBeVisible();
+  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  await expect(page.locator("#entryList")).toBeVisible();
 });

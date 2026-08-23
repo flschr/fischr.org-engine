@@ -8,7 +8,6 @@
   max-width: var(--content-w);
   margin: 0 auto 1.55rem 0;
 }
-.queue-head .view-title { margin: 0; }
 .queue-actions {
   display: flex;
   flex-wrap: wrap;

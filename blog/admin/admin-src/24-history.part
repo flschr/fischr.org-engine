@@ -32,7 +32,10 @@
     const view = target && target.rw ? target.rw : "library";
     if (view === "editor") {
       if (target.path) await openEntry(target.path);
-      else newEntry();
+      // Pass the collection on: a restored draft has no path to derive it from,
+      // and without it a new *page* would come back as a new *post* and save to
+      // blog/posts/. openEntry reads it off the entry itself.
+      else await newEntry(target.collection === "pages" ? "pages" : "posts");
       return;
     }
     if (view === "media") {

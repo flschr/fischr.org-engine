@@ -1,0 +1,129 @@
+  // --- Pull to refresh -----------------------------------------------------
+  // iOS standalone has no built-in pull-to-refresh, so the gesture is ours to
+  // implement. It replaces the refresh button on phones: switching tabs reuses
+  // the cached tree on purpose (that is what makes it instant), so without this
+  // there is no way to pick up a change made outside the app.
+
+  const pullThreshold = 64;
+  const pullMax = 96;
+
+  function settleDuration() {
+    const declared = Number.parseFloat(getComputedStyle(els.pullRefresh).getPropertyValue("--pull-settle-ms"));
+    return Number.isFinite(declared) ? declared : 300;
+  }
+
+  function pullRefreshTarget() {
+    if (state.view === "library" || state.view === "media") return refreshCurrent;
+    if (state.view === "stats" && typeof loadStats === "function") return () => loadStats(true);
+    return null;
+  }
+
+  function canStartPull() {
+    if (!isMobile() || state.isBusy) return false;
+    // The editor scrolls its own article and owns the whole screen; the queue is
+    // a progress view that refreshes itself.
+    if (!pullRefreshTarget()) return false;
+    if (document.querySelector("dialog[open]")) return false;
+    return window.scrollY <= 0;
+  }
+
+  function setPullOffset(distance) {
+    if (!els.pullRefresh) return;
+    const progress = Math.min(1, distance / pullThreshold);
+    els.pullRefresh.style.transform = `translate(-50%, ${distance}px)`;
+    els.pullRefresh.style.opacity = `${progress}`;
+    // The arrow turns with the pull instead of flipping at the threshold, so the
+    // gesture reads as continuous and you can see how much travel is left.
+    els.pullRefresh.style.setProperty("--pull-progress", `${progress}`);
+    els.pullRefresh.classList.toggle("is-ready", distance >= pullThreshold);
+  }
+
+  // While a finger is down the indicator tracks it 1:1 — a transition there
+  // would lag behind the touch. It is only switched on for the way back, so
+  // releasing glides instead of snapping.
+  function glideTo(distance) {
+    if (!els.pullRefresh) return;
+    window.clearTimeout(state.pullSettleTimer);
+    els.pullRefresh.classList.add("is-settling");
+    setPullOffset(distance);
+  }
+
+  function resetPull() {
+    if (!els.pullRefresh) return;
+    window.clearTimeout(state.pullSettleTimer);
+    els.pullRefresh.classList.remove("is-ready", "is-running");
+    if (!els.pullRefresh.classList.contains("is-active")) return;
+    glideTo(0);
+    // Keep it mounted until the glide is done, then clear every trace so the
+    // next pull starts from a clean slate rather than mid-transition. The
+    // duration comes from the stylesheet so the two cannot drift: unmounting
+    // early would cut the glide off mid-flight with a visible jump.
+    state.pullSettleTimer = window.setTimeout(() => {
+      els.pullRefresh.classList.remove("is-active", "is-settling");
+      els.pullRefresh.style.transform = "";
+      els.pullRefresh.style.opacity = "";
+      els.pullRefresh.style.removeProperty("--pull-progress");
+    }, settleDuration() + 20);
+  }
+
+  function wirePullToRefresh() {
+    if (!els.pullRefresh) return;
+    let startY = 0;
+    let distance = 0;
+    let tracking = false;
+
+    // Only bound while a pull is actually in progress. A permanent non-passive
+    // touchmove on document makes the compositor wait on JS before every scroll
+    // in the app — the article list, the media grid, the editor body — none of
+    // which this gesture ever acts on.
+    function onMove(event) {
+      if (!tracking) return;
+      const delta = event.touches[0].clientY - startY;
+      // An upward move means the user is scrolling the list after all.
+      if (delta <= 0) { stopTracking(); resetPull(); return; }
+      // Past the first few pixels this is a pull, not a scroll — take the touch
+      // so iOS does not rubber-band the page underneath the indicator.
+      if (delta > 8 && event.cancelable) event.preventDefault();
+      // Resistance: the last pixels of travel cost more than the first.
+      distance = Math.min(pullMax, delta * 0.5);
+      window.clearTimeout(state.pullSettleTimer);
+      els.pullRefresh.classList.add("is-active");
+      els.pullRefresh.classList.remove("is-settling");
+      setPullOffset(distance);
+    }
+
+    function stopTracking() {
+      if (!tracking) return;
+      tracking = false;
+      document.removeEventListener("touchmove", onMove);
+    }
+
+    document.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1 || !canStartPull()) return;
+      startY = event.touches[0].clientY;
+      distance = 0;
+      tracking = true;
+      document.addEventListener("touchmove", onMove, { passive: false });
+    }, { passive: true });
+
+    document.addEventListener("touchend", async () => {
+      if (!tracking) return;
+      stopTracking();
+      const refresh = pullRefreshTarget();
+      if (distance < pullThreshold || !refresh) { resetPull(); return; }
+      els.pullRefresh.classList.add("is-running");
+      glideTo(pullThreshold);
+      try {
+        await refresh();
+      } catch (error) {
+        // refreshCurrent and loadStats report their own failures.
+      } finally {
+        resetPull();
+      }
+    }, { passive: true });
+
+    document.addEventListener("touchcancel", () => {
+      stopTracking();
+      resetPull();
+    }, { passive: true });
+  }

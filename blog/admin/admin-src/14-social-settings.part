@@ -42,7 +42,7 @@
 
   async function openSocialConfig() {
     showView("social");
-    pushNav();
+    replaceNav();
     // The GitHub connection section now lives in this view — refresh its state.
     updateConnectionState();
     setSocialConfigStatus("Konfiguration wird geladen …", "muted");

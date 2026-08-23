@@ -26,7 +26,7 @@
     // Always land on the current week, regardless of the last range picked.
     state.statsPeriod = { preset: "week", from: "", to: "" };
     showView("stats");
-    pushNav();
+    replaceNav();
     setStatsRangeButtons();
     await loadStats();
   }

@@ -11,7 +11,7 @@ test("admin shell starts without browser errors", async ({ page }) => {
 
   await expect(page).toHaveTitle("fischr Admin");
   await expect(page.getByRole("main")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Articles", exact: true })).toBeVisible();
+  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
   await expect(page.locator("#newEntryButtonLib")).toBeVisible();
   await expect(page.locator("#connectionState")).toHaveText("nicht verbunden");
   expect(errors).toEqual([]);
@@ -23,13 +23,36 @@ test("article list defers editor and preview runtimes until needed", async ({ pa
     if (/vendor\/editor|vendor\/markdown-it|preview-renderer|markdown-conventions/.test(request.url())) runtimeRequests.push(request.url());
   });
   await page.goto("/admin/");
-  await expect(page.getByRole("heading", { name: "Articles", exact: true })).toBeVisible();
+  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
   expect(runtimeRequests).toEqual([]);
 
   await page.locator("#newEntryButtonLib").click();
   await expect(page.locator(".cm-content")).toBeVisible();
   expect(runtimeRequests.some((url) => url.includes("vendor/editor"))).toBe(true);
   expect(runtimeRequests.some((url) => url.includes("markdown-it"))).toBe(false);
+});
+
+test("a reload does not restore a view the settings turned off", async ({ page }) => {
+  const configSha = "social-config-sha";
+  const disabled = Buffer.from(JSON.stringify({ stats: { enabled: false } }), "utf8").toString("base64");
+  await mockAuthenticatedGithub(page, [], [
+    { path: "automation/social-config.json", sha: configSha, type: "blob" }
+  ], { blobs: { [configSha]: { content: disabled } } });
+
+  await page.goto("/admin/");
+  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  // The tab is the only thing keeping stats unreachable when they are off.
+  await expect(page.locator("#statsNav")).toBeHidden();
+
+  // Simulate having been on stats before the setting was flipped: the restore
+  // path bypasses the tab, so it needs its own guard or it lands the reader in
+  // a view with no tab marked and no way back through the navigation.
+  await page.evaluate(() => history.replaceState({ rw: "stats" }, ""));
+  await page.reload();
+
+  await expect(page.locator("#statsView")).toBeHidden();
+  await expect(page.locator("#libraryView")).toBeVisible();
+  await expect(page.locator("#statsNav")).toBeHidden();
 });
 
 test("editor runtime can be retried after a failed download", async ({ page }) => {
@@ -60,7 +83,7 @@ test("authenticated admin opens the editor and publish dialog", async ({ page })
   await page.goto("/admin/");
   await page.locator("#newEntryButtonLib").click();
 
-  await expect(page.getByRole("heading", { name: "New article", exact: true })).toBeVisible();
+  await expect(page.locator("#editorViewTitle")).toHaveText("New article");
   const title = page.getByPlaceholder("Titel");
   await expect(title).toBeVisible();
   await title.fill("Browser smoke test");
@@ -115,7 +138,7 @@ test("source pages open as raw templates and save without Markdown controls", as
   await expect(page.locator("#entryList")).toContainText("Über mich");
   await page.getByText("blog/about.njk", { exact: true }).click();
 
-  await expect(page.getByRole("heading", { name: "Über mich bearbeiten" })).toBeVisible();
+  await expect(page.locator("#editorViewTitle")).toHaveText("Über mich bearbeiten");
   await expect(page.locator("#titleInput")).toBeHidden();
   await expect(page.locator("#formatToolbar")).toBeHidden();
   await expect(page.locator(".cm-content")).toContainText("{{ site.title }}");

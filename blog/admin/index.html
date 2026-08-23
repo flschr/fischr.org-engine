@@ -70,6 +70,11 @@ eleventyExcludeFromCollections: true
         </aside>
 
         <main id="content" class="admin-workspace">
+          <!-- Pull-to-refresh: hidden until the gesture drags it in. aria-hidden
+               because the state it reports is already announced via #statusBar. -->
+          <div id="pullRefresh" class="pull-refresh" aria-hidden="true">
+            <span class="pull-refresh-spinner" data-icon="refresh-cw"></span>
+          </div>
           <!-- Library view: list of posts / pages -->
           <section id="libraryView" class="view library-view" aria-label="Inhalte">
             <div class="library-head view-head">
@@ -305,7 +310,7 @@ eleventyExcludeFromCollections: true
                admin-level API token never reaches the browser. -->
           <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
             <div class="library-head view-head">
-              <h1 class="view-title">Statistics<a class="stats-external" href="https://stats.mysite.example" target="_blank" rel="noopener noreferrer" aria-label="Vollständiges GoatCounter-Dashboard öffnen" title="In GoatCounter öffnen"><span data-icon="external-link" aria-hidden="true"></span></a></h1>
+              <h1 class="view-title">Statistics</h1>
               <div class="library-tools">
                 <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
                   <button type="button" class="stats-range-btn is-active" data-period="week">Woche</button>

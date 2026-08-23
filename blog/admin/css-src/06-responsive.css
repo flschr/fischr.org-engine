@@ -113,25 +113,12 @@
      keyboard anyway, so it steps aside and #editorBackButton leads out. */
   .admin-body.is-editor-view .admin-sidebar { display: none; }
   .library-head,
-  .queue-head,
-  .editor-head {
+  .queue-head {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-  .editor-head { margin-bottom: -0.15rem; }
-  .library-head .view-title,
-  .queue-head .view-title,
-  .editor-head .view-title {
-    display: flex;
-    align-items: center;
-    min-height: 2.25rem;
-    margin: 0;
-    font-size: 1.45rem;
-    line-height: 1.1;
-    flex: 0 0 auto;
+    margin-bottom: 1rem;
   }
   .meta-panel { grid-template-columns: 1fr; }
   /* Keep the toolbar on a single row; scroll horizontally instead of wrapping. */
@@ -151,6 +138,9 @@
   .editor-bar > *,
   .format-toolbar > * { flex: 0 0 auto; }
   .format-toolbar { flex-wrap: nowrap; }
+  /* Pull-to-refresh replaces the refresh buttons here; on desktop they stay,
+     because there is no gesture to pull with a mouse. */
+  #refreshButton, #refreshMediaButton, #statsRefresh { display: none; }
   .tb-divider { display: none; }
   .tb-back { display: inline-flex; position: sticky; left: 0; z-index: 1; }
   .admin-body.is-editor-view {
@@ -169,12 +159,9 @@
   }
   .admin-body.is-editor-view .editor-form {
     gap: 0.75rem;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
     height: 100%;
-  }
-  .admin-body.is-editor-view .editor-head {
-    margin-bottom: -0.2rem;
   }
   .admin-body.is-editor-view .editor-bar {
     position: relative;

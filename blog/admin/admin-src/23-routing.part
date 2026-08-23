@@ -25,6 +25,10 @@
     });
   }
 
+  // Tabs are siblings, not depth: every destination reachable from the bottom
+  // bar replaces the current history entry, and only opening an entry pushes a
+  // new one. So a back swipe leads out of the editor and does nothing on a tab
+  // page, where the bar already shows every way on.
   function setCollection(collection) {
     // Navigating via the sidebar cancels an in-progress social-image pick.
     if (state.socialImagePick) {
@@ -40,7 +44,7 @@
 
     if (collection === "media") {
       showView("media");
-      pushNav();
+      replaceNav();
       // Use the cached tree (invalidated on every save/upload/publish), so
       // switching to the gallery is instant instead of refetching the whole tree.
       refreshMedia(false).catch((error) => showStatus(`Media could not be loaded: ${error.message}`, "error"));
@@ -54,7 +58,7 @@
       els.newEntryButtonLib.title = newLabel;
     }
     showView("library");
-    pushNav();
+    replaceNav();
     refreshEntries(false).catch((error) => showStatus(`List could not be loaded: ${error.message}`, "error"));
   }
 

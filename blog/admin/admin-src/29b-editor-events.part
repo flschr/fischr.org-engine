@@ -40,7 +40,7 @@
       if (state.view !== "editor") return;
       if (!(await confirmLeaveEditor())) return;
       backToLibrary();
-      pushNav();
+      replaceNav();
     });
     els.saveButton.addEventListener("click", () => saveWithProgress("save"));
     els.publishButton.addEventListener("click", handleCurrentPublishAction);

@@ -37,7 +37,47 @@
     }, 12000);
   }
 
+  // A reload should land where the reader was, not on the default list. The
+  // browser keeps history.state across F5, so it is the record of the current
+  // view — and the only one, now that tab switches replace rather than push.
+  function resumeTarget() {
+    const saved = history.state;
+    if (!saved || !saved.rw) return null;
+    const isDefaultList = saved.rw === "library" && (saved.collection || "posts") === "posts";
+    return isDefaultList ? null : saved;
+  }
+
+  async function resumeView(target, configReady) {
+    if (!target) return;
+    // Stats visibility is derived from the config, so it has to be loaded before
+    // we can tell whether this view may be entered at all. Settings does not
+    // need the wait — openSocialConfig re-fetches with force either way.
+    if (target.rw === "stats") {
+      await configReady;
+      // openStats() has no guard of its own: the hidden tab was what kept the
+      // view unreachable, and restoring bypasses the tab entirely. Without this
+      // a reload would land on stats with no tab marked to lead back out.
+      if (!statsEnabled()) return;
+    }
+    // navigating: the view is being restored, not newly entered, so routeTo's
+    // pushNav must not stack a second entry on top of the one we came back to.
+    state.navigating = true;
+    try {
+      await routeTo(target);
+      replaceNav();
+    } catch (error) {
+      // A deleted entry or an unreachable view falls back to the list we are on.
+      showStatus(`Ansicht konnte nicht wiederhergestellt werden: ${error.message}`, "error");
+      backToLibrary();
+      replaceNav();
+    } finally {
+      state.navigating = false;
+    }
+  }
+
   async function init() {
+    // Read before showView/replaceNav below overwrite it.
+    const resumed = resumeTarget();
     renderFormatToolbar();
     await refreshSession();
     await verifyStoredTokenAccess();
@@ -49,10 +89,13 @@
     showView("library");
     replaceNav();
 
-    if (hasGithubAccess()) loadSocialConfig().then(applyStatsTabVisibility).catch(() => {});
+    const configReady = hasGithubAccess()
+      ? loadSocialConfig().then(applyStatsTabVisibility).catch(() => {})
+      : Promise.resolve();
 
     try {
       await loadInitialGithubContent();
+      await resumeView(resumed, configReady);
       if (hasGithubAccess()) recoverPendingMediaOperations().catch((error) => {
         showStatus(`Wiederaufnahme der Bildverarbeitung fehlgeschlagen: ${error.message}`, "error");
       });

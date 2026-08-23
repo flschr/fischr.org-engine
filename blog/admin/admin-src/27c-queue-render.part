@@ -1,7 +1,7 @@
   async function openQueue() {
     showView("queue");
     renderQueue();
-    pushNav();
+    replaceNav();
     await refreshQueueFromGitHub();
   }
 

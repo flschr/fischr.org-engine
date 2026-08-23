@@ -97,3 +97,60 @@ input:focus, select:focus, textarea:focus {
 }
 
 [hidden] { display: none !important; }
+
+/* ---- Pull to refresh ---------------------------------------------------- */
+/* Parked just above the viewport; the gesture translates it down. Desktop never
+   shows it — the refresh button stays there, where there is nothing to pull. */
+.pull-refresh {
+  /* The single source for how long settling takes. JS reads this to know when
+     the glide is over and the indicator may be unmounted; keep the transition
+     below in step with it. */
+  --pull-settle-ms: 300;
+  position: fixed;
+  top: calc(-2.6rem + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 35;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--ink-faint);
+  opacity: 0;
+  transform: translate(-50%, 0);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  /* The colour shift lives on the base rule, not on .is-ready: both selectors
+     weigh the same, so an is-ready transition would replace the settling one
+     wholesale and kill the glide in exactly the common case (pulled past the
+     threshold, then released). */
+  transition: border-color 140ms ease, color 140ms ease;
+}
+.pull-refresh.is-active { display: inline-flex; }
+/* Only on the way back: while the finger is down the indicator is positioned
+   per touchmove and must not lag behind it. */
+.pull-refresh.is-settling {
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease,
+    border-color 140ms ease, color 140ms ease;
+}
+.pull-refresh.is-ready { border-color: var(--accent); color: var(--accent); }
+.pull-refresh svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  /* Turns with the pull rather than flipping at the threshold. */
+  transform: rotate(calc(var(--pull-progress, 0) * 300deg));
+}
+.pull-refresh.is-running svg {
+  transform: none;
+  animation: pull-refresh-spin 900ms linear infinite;
+}
+@keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-refresh.is-settling { transition: none; }
+  .pull-refresh svg { transform: none; }
+  .pull-refresh.is-running svg { animation: none; }
+}

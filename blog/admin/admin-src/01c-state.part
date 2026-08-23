@@ -41,6 +41,7 @@
     previewRuntimePromise: null,
     editorMode: "markdown",
     editorDragDepth: 0,
+    pullSettleTimer: null,
     isBusy: false,
     publishInFlight: false,
     publishRequest: null,

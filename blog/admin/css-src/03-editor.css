@@ -1,10 +1,11 @@
 /* ---- Editor ------------------------------------------------------------ */
 
-.editor-form { display: grid; gap: 0.9rem; grid-template-rows: auto auto minmax(0, 1fr); }
-.editor-head {
-  max-width: var(--editor-content-w);
-  margin: 0 auto -0.1rem 0;
-}
+/* Two rows, not three: .editor-head is display:contents and its only child is
+   the visually hidden title, so nothing in-flow lands in a head row. */
+.editor-form { display: grid; gap: 0.9rem; grid-template-rows: auto minmax(0, 1fr); }
+/* Holds only the visually hidden title now — the article's own title field is
+   the visible heading, and the toolbar is what the top of the editor is for. */
+.editor-head { display: contents; }
 .editor-bar {
   position: sticky;
   top: var(--topbar-h);

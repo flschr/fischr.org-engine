@@ -111,6 +111,7 @@
     cleanupOrphansCount: document.getElementById("cleanupOrphansCount"),
     connectionPanel: document.getElementById("connectionPanel"),
     syncButton: document.getElementById("syncButton"),
+    pullRefresh: document.getElementById("pullRefresh"),
     statusBar: document.getElementById("statusBar"),
     unsavedDialog: document.getElementById("unsavedDialog"),
     deleteDialog: document.getElementById("deleteDialog"),

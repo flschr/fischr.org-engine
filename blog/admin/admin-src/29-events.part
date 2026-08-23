@@ -5,6 +5,7 @@
     wireEditorEvents();
     wireAdminViewEvents();
     wireLifecycleEvents();
+    wirePullToRefresh();
   }
 
   async function refreshCurrent() {
