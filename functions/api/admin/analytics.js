@@ -177,15 +177,22 @@ export async function onRequest(context) {
        GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`,
       start, end
     ),
-    // Woher abgerufen wird. Eine Zeile je Abrufer und Tag, über den Zeitraum
-    // summiert — das sind Abruftage je Land, keine Personen. Als Verhältnis
-    // aussagekräftig, als absolute Zahl nicht; bei den Diensten ist es
-    // ohnehin das Land ihres Rechenzentrums. Das Dashboard beschriftet es
-    // entsprechend.
+    // Woher abgerufen wird — mit derselben Rechnung wie die Abonnentenzahl:
+    // der höchste Tageswert je Land, nicht die Summe über den Zeitraum.
+    //
+    // Summiert stünde eine Liste über Abruftagen neben einer Zahl über
+    // Abonnenten, beide aus derselben Tabelle und um ein Vielfaches
+    // auseinander. Wer sie in Beziehung setzt, und dazu stehen sie
+    // nebeneinander, müsste eine von beiden für falsch halten.
+    //
+    // Bei den Diensten ist es das Land ihres Rechenzentrums, nicht das ihrer
+    // Nutzer; das Dashboard beschriftet es entsprechend.
     all(
-      `SELECT country, COUNT(*) AS n FROM feed_fetchers
-       WHERE country IS NOT NULL AND day BETWEEN ?1 AND ?2
-       GROUP BY country ORDER BY n DESC LIMIT ${LIMIT}`,
+      `SELECT country, MAX(n) AS n FROM (
+         SELECT day, country, COUNT(*) AS n FROM feed_fetchers
+         WHERE country IS NOT NULL AND day BETWEEN ?1 AND ?2
+         GROUP BY day, country
+       ) GROUP BY country ORDER BY n DESC LIMIT ${LIMIT}`,
       start, end
     ),
     // Die Kennungen hinter "unbekannt" — der größte Posten der Leserliste.

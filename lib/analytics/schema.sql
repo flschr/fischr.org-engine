@@ -117,6 +117,14 @@ CREATE TABLE IF NOT EXISTS feed_readers (
 -- Feed einmal für alle ihre Nutzer und melden ihre Zahl selbst; eine
 -- selbstgehostete Installation holt ihn für genau einen Menschen und meldet
 -- nichts. Beide zusammen ergeben die Schätzung.
+-- Diese Tabelle verfällt nicht, anders als feed_agents daneben, obwohl beide
+-- im selben Vorgang entstehen. Der Grund: Sie trägt die Abonnentenhistorie.
+-- Ohne ihre Zeilen lässt sich für vergangene Monate nicht mehr sagen, wie
+-- viele Abonnenten es gab, und das ist nicht wiederherstellbar. Die Kennungen
+-- daneben sind dagegen eine Arbeitsliste zum Zuordnen — was ein halbes Jahr
+-- niemand zugeordnet hat, wird es nicht mehr. Wer die Aufbewahrung einmal
+-- vereinheitlichen will, muss also hier aufhören.
+--
 -- country steht hier und nicht in den Rohdaten: Ein Feed-Abruf schreibt keine
 -- Rohzeile, und eine Zeile je Abrufer und Tag reicht für die Frage, wo die
 -- Abonnenten sitzen. Bei den Diensten ist es das Land ihres Rechenzentrums,

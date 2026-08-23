@@ -344,3 +344,39 @@ test("das Land landet beim Abrufer, nicht in den Rohdaten", async () => {
   assert.deepEqual(zeilen.map((z) => z.country), ["DE", "US"]);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM hits").get().n, 0, "Feeds schreiben keine Rohzeilen");
 });
+
+test("Laenderliste und Abonnentenzahl rechnen gleich", () => {
+  // Beide Zahlen stammen aus feed_fetchers und stehen nebeneinander. Summierte
+  // die eine Abruftage und naehme die andere den hoechsten Tageswert, laegen
+  // sie um ein Vielfaches auseinander — und man muesste eine von beiden fuer
+  // falsch halten. Dieselbe Fehlerfamilie wie beim Herkunftshinweis und bei
+  // der Beitragsliste, deshalb hier festgehalten.
+  const db = datenbank();
+  const setze = db.prepare("INSERT INTO feed_fetchers (day, fetcher, reader, subscribers, country) VALUES (?, ?, 'freshrss', NULL, ?)");
+  // Drei Tage, jeden Tag dieselben zwei deutschen und ein amerikanischer Leser.
+  for (const tag of ["2026-08-24", "2026-08-25", "2026-08-26"]) {
+    setze.run(tag, `de-1-${tag}`, "DE");
+    setze.run(tag, `de-2-${tag}`, "DE");
+    setze.run(tag, `us-1-${tag}`, "US");
+  }
+  const zeitraum = ["2026-08-24", "2026-08-26"];
+
+  const laender = db.prepare(
+    `SELECT country, MAX(n) AS n FROM (
+       SELECT day, country, COUNT(*) AS n FROM feed_fetchers
+       WHERE country IS NOT NULL AND day BETWEEN ? AND ?
+       GROUP BY day, country
+     ) GROUP BY country ORDER BY n DESC`
+  ).all(...zeitraum)
+    // node:sqlite liefert Zeilen ohne Prototyp; deepEqual unterscheidet das.
+    .map((zeile) => ({ country: zeile.country, n: zeile.n }));
+  const installationen = db.prepare(
+    `SELECT COALESCE(MAX(n), 0) AS n FROM (
+       SELECT COUNT(*) AS n FROM feed_fetchers
+       WHERE day BETWEEN ? AND ? AND subscribers IS NULL GROUP BY day)`
+  ).get(...zeitraum).n;
+
+  assert.deepEqual(laender, [{ country: "DE", n: 2 }, { country: "US", n: 1 }]);
+  assert.equal(laender.reduce((s, l) => s + l.n, 0), installationen,
+    "die Summe der Laender muss die Zahl der Installationen ergeben, nicht ein Vielfaches");
+});
