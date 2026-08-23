@@ -10,24 +10,6 @@
     return "";
   }
 
-  function mediaManifestKeyForPublicPath(publicPath) {
-    const value = String(publicPath || "");
-    if (value.startsWith("/assets/images/")) return `images/${value.slice("/assets/images/".length)}`;
-    if (value.startsWith("/assets/videos/")) return `videos/${value.slice("/assets/videos/".length)}`;
-    return "";
-  }
-
-  // Wohin ein /assets/…-Pfad für die Anzeige im Admin zeigt. Der Browser käme sonst nur über die
-  // pfadbasierte Weiterleitung in _redirects dorthin, und die kann eine Inhaltsadresse nicht
-  // kennen — für ein neu hochgeladenes Bild endet sie in einem 404. Nachschlagen statt ableiten;
-  // ohne Manifest bleibt es beim lokalen Pfad. Siehe docs/architecture.md, "Media boundary (R2)".
-  function mediaDisplayUrl(publicPath) {
-    const value = String(publicPath || "");
-    const key = mediaManifestKeyForPublicPath(value);
-    const entry = key && state.mediaManifest ? state.mediaManifest[key] : null;
-    return entry && entry.objectKey ? `${mediaDeliveryOrigin}/${entry.objectKey}` : value;
-  }
-
   function repositoryPathForMediaManifestKey(key) {
     const value = String(key || "");
     if (value.startsWith("images/")) return `${collections.media.dir}/${value.slice("images/".length)}`;

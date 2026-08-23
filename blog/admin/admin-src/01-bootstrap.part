@@ -8,12 +8,6 @@
     publishBranch: "main"
   };
 
-  // Die einzige Stelle im Admin, die den Auslieferungs-Host kennt. Er wird ausschliesslich zum
-  // *Nachschlagen* gebraucht (siehe mediaDisplayUrl) — eine Adresse aus einem Pfad abzuleiten
-  // ist seit der Inhaltsadressierung falsch und wird von tests/admin-media-address.test.js
-  // verhindert.
-  const mediaDeliveryOrigin = "https://media.mysite.example";
-
   const github = RWGithubService.createClient({
     repository: repo,
     getAccess: () => ({

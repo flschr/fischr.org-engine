@@ -55,9 +55,9 @@
     if (!value) return publicImagePath(value);
     const match = bestImageAsset(value);
     if (match?.preview) return match.preview;
-    if (value.startsWith("/") || /^https?:\/\//i.test(value)) return mediaDisplayUrl(publicImagePath(value));
-    if (match) return mediaDisplayUrl(match.publicPath);
-    return mediaDisplayUrl(publicImagePath(value));
+    if (value.startsWith("/") || /^https?:\/\//i.test(value)) return publicImagePath(value);
+    if (match) return match.publicPath;
+    return publicImagePath(value);
   }
 
   // Shared thumbnail <img> for the gallery and the social-image picker. Lazy +
@@ -65,7 +65,7 @@
   // screen, with a raw-GitHub fallback when the published path is not live yet.
   function buildMediaThumbImage(item) {
     const image = document.createElement("img");
-    image.src = item.preview || mediaDisplayUrl(item.publicPath);
+    image.src = item.preview || item.publicPath;
     image.alt = "";
     image.loading = "lazy";
     image.decoding = "async";

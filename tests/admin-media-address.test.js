@@ -35,53 +35,22 @@ function adminSource() {
     .join("");
 }
 
-// Kommentare dürfen den Host erklären; Code darf ihn nicht ableiten.
-//
-// Entfernt werden nur ganze Kommentarzeilen. Ein naives Wegschneiden ab dem ersten "//" wäre
-// hier falsch — es hielte das "//" in "https://" für einen Kommentaranfang und löschte
-// ausgerechnet die Zeichenkette, um die es geht. Genau das ist beim Schreiben dieses Tests
-// passiert und liess ihn stumm durchgehen.
+// Kommentare dürfen den Host erklären; Code darf ihn nicht bauen.
 function withoutComments(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .filter((line) => !/^\s*\/\//.test(line))
-    .join("\n");
+  return source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-// Der Host darf genau einmal vorkommen, als benannte Konstante. Alles andere wäre wieder eine
-// Ableitung: Der Admin braucht ihn zum *Nachschlagen* einer Adresse, die im Manifest steht —
-// nicht zum Ausrechnen einer, die es noch nicht gibt.
-test("the delivery host appears once, as a declared constant", () => {
-  const code = withoutComments(adminSource());
-  const occurrences = code.match(new RegExp(deliveryHost.source, "g")) || [];
-
-  assert.equal(occurrences.length, 1, "the delivery host belongs in exactly one place");
-  assert.match(
-    withoutComments(fs.readFileSync(path.join(adminRoot, "admin-src/01-bootstrap.part"), "utf8")),
-    new RegExp(`const mediaDeliveryOrigin = "https://${deliveryHost.source}"`),
-    "and that place is the configuration block"
-  );
-});
-
-test("the admin never derives a delivery address from a path", () => {
+test("the admin never composes a media delivery URL itself", () => {
   const code = withoutComments(adminSource());
 
+  assert.doesNotMatch(code, deliveryHost, "the admin must not build delivery URLs by hand");
   assert.doesNotMatch(code, /publicImageDeliveryPath/, "the prediction must not come back");
-  // Eine Adresse entsteht nur noch aus einem objectKey aus dem Manifest.
-  assert.doesNotMatch(
-    code,
-    new RegExp(`${deliveryHost.source}/(images|videos)/`),
-    "a path-shaped delivery URL means someone is deriving again"
-  );
-  assert.match(code, /\$\{mediaDeliveryOrigin\}\/\$\{entry\.objectKey\}/, "addresses come from the manifest entry");
 });
 
 // Die Gegenprobe am ausgelieferten Bündel: Was dort nicht steht, kann kein Browser ausführen.
-// Die Gegenprobe am ausgelieferten Bündel: Auch dort darf keine pfadförmige Adresse stehen.
-test("the built admin bundle derives no address either", () => {
-  const bundle = withoutComments(fs.readFileSync(path.join(adminRoot, "vendor/app/admin.js"), "utf8"));
-  assert.doesNotMatch(bundle, new RegExp(`${deliveryHost.source}/(images|videos)/`));
+test("the built admin bundle carries no delivery host either", () => {
+  const bundle = fs.readFileSync(path.join(adminRoot, "vendor/app/admin.js"), "utf8");
+  assert.doesNotMatch(withoutComments(bundle), deliveryHost);
 });
 
 // Ein frisch hochgeladenes Bild muss denselben Pfad einfügen wie eines aus der Mediathek —
