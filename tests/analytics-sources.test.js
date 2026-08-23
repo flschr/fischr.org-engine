@@ -307,31 +307,22 @@ test("genau zehn Zeilen bleiben ohne Knopf", () => {
   assert.doesNotMatch(html, /stats-more/);
 });
 
-test("die Beitragsliste summiert auf die Zahl darüber", () => {
-  // "Im Reader angezeigt" zählt alle Anzeigen, die Liste löst sie auf. Fiele
-  // der Sammelpfad der importierten Historie aus der Liste, ergäbe sie weniger
-  // als die Zahl, die sie erklären soll — und verdoppelte damit genau das
-  // Missverständnis, gegen das sie gebaut wurde.
+test("die Beitragsliste zeigt Beiträge, nicht den Sammelpfad der Historie", async () => {
+  // Unter '/feed.xml' liegt die beim Import zusammengefasste Historie der
+  // früheren Zählung: kein Beitrag, keine Seite dahinter, und regelmäßig die
+  // größte Zeile. In einer Liste, die Beiträge vergleichbar machen soll, ist
+  // sie Ballast — und sie belegte einen der begrenzten Plätze.
+  const { BEITRAEGE_IM_READER } = await import("../functions/api/admin/analytics.js");
   const db = datenbank();
   const feedread = db.prepare("INSERT INTO daily_page (day, path, kind, source, hits) VALUES (?, ?, 'feedread', ?, ?)");
   feedread.run("2026-08-20", "/feed.xml", "goatcounter", 21);
   feedread.run("2026-08-24", "/heimaturlaub/", "live", 3);
   feedread.run("2026-08-24", "/steakberge/", "live", 2);
 
-  const zeitraum = ["2026-08-17", "2026-08-30"];
-  const kopfzahl = db.prepare(
-    `SELECT COALESCE(SUM(hits), 0) AS hits FROM daily_page
-     WHERE kind = 'feedread' AND day BETWEEN ? AND ? ${eineQuelle("feedread")}`
-  ).get(...zeitraum).hits;
-  const liste = db.prepare(
-    `SELECT path, SUM(hits) AS hits FROM daily_page
-     WHERE kind = 'feedread' AND day BETWEEN ? AND ? ${eineQuelle("feedread")}
-     GROUP BY path`
-  ).all(...zeitraum);
+  const liste = db.prepare(BEITRAEGE_IM_READER).all("2026-08-17", "2026-08-30");
 
-  assert.equal(kopfzahl, 26);
-  assert.equal(liste.reduce((s, z) => s + z.hits, 0), kopfzahl, "Liste und Kopfzahl müssen übereinstimmen");
-  assert.ok(liste.some((z) => z.path === "/feed.xml"), "die Historie gehört als eigene Zeile in die Liste");
+  assert.deepEqual(liste.map((z) => z.path), ["/heimaturlaub/", "/steakberge/"]);
+  assert.equal(liste.reduce((s, z) => s + z.hits, 0), 5);
 });
 
 test("Adressen aus fremden Kennungen werden nicht gespeichert", async () => {
@@ -486,14 +477,12 @@ test("Zeilen mit einer Seite dahinter lassen sich öffnen, die anderen nicht", (
     statsBausteine("statsSeitenUrl", "statsQuellenUrl", "statsBreakdownPanel", "statsExpandablePanel");
 
   assert.equal(statsSeitenUrl("/heimaturlaub/"), "https://example.com/heimaturlaub/");
-  // Kein Ort: der Sammelname der Beitragsliste, und nichts, was aus einem
-  // fremden Wert eine fremde Adresse machen würde.
-  assert.equal(statsSeitenUrl("ohne Beitragszuordnung"), null);
+  // Kein Ort: nichts, was aus einem fremden Wert eine fremde Adresse machte.
   assert.equal(statsSeitenUrl("//example.org/"), null);
   assert.equal(statsQuellenUrl("example.org"), "https://example.org/");
   assert.equal(statsQuellenUrl("(direkt)"), null);
 
-  const ohne = statsBreakdownPanel("Probe", [{ name: "ohne Beitragszuordnung", count: 21 }]);
+  const ohne = statsBreakdownPanel("Probe", [{ name: "unbekannt", count: 21 }]);
   assert.doesNotMatch(ohne, /stats-row-open/);
   const mit = statsBreakdownPanel("Probe", [{ name: "/x/", count: 3, href: statsSeitenUrl("/x/") }]);
   assert.match(mit, /href="https:\/\/example\.com\/x\/"/);
@@ -508,19 +497,16 @@ test("Zeilen mit einer Seite dahinter lassen sich öffnen, die anderen nicht", (
 });
 
 // --- Besucher und ihr Zeitraum -----------------------------------------------
-test("die Besucherzahl sagt, ab wann sie gilt", () => {
+test("die Besucherzahl steht ohne Vermerk und ohne Null für sich", () => {
   const { statsWebsiteKennzahlen } = statsBausteine("statsWebsiteKennzahlen");
   const besucher = (range) => statsWebsiteKennzahlen({ hits: 3377, visitors: 17 }, "2026-08-23", range)[1];
 
-  // Ein Jahr voller Aufrufe neben den Besuchern weniger Tage: ohne Vermerk
-  // sieht die Zahl in jedem Zeitraum gleich und damit kaputt aus.
   const jahr = besucher({ start: "2026-01-01", end: "2026-12-31" });
   assert.equal(jahr.value, "17");
-  assert.match(jahr.hint, /gezählt seit/);
-
-  // Liegt der Zeitraum ganz in der eigenen Messung, erklärt der Vermerk nichts
-  // mehr und verschwindet.
-  assert.equal(besucher({ start: "2026-08-23", end: "2026-08-29" }).hint, "");
+  // Kein "gezählt seit": Der Vermerk erklärte den Bruch zwischen Import und
+  // eigener Messung, den die Ansicht sonst nirgends zum Thema macht.
+  assert.ok(!jahr.hint, "die Zahl trägt keinen Vermerk mehr");
+  assert.ok(!besucher({ start: "2026-08-23", end: "2026-08-29" }).hint);
 
   // Davor wurde niemand gezählt. Eine Null behauptete, es sei niemand da gewesen.
   assert.equal(besucher({ start: "2026-01-01", end: "2026-02-01" }).value, "–");

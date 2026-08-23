@@ -64,6 +64,21 @@ export const ABOS_JE_LESER = `
   LEFT JOIN gemeldet g ON g.reader = l.reader
   LEFT JOIN eigen e ON e.reader = l.reader`;
 
+// Welche Beiträge im Leseprogramm angezeigt wurden. Als Konstante hier, damit
+// der Test dieselbe Abfrage prüft, die das Dashboard stellt.
+//
+// Der Sammelpfad '/feed.xml' bleibt draußen: Er ist kein Beitrag, sondern die
+// beim Import zusammengefasste Historie der früheren Zählung. Solange über der
+// Liste eine Gesamtzahl stand, musste er als eigene Zeile mit hinein, damit die
+// Liste diese Zahl aufging. Die Zahl gibt es nicht mehr, und ohne sie bliebe
+// eine Zeile stehen, die niemandem etwas sagt — und die nebenbei einen Platz
+// der Liste belegte, weil sie die größte von allen ist.
+export const BEITRAEGE_IM_READER = `
+  SELECT path, MAX(title) AS title, SUM(hits) AS hits FROM daily_page
+  WHERE kind = 'feedread' AND path <> '/feed.xml'
+    AND day BETWEEN ?1 AND ?2 ${eineQuelle("feedread")}
+  GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`;
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -170,7 +185,7 @@ export async function onRequest(context) {
     });
   }
 
-  const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedSeries, feedReads, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
+  const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedSeries, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -229,14 +244,6 @@ export async function onRequest(context) {
        GROUP BY day ORDER BY day`,
       start, end
     ),
-    // Getrennt geführt: Die frühere Zählung zählte das Lesen einzelner Beiträge
-    // im Feed, die eigene zählt Abrufe des Feeds. Zusammengeworfen ergäbe das
-    // eine Zeitreihe, die an der Umstellung springt.
-    one(
-      `SELECT COALESCE(SUM(hits), 0) AS hits FROM daily_page
-       WHERE kind = 'feedread' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feedread")}`,
-      start, end
-    ),
     all(
       `SELECT reader, MAX(subscribers) AS subscribers, SUM(hits) AS hits FROM feed_readers
        WHERE day BETWEEN ?1 AND ?2 GROUP BY reader ORDER BY hits DESC LIMIT ${LIMIT}`,
@@ -286,18 +293,7 @@ export async function onRequest(context) {
       start, end
     ),
     // Welche Beiträge im Reader angezeigt wurden.
-    //
-    // Der Sammelpfad '/feed.xml' bleibt bewusst drin, obwohl er kein Beitrag
-    // ist: Darunter liegt die importierte Historie, die beim Import
-    // zusammengefasst wurde. Ihn auszusortieren hieße, dass die Liste weniger
-    // ergibt als die Zahl darüber — und die Liste ist gerade dafür da, diese
-    // Zahl aufzulösen. Das Dashboard beschriftet die Zeile entsprechend.
-    all(
-      `SELECT path, MAX(title) AS title, SUM(hits) AS hits FROM daily_page
-       WHERE kind = 'feedread' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feedread")}
-       GROUP BY path ORDER BY hits DESC LIMIT ${LIMIT}`,
-      start, end
-    ),
+    all(BEITRAEGE_IM_READER, start, end),
     // Woher abgerufen wird — mit derselben Rechnung wie die Abonnentenzahl:
     // der höchste Tageswert je Land, nicht die Summe über den Zeitraum.
     //
@@ -324,7 +320,6 @@ export async function onRequest(context) {
       hits: Number(totals?.hits) || 0,
       visitors: Number(visitors?.besucher) || 0,
       feed: Number(feed?.hits) || 0,
-      feedReads: Number(feedReads?.hits) || 0,
       feedBots: Number(feedBots?.hits) || 0,
       // Getrennt geliefert, damit das Dashboard beide Teile benennen kann
       // statt nur eine Summe zu behaupten.

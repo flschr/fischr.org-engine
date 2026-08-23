@@ -92,25 +92,23 @@ function statsWebsitePanels(data) {
   ];
 }
 
+// Dieselbe Reihenfolge wie im Abschnitt darüber: erst was gelesen wurde, dann
+// worüber, dann von wo. Die Website-Listen stehen als Seiten, Quellen, Länder
+// nebeneinander; standen die Feed-Listen anders herum, läse man zwei Ansichten
+// statt einer — die Spalte an derselben Stelle beantwortete eine andere Frage.
 function statsFeedPanels(data) {
   return [
-    statsFeedPanel(data.feedReaders || [], Number(data.total?.feed) || 0),
-    // Löst die Zahl "Im Reader angezeigt" auf: Es sind Anzeigen, keine
-    // Beiträge — sehen drei Menschen denselben Beitrag, sind es drei.
-    //
-    // Die Summe der Liste muss deshalb die Zahl darüber ergeben. Der
-    // Sammelpfad der importierten Historie steht als eigene Zeile darin,
-    // benannt statt weggelassen; sonst ergäbe die Liste weniger als die Zahl,
-    // die sie erklären soll.
+    // Welche Beiträge im Leseprogramm angezeigt wurden — Anzeigen, keine
+    // Beiträge: Sehen drei Menschen denselben Beitrag, sind es drei. Die Liste
+    // steht für sich; eine Gesamtzahl darüber, die sie auflösen müsste, gibt
+    // es nicht mehr. Der Sammelpfad der importierten Historie fällt deshalb
+    // schon in der Abfrage weg.
     ...((data.feedPages || []).length
-      ? [statsBreakdownPanel("Beiträge im Reader", data.feedPages.map((row) => (
-          // Der Sammelpfad der Historie ist kein Beitrag und bekommt deshalb
-          // auch keinen Öffnen-Link — hinter ihm steckt keine Seite.
-          row.path === "/feed.xml"
-            ? { name: "ohne Beitragszuordnung", title: "aus der importierten Historie", count: row.hits }
-            : { name: row.path, title: row.title, count: row.hits, href: statsSeitenUrl(row.path) }
-        )))]
+      ? [statsBreakdownPanel("Beiträge im Reader", data.feedPages.map((row) => ({
+          name: row.path, title: row.title, count: row.hits, href: statsSeitenUrl(row.path)
+        })))]
       : []),
+    statsFeedPanel(data.feedReaders || [], Number(data.total?.feed) || 0),
     // Auch hier nur "Länder". Was die Zahl daneben genau zählt — Abruftage,
     // und bei den Diensten das Land ihres Rechenzentrums — ist richtig, aber
     // es ist eine Fußnote und keine Überschrift: Die Reihenfolge stimmt auch

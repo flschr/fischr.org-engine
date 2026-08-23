@@ -171,6 +171,14 @@ test("die Listen heißen nach dem, was in ihnen steht — ohne Erklärzeile", ()
   const markup = kontext.els.statsBody.innerHTML;
   assert.match(markup, />Länder</);
   assert.match(markup, />Feed-Leser \(geschätzt\)</);
+  // Beide Abschnitte in derselben Reihenfolge: was gelesen wurde, worüber,
+  // von wo. Anders herum beantwortete dieselbe Spalte oben und unten eine
+  // andere Frage.
+  const reihenfolge = ["Seiten", "Quellen", "Länder", "Beiträge im Reader", "Feed-Leser (geschätzt)", "Länder"];
+  assert.deepEqual(
+    [...markup.matchAll(/class="stats-panel-title">([^<]+)</g)].map((treffer) => treffer[1]),
+    reihenfolge
+  );
   assert.doesNotMatch(markup, /Woher gelesen|Woher abgerufen/);
   assert.doesNotMatch(markup, /nur aus eigener Messung|Abruftage je Land|geschätzte Abonnenten je Programm/);
   assert.doesNotMatch(markup, /stats-panel-hint/);

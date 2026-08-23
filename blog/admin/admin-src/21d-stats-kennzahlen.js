@@ -19,26 +19,20 @@ import { statsShortDayFormat } from "./21b-stats-period.js";
 // steht deshalb für sich und wird nirgends zu den Aufrufen ins Verhältnis
 // gesetzt — so behauptet sie nichts, was aus zwei Zeiträumen stammt.
 //
-// Was die Zahl umfasst, muss trotzdem dabeistehen. Die eigene Zählung ist
-// jünger als die Aufrufe: Neben den Aufrufen eines ganzen Jahres stand die
-// Besucherzahl der wenigen Tage seit der Umstellung — in Woche, Monat,
-// Quartal und Jahr dieselbe, und damit eine Zahl, die kaputt aussieht.
-//
-// Der Vermerk nennt deshalb den Beginn der Messung, nicht die Herkunft der
-// Zahl: "gezählt seit" sagt, worüber sie spricht, ohne den Bruch zwischen
-// Import und eigener Messung zum Thema der Ansicht zu machen. Er verschwindet
-// von selbst, sobald der Zeitraum ganz in der eigenen Messung liegt.
+// Ein Vermerk "gezählt seit <Tag>" stand daneben, solange der Zeitraum weiter
+// zurückreichte als die eigene Messung. Er erklärte einen Bruch, den die
+// Ansicht sonst nirgends zum Thema macht, und war damit die einzige Stelle,
+// die überhaupt von zwei Zeiträumen sprach. Er ist weg; er verschwindet
+// ohnehin von selbst, sobald die eigene Messung weit genug zurückreicht.
 export function statsWebsiteKennzahlen(total, besucherAb, range) {
   const gemessen = besucherAb && range?.end >= besucherAb;
-  const teilweise = gemessen && range?.start < besucherAb;
   return [
     { label: "Aufrufe", value: numberFormat.format(Number(total.hits) || 0) },
     {
       label: "Besucher",
       // Ein Strich, keine Null: Vor der Umstellung wurde niemand gezählt —
       // das heißt nicht, dass niemand da war.
-      value: gemessen ? numberFormat.format(Number(total.visitors) || 0) : "–",
-      hint: teilweise ? `gezählt seit ${statsTagKurz(besucherAb)}` : ""
+      value: gemessen ? numberFormat.format(Number(total.visitors) || 0) : "–"
     }
   ];
 }
@@ -48,8 +42,14 @@ export function statsTagKurz(day) {
   return Number.isNaN(datum.getTime()) ? day : statsShortDayFormat.format(datum);
 }
 
+// Zwei Zahlen, nicht drei. Eine dritte stand hier: die Summe aller Anzeigen
+// im Leseprogramm, aus dem Zählpixel des Feeds. Als absolute Zahl sagt sie
+// nichts — sie zählt geladene Bilder, also ebenso das Programm, das beim
+// Synchronisieren auf Vorrat lädt, und wer Bilder abgeschaltet hat, fehlt
+// ganz. Was daran brauchbar ist, ist der Vergleich zwischen den Beiträgen,
+// und den zeigt die Liste "Beiträge im Reader" darunter bereits.
 export function statsFeedKennzahlen(total) {
-  const zellen = [
+  return [
     {
       label: "Abrufe",
       value: numberFormat.format(Number(total.feed) || 0),
@@ -59,19 +59,6 @@ export function statsFeedKennzahlen(total) {
     },
     abonnentenZelle(total)
   ];
-  // "Angezeigt", nicht "geöffnet" oder "gelesen". Gezählt wird, dass ein
-  // Leseprogramm die Bilder eines Beitrags geladen hat — das kann ebenso das
-  // Programm sein, das beim Synchronisieren auf Vorrat lädt. Wer Bilder
-  // abgeschaltet hat, fehlt ganz. Jede Beschriftung, die eine Absicht
-  // behauptet, ist deshalb falsch; "geschätzt" gehört sichtbar dazu.
-  if (Number(total.feedReads) > 0) {
-    zellen.push({
-      label: "Im Reader angezeigt",
-      value: numberFormat.format(Number(total.feedReads)),
-      hint: "geschätzt"
-    });
-  }
-  return zellen;
 }
 
 export function statsHeadline(cells) {
