@@ -16,12 +16,15 @@
 
     els.statsBody.innerHTML = [
       statsSection("Website", statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
-        statsSparkline(statsSeries(data.series, data.range))
+        statsChart(statsSeries(data.series, data.range))
       ], statsWebsitePanels(data)),
       statsSection("Feed", statsFeedKennzahlen(total), [], statsFeedPanels(data))
     ].join("");
     // The page rows carry chevron icons rendered after innerHTML — inject them.
     if (window.RWIcons) window.RWIcons.inject(els.statsBody);
+    // Dasselbe für den Verlauf: Er entsteht bei jedem Laden neu, seine
+    // Bedienung hängt deshalb an ihm und nicht an der Ansicht darüber.
+    wireStatsChart(els.statsBody);
   }
 
   function statsSection(titel, zellen, extras, panels) {
@@ -45,8 +48,8 @@
         count: page.hits,
         href: statsSeitenUrl(page.path || "/"),
         // Aufgeklappt zeigt die Zeile, welche Quellen auf diese Seite geführt
-        // haben. Der Pfad ist der Schlüssel — anders als bei GoatCounter gibt
-        // es keine interne Seiten-ID mehr, die man mitschleppen müsste.
+        // haben. Der Pfad ist der Schlüssel — eine interne Seiten-ID, die
+        // mitgeschleppt werden müsste, gibt es hier nicht.
         drill: { key: "path", id: page.path }
       }))),
       // Die Gegenrichtung, aus derselben Tabelle: Welche Seiten hat diese
@@ -58,14 +61,16 @@
         href: statsQuellenUrl(ref.host),
         drill: { key: "ref", id: ref.host || "" }
       }))),
-      // Woher gelesen wird. Aufrufe je Land, dieselbe Einheit wie die Listen
-      // daneben. Die importierte Historie kennt keine Länder; für Zeiträume,
-      // die weiter zurückreichen, ergibt die Liste deshalb weniger als die
-      // Aufrufe darüber — der Hinweis sagt das, statt es zu verschweigen.
+      // "Länder", wie "Seiten" und "Quellen" daneben: eine Liste, benannt nach
+      // dem, was in ihr steht. "Woher gelesen wird" war eine Frage, und darunter
+      // stand ein Satz, der die Antwort einschränkte — zwei Zeilen Beiwerk über
+      // sieben Zeilen Liste. Die Einheit ist dieselbe wie in den Listen daneben
+      // (Aufrufe), und dass die importierte Historie keine Länder kennt, sieht
+      // man an den Zahlen selbst, sobald der Zeitraum weit genug zurückreicht.
       ...((data.countries || []).length
-        ? [statsBreakdownPanel("Woher gelesen wird", data.countries.map((row) => ({
+        ? [statsBreakdownPanel("Länder", data.countries.map((row) => ({
             name: row.country || "ohne Land", count: row.hits
-          })), { hinweis: "Aufrufe je Land, nur aus eigener Messung" })]
+          })))]
         : [])
     ];
   }
@@ -85,69 +90,20 @@
             // Der Sammelpfad der Historie ist kein Beitrag und bekommt deshalb
             // auch keinen Öffnen-Link — hinter ihm steckt keine Seite.
             row.path === "/feed.xml"
-              ? { name: "ohne Beitragszuordnung", title: "aus der GoatCounter-Historie", count: row.hits }
+              ? { name: "ohne Beitragszuordnung", title: "aus der importierten Historie", count: row.hits }
               : { name: row.path, title: row.title, count: row.hits, href: statsSeitenUrl(row.path) }
           )))]
         : []),
-      // Woher abgerufen wird. "Abruftage", nicht "Abonnenten": Eine Zeile je
-      // Abrufer und Tag, über den Zeitraum summiert. Als Verhältnis
-      // aussagekräftig, als Zahl nicht — und bei den Diensten ist es das Land
-      // ihres Rechenzentrums, nicht das ihrer Nutzer.
+      // Auch hier nur "Länder". Was die Zahl daneben genau zählt — Abruftage,
+      // und bei den Diensten das Land ihres Rechenzentrums — ist richtig, aber
+      // es ist eine Fußnote und keine Überschrift: Die Reihenfolge stimmt auch
+      // ohne sie, und die Reihenfolge ist, was man hier liest.
       ...((data.feedCountries || []).length
-        ? [statsBreakdownPanel("Woher abgerufen wird", data.feedCountries.map((row) => ({
+        ? [statsBreakdownPanel("Länder", data.feedCountries.map((row) => ({
             name: row.country, count: row.hits
-          })), { hinweis: "Abruftage je Land; bei Diensten das Land ihres Rechenzentrums" })]
+          })))]
         : [])
     ];
-  }
-
-  // Die Abfrage liefert nur Tage mit Treffern. Gezeichnet werden die Punkte
-  // aber gleichmäßig verteilt — ohne Auffüllen läge zwischen dem letzten Tag
-  // vor einer Lücke und dem ersten danach ein einziger Schritt, und zwei Monate
-  // Stillstand sähen aus wie ein Tag. Die Kurve behauptete einen Verlauf, den
-  // es nicht gab. Deshalb bekommt jeder Tag des Zeitraums seinen Punkt, auch
-  // wenn er null ist.
-  //
-  // Lange Zeiträume werden zu Wochen gebündelt statt abgeschnitten. Eine feste
-  // Obergrenze an Punkten hätte den Rest des Zeitraums still verschluckt: Die
-  // gesamte Historie umfasst über 500 Tage und ist mit zwei Klicks im
-  // Datumswähler erreichbar.
-  const STATS_MAX_PUNKTE = 200;
-
-  function statsTage(range) {
-    const tage = [];
-    // Mittags gerechnet, damit die Sommerzeitumstellung keinen Tag verschluckt
-    // oder verdoppelt.
-    const tag = new Date(`${range.start}T12:00:00`);
-    const ende = new Date(`${range.end}T12:00:00`);
-    if (Number.isNaN(tag.getTime()) || Number.isNaN(ende.getTime())) return null;
-    while (tag <= ende) {
-      tage.push(`${tag.getFullYear()}-${String(tag.getMonth() + 1).padStart(2, "0")}-${String(tag.getDate()).padStart(2, "0")}`);
-      tag.setDate(tag.getDate() + 1);
-      if (tage.length > 4000) return null; // absurder Zeitraum, lieber ungefüllt
-    }
-    return tage;
-  }
-
-  function statsSeries(rows, range) {
-    const werte = new Map((rows || []).map((row) => [row.day, Number(row.hits) || 0]));
-    const roh = () => [...werte.values()].map((daily) => ({ daily }));
-    if (!range?.start || !range?.end) return roh();
-
-    const tage = statsTage(range);
-    if (!tage) return roh();
-
-    const punkte = tage.map((tag) => werte.get(tag) || 0);
-    if (punkte.length <= STATS_MAX_PUNKTE) return punkte.map((daily) => ({ daily }));
-
-    // Zusammenfassen statt weglassen: Jeder Eimer trägt die Summe seiner Tage,
-    // die Kurve behält damit ihre Form und ihr Ende.
-    const proEimer = Math.ceil(punkte.length / STATS_MAX_PUNKTE);
-    const gebuendelt = [];
-    for (let i = 0; i < punkte.length; i += proEimer) {
-      gebuendelt.push({ daily: punkte.slice(i, i + proEimer).reduce((summe, wert) => summe + wert, 0) });
-    }
-    return gebuendelt;
   }
 
   // "unbekannt" ist hier regelmäßig die größte Zeile. Was dahintersteckt, stand
@@ -162,6 +118,10 @@
   //
   // Die Abrufe stehen als Unterzeile weiter da; sie waren die alte Zahl und
   // sind der Grund, warum ein Programm überhaupt in der Liste steht.
+  //
+  // Dass die Zahl geschätzt ist, steht im Titel statt in einer Zeile darunter:
+  // "Feed-Leser (geschätzt)" sagt dasselbe wie "geschätzte Abonnenten je
+  // Programm" und kostet keine eigene Zeile.
   function statsFeedPanel(readers, totalFeed) {
     const rows = readers.map((reader) => ({
       name: reader.reader,
@@ -178,5 +138,5 @@
       drill: reader.reader === "unbekannt" ? { key: "reader", id: "unbekannt" } : null
     }));
     if (!rows.length && totalFeed) rows.push({ name: "ohne erkennbaren Leser", count: totalFeed });
-    return statsExpandablePanel("Feed-Leser", rows, "geschätzte Abonnenten je Programm");
+    return statsExpandablePanel("Feed-Leser (geschätzt)", rows);
   }

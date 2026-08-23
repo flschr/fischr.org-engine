@@ -240,27 +240,12 @@ function renderFontAwesomeIcon(name = "") {
   return `<svg class="social-icon" aria-hidden="true" viewBox="0 0 ${width} ${height}" focusable="false">${paths.map((d) => `<path fill="currentColor" d="${d}"></path>`).join("")}</svg>`;
 }
 
-function getGoatCounterCountUrl(endpoint = "", params = {}) {
-  if (!endpoint) return "";
-
-  const url = new URL(endpoint);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  return url.toString();
-}
-
-// Der Zählpixel im Feed, seit jeher vorhanden — bisher zeigte er auf
-// GoatCounter, also auf dieselbe Domain, die von Sperrlisten geführt wird und
-// mit der Abschaltung verschwinden würde. Er zeigt jetzt auf die eigene Domain.
+// Der Zählpixel im Feed, seit jeher vorhanden — er zeigt auf die eigene Domain.
 //
-// Anders als früher trägt er den echten Beitragspfad statt eines Ereignisnamens.
-// Damit sagt die Zahl etwas pro Beitrag aus, und genau das ist ihr Wert: Wie oft
-// ein Feed absolut geöffnet wird, hängt an der Bildeinstellung fremder Software;
-// welcher Beitrag im Vergleich zu den anderen öfter erscheint, nicht.
+// Er trägt den echten Beitragspfad statt eines Ereignisnamens. Damit sagt die
+// Zahl etwas pro Beitrag aus, und genau das ist ihr Wert: Wie oft ein Feed
+// absolut geöffnet wird, hängt an der Bildeinstellung fremder Software; welcher
+// Beitrag im Vergleich zu den anderen öfter erscheint, nicht.
 function buildFeedReadTrackingPixel(post = {}, endpoint = "") {
   if (!endpoint || !post.url) return "";
 

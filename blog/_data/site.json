@@ -14,9 +14,9 @@
   "locale": "en_US",
   "themeColor": "#fffff8",
   "analytics": {
-    "goatcounter": {
-      "endpoint": "",
-      "script": ""
+    "own": {
+      "endpoint": "/api/hit",
+      "script": "/assets/js/count.js"
     }
   },
   "social": {

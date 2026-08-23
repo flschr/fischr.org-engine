@@ -68,10 +68,10 @@ test("Cloudflare WARP gilt nicht als Rechenzentrum", () => {
 
 // --- Gemeinsame Einstellungen ------------------------------------------------
 //
-// Der Schalter "Statistik an/aus" muss für beide Endpunkte gelten. Läge die
-// Prüfung nur im alten GoatCounter-Proxy, bliebe die eigene Auswertung offen,
-// und das Abschalten hielte nur im Browser.
-test("beide Statistik-Endpunkte lesen denselben Schalter", async () => {
+// Der Schalter "Statistik an/aus" muss serverseitig gelten. Läge die Prüfung
+// nur im Browser, bliebe der Endpunkt offen und das Abschalten hielte nur den
+// Tab versteckt.
+test("der Statistik-Endpunkt liest den gemeinsamen Schalter", async () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const lies = (p) => fs.readFileSync(path.join(__dirname, "..", p), "utf8");
@@ -79,7 +79,7 @@ test("beide Statistik-Endpunkte lesen denselben Schalter", async () => {
   const gemeinsam = lies("functions/_admin-settings.js");
   assert.match(gemeinsam, /export async function readStatsConfig/);
 
-  for (const datei of ["functions/api/admin/stats.js", "functions/api/admin/analytics.js"]) {
+  for (const datei of ["functions/api/admin/analytics.js"]) {
     const quelle = lies(datei);
     assert.match(quelle, /_admin-settings\.js/, `${datei} muss das gemeinsame Modul verwenden`);
     assert.doesNotMatch(quelle, /async function readStatsConfig/, `${datei} darf keine eigene Kopie führen`);

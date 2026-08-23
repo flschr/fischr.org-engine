@@ -1,20 +1,13 @@
 // Liest die eigenen Zahlen für das Admin-Dashboard.
 //
-// Gegenstück zu stats.js, das dieselben Panels aus GoatCounter holt. Beide
-// existieren nebeneinander, solange parallel gezählt wird.
+// Die einzige Quelle des Dashboards, seit die frühere, fremde Zählung
+// abgeschaltet ist. Alles kommt aus der eigenen D1-Datenbank.
 //
-// Zwei Dinge, die diese Zahlen von den bisherigen unterscheiden und die das
-// Dashboard deshalb sichtbar machen muss:
-//
-//   - Import und eigene Messung gelten als eine Quelle. Die Antwort trennt sie
-//     nicht, und das Dashboard zeigt nirgends, woher eine Zahl stammt. Intern
-//     wird ein Tag trotzdem nur aus einer Quelle gelesen, sonst zählte der
-//     Parallelbetrieb dieselben Tage doppelt.
-//   - Aufrufe werden als eine Zahl geliefert, egal ob importiert oder selbst
-//     gemessen. Die Herkunft auseinanderzuhalten war ausdrücklich nicht
-//     gewünscht: Wer nur GoatCounter sehen will, geht zu GoatCounter. Ein Tag
-//     wird trotzdem nur aus einer Quelle gelesen, sonst zählte der
-//     Parallelbetrieb doppelt.
+// Import und eigene Messung gelten dabei als eine Quelle. Die Antwort trennt sie
+// nicht, und das Dashboard zeigt nirgends, woher eine Zahl stammt — die
+// importierte Historie ist einfach die Vorgeschichte der eigenen Reihe. Intern
+// wird ein Tag trotzdem nur aus einer Quelle gelesen, sonst zählten die Tage des
+// damaligen Parallelbetriebs doppelt.
 
 import { berlinDay, classifyFeed, feedReader } from "../../_analytics.js";
 import { jsonResponse, readSession } from "../../_admin-auth.js";
@@ -24,11 +17,9 @@ const LIMIT = 25;
 
 // Ein Tag, eine Quelle.
 //
-// Solange beide Zählungen parallel laufen, kann derselbe Tag sowohl importierte
-// als auch selbst gemessene Zeilen tragen — spätestens, wenn ein frischer
-// GoatCounter-Export nachgezogen wird. Ohne diese Bedingung summierten die
-// Abfragen beides auf und zeigten für genau die Tage, an denen verglichen
-// werden soll, ungefähr doppelte Zahlen.
+// Aus den Tagen des Parallelbetriebs trägt derselbe Tag sowohl importierte als
+// auch selbst gemessene Zeilen. Ohne diese Bedingung summierten die Abfragen
+// beides auf und zeigten für genau diese Tage ungefähr doppelte Zahlen.
 //
 // Die eigene Messung hat Vorrang: Ein Tag, an dem selbst gezählt wurde, wird
 // ausschließlich aus 'live' gelesen. Die Prüfung läuft pro Tag und nicht über
@@ -80,7 +71,7 @@ export async function onRequest(context) {
   if (!session) return jsonResponse({ error: "unauthorized" }, { status: 401 });
   if (!env.ANALYTICS) return jsonResponse({ error: "Die Analytics-Datenbank ist nicht angebunden." }, { status: 503 });
 
-  // Derselbe Schalter wie beim GoatCounter-Proxy. Ohne diese Prüfung würde das
+  // Der Schalter aus den Einstellungen. Ohne diese Prüfung würde das
   // Abschalten der Statistik nur den Tab im Browser ausblenden, während der
   // Endpunkt weiter Zahlen herausgibt — der Schalter verspräche mehr, als er
   // hält.
@@ -228,9 +219,9 @@ export async function onRequest(context) {
        WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}`,
       start, end
     ),
-    // Getrennt geführt: GoatCounter zählte das Lesen einzelner Beiträge im
-    // Feed, die eigene Zählung zählt Abrufe des Feeds. Zusammengeworfen ergäbe
-    // das eine Zeitreihe, die an der Umstellung springt.
+    // Getrennt geführt: Die frühere Zählung zählte das Lesen einzelner Beiträge
+    // im Feed, die eigene zählt Abrufe des Feeds. Zusammengeworfen ergäbe das
+    // eine Zeitreihe, die an der Umstellung springt.
     one(
       `SELECT COALESCE(SUM(hits), 0) AS hits FROM daily_page
        WHERE kind = 'feedread' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feedread")}`,

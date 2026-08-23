@@ -15,25 +15,36 @@
       const button = event.target.closest(".stats-range-btn");
       if (!button) return;
       const preset = button.dataset.period;
-      if (!statsIsPreset(preset) || preset === state.statsPeriod.preset) return;
-      state.statsPeriod = { ...state.statsPeriod, preset };
+      if (!statsIsPreset(preset)) return;
+      // "Zeitraum" wählt nicht aus, sondern fragt: Der Wähler klappt auf, die
+      // Ansicht dahinter bleibt stehen, bis zwei Tage feststehen.
+      if (preset === "custom") return toggleStatsPicker();
+      closeStatsPicker();
+      if (preset === state.statsPeriod.preset) return;
+      state.statsPeriod = { preset, from: "", to: "" };
       setStatsRangeButtons();
-      // Ein frisch gewählter freier Zeitraum hat noch keine Grenzen; loadStats
-      // sagt das dann selbst, statt eine leere Anfrage zu schicken.
       loadStats();
     });
-    // Zwei Felder, ein Zeitraum: erst wenn beide stehen, wird geladen.
-    const applyCustomRange = () => {
-      state.statsPeriod = {
-        preset: "custom",
-        from: els.statsFrom?.value || "",
-        to: els.statsTo?.value || ""
-      };
-      setStatsRangeButtons();
-      loadStats();
-    };
-    els.statsFrom?.addEventListener("change", applyCustomRange);
-    els.statsTo?.addEventListener("change", applyCustomRange);
+    els.statsCustomApply?.addEventListener("click", applyStatsPicker);
+    // Zwei Felder, ein Zeitraum: Die Eingabetaste im Feld meint dasselbe wie der
+    // Knopf darunter — ein Datumsfeld, das auf Enter nichts tut, fühlt sich
+    // kaputt an.
+    [els.statsFrom, els.statsTo].forEach((input) => {
+      input?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") applyStatsPicker();
+      });
+    });
+    // Ein Blatt, das über der Ansicht liegt, muss auf zwei Wege verschwinden:
+    // Escape und ein Klick daneben. Sonst steht es noch da, wenn man längst
+    // etwas anderes tut.
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeStatsPicker({ focusToggle: true });
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (els.statsCustom?.hidden) return;
+      if (event.target.closest("#statsCustom, #statsCustomToggle")) return;
+      closeStatsPicker();
+    });
     els.statsRefresh?.addEventListener("click", () => loadStats(true));
     // Delegated: rows are re-rendered on every load, the container persists.
     els.statsBody?.addEventListener("click", toggleStatsRowDrill);
@@ -50,13 +61,10 @@
     els.socialConfigSave?.addEventListener("click", saveSocialConfig);
     els.socialConfigReset?.addEventListener("click", resetSocialConfig);
     els.socialConfigAdd?.addEventListener("click", addSocialCategory);
-    [els.cfgGotosocialInstance, els.cfgMaxPostsPerRun, els.cfgMaxAgeDays, els.cfgStartAfter, els.cfgStatsUrl].forEach((input) => {
+    [els.cfgGotosocialInstance, els.cfgMaxPostsPerRun, els.cfgMaxAgeDays, els.cfgStartAfter].forEach((input) => {
       input?.addEventListener("input", updateSocialConfigDirty);
     });
-    els.cfgStatsEnabled?.addEventListener("change", () => {
-      updateStatsFieldsState();
-      updateSocialConfigDirty();
-    });
+    els.cfgStatsEnabled?.addEventListener("change", updateSocialConfigDirty);
     els.cfgDefaultCategory?.addEventListener("change", () => {
       // Mirror into the live draft so re-renders (add/remove rule) keep the pick.
       if (state.socialConfigDraft?.social) state.socialConfigDraft.social.defaultTemplate = els.cfgDefaultCategory.value;

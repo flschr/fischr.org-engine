@@ -36,8 +36,7 @@ test("collection emits only the GoToSocial endpoint", () => {
     maxAgeDays: "14",
     startAfter: "",
     defaultTemplate: "post",
-    statsEnabled: true,
-    statsUrl: ""
+    statsEnabled: true
   }, helpers);
 
   assert.equal(config.social.gotosocialInstance, "https://social.example.org");

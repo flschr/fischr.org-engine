@@ -1,0 +1,94 @@
+/* ---- Stats: Bedienung ---------------------------------------------------
+   Der Verlauf und der Zeitraumwähler. Beides sind Bedienelemente über den
+   Zahlen; die Listen und Kennzahlen daneben stehen in 05-stats.css. */
+
+/* Der freie Zeitraum klappt unter der Auswahl auf, statt dauerhaft zwei Felder
+   in die Leiste zu stellen. Rechts ausgerichtet an der Auswahl, weil die Leiste
+   selbst am rechten Rand der Ansicht sitzt. */
+.stats-range-wrap { position: relative; display: inline-flex; }
+.stats-picker {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 15rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.stats-picker-field { display: grid; gap: 0.25rem; color: var(--ink-soft); font-size: 0.78rem; font-weight: 620; }
+.stats-picker-field input {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.stats-picker-hint { margin: 0; color: var(--red-ink); font-size: 0.78rem; }
+.stats-picker-apply { justify-self: stretch; }
+
+/* Der Verlauf: Kurve, benannte Spitze, Zeitachse. Die Beschriftung steht über
+   der Kurve und nicht in ihr — eine Zahl im Diagramm wandert mit der Kurve und
+   liegt mal auf ihr, mal über dem Rand. */
+.stats-chart { position: relative; display: grid; gap: 0.35rem; margin: 0; padding-top: 1.5rem; }
+.stats-chart:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: var(--radius-sm); }
+/* Waagerecht am abgelesenen Punkt, senkrecht auf fester Höhe: So steht die Zahl
+   über ihrem Punkt, ohne mit der Kurve auf und ab zu wandern. Die Klammer hält
+   sie an den Rändern in der Fläche — dort ist sie dann nicht mehr mittig über
+   dem Punkt, aber noch ganz zu lesen. */
+.stats-chart-read {
+  position: absolute;
+  top: 0;
+  left: clamp(5rem, var(--x, 50%), calc(100% - 5rem));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  white-space: nowrap;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+}
+.stats-chart-read-kind { color: var(--ink-faint); }
+.stats-chart-read-day { color: var(--ink-soft); font-weight: 620; }
+.stats-chart-read-value { color: var(--ink); font-weight: 660; font-variant-numeric: tabular-nums; }
+.stats-chart-plot { position: relative; touch-action: pan-y; }
+.stats-spark { display: block; width: 100%; height: 3rem; overflow: visible; }
+.stats-spark-fill { fill: var(--accent-weak); }
+.stats-spark-line { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+/* Die Linie steht auf dem Punkt, der gerade abgelesen wird — in Ruhe auf der
+   Spitze, unter dem Zeiger auf dessen Punkt. */
+.stats-chart-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--x, 50%);
+  width: 0;
+  border-left: 1px dashed var(--ink-faint);
+  pointer-events: none;
+}
+.stats-chart-marker::after {
+  content: "";
+  position: absolute;
+  top: var(--y, 0%);
+  left: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.25rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.stats-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}

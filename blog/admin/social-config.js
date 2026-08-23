@@ -26,7 +26,7 @@
 
     if (!draft.stats || typeof draft.stats !== "object") draft.stats = {};
     draft.stats.enabled = draft.stats.enabled !== false;
-    draft.stats.url = typeof draft.stats.url === "string" ? draft.stats.url : "";
+    delete draft.stats.url;
     return draft;
   }
 
@@ -50,8 +50,7 @@
 
     draft.stats ||= {};
     draft.stats.enabled = fields.statsEnabled;
-    if (fields.statsUrl) draft.stats.url = fields.statsUrl;
-    else delete draft.stats.url;
+    delete draft.stats.url;
     return draft;
   }
 

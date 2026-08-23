@@ -1,10 +1,10 @@
 // Nimmt den Zähl-Beacon der öffentlichen Seiten entgegen.
 //
 // Der Pfad heißt bewusst unauffällig. Blocklisten greifen Muster wie /analytics
-// oder /track; genau daran scheitert die bisherige Zählung über GoatCounter,
-// dessen Domain auf den einschlägigen Listen steht. Ein First-Party-Endpunkt auf
-// derselben Domain ist der einzige Weg, die Leser wieder mitzuzählen, die
-// heute unsichtbar sind.
+// oder /track; genau daran ist die frühere Zählung über einen fremden Dienst
+// gescheitert, dessen Domain auf den einschlägigen Listen steht. Ein
+// First-Party-Endpunkt auf derselben Domain ist der einzige Weg, diese Leser
+// überhaupt mitzuzählen.
 //
 // Antwortet immer 204 und niemals mit einem Fehler, den der Browser bemerkt:
 // Eine kaputte Statistik darf keine Seite stören. Fehlt die Datenbank-Anbindung,

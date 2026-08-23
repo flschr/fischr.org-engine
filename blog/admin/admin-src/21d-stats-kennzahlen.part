@@ -6,9 +6,10 @@
   // welche Beschriftung keine Absicht behaupten darf, die nicht gemessen wurde.
 
   // Import und eigene Messung sind eine Quelle. Keine Aufteilung, kein Hinweis,
-  // woher eine Zahl stammt — wer nur GoatCounter sehen will, geht zu
-  // GoatCounter. Ein Tag wird intern trotzdem nur aus einer Quelle gelesen,
-  // sonst zählte der Parallelbetrieb doppelt; sichtbar ist davon nichts.
+  // woher eine Zahl stammt — die frühere Zählung ist abgeschaltet, ihre Zahlen
+  // sind jetzt einfach die Vorgeschichte. Ein Tag wird intern trotzdem nur aus
+  // einer Quelle gelesen, sonst zählten die Tage des Parallelbetriebs doppelt;
+  // sichtbar ist davon nichts.
   //
   // Besucher gibt es erst ab der eigenen Messung, Aufrufe schon davor. Die Zahl
   // steht deshalb für sich und wird nirgends zu den Aufrufen ins Verhältnis

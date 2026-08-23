@@ -33,8 +33,8 @@
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  // GoatCounter erwartet stundengerundete Zeitstempel — deshalb kein
-  // 23:59:59-Ende, sondern die letzte volle Stunde des Schlusstages.
+  // Die letzte volle Stunde des Schlusstages statt 23:59:59. Der Endpunkt liest
+  // ohnehin nur den Tag heraus, aber der Zeitstempel bleibt so lesbar.
   function statsEndOfDay(date) {
     const end = new Date(date);
     end.setHours(23, 0, 0, 0);

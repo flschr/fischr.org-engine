@@ -2,13 +2,10 @@
 //
 // Der Schalter "Statistik an/aus" steht in automation/social-config.json auf
 // dem veröffentlichten Branch und wird mit dem GitHub-Token der Sitzung
-// gelesen. Er gilt für beide Endpunkte: den alten GoatCounter-Proxy und die
-// eigene Auswertung. Wäre die Prüfung nur in einem von beiden, hielte der
-// Schalter nur an einer Stelle, was er verspricht.
-//
-// Gemeinsam statt kopiert, weil der GoatCounter-Proxy nach dem Parallelbetrieb
-// verschwindet: Eine Kopie in beiden Dateien würde beim Löschen des einen
-// stillschweigend zur einzigen Wahrheit, ohne dass jemand sie geprüft hat.
+// gelesen. Er gilt für die Auswertung in /api/admin/analytics.js. Eigene Datei,
+// weil die Einstellung aus GitHub zu holen eine andere Aufgabe ist als die
+// Zahlen aus D1 zu rechnen — und weil hier der einzige Ort bleiben soll, an dem
+// der Schalter ausgelegt wird.
 
 import { adminRepository, githubHeaders } from "./_admin-auth.js";
 
@@ -29,23 +26,13 @@ export async function readStatsConfig(env, githubToken) {
     const json = JSON.parse(new TextDecoder().decode(bytes));
     const stats = json && typeof json === "object" ? json.stats : null;
     if (!stats || typeof stats !== "object") return {};
-    const rawUrl = typeof stats.url === "string" ? stats.url.trim() : "";
     return {
-      enabled: stats.enabled !== false, // default on when the key is absent
-      url: isHttpsUrl(rawUrl) ? rawUrl : ""
+      enabled: stats.enabled !== false // default on when the key is absent
     };
   } catch {
     // Jede Störung führt zu {}: Das Dashboard fällt dann auf die Vorgaben aus
     // der Umgebung zurück, statt wegen einer unerreichbaren Konfiguration
     // gar nichts mehr zu zeigen.
     return {};
-  }
-}
-
-export function isHttpsUrl(value) {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
   }
 }

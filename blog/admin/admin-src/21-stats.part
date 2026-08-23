@@ -4,8 +4,8 @@
   // ausschließlich mit /api/admin/analytics, das hinter der Admin-Sitzung sitzt
   // und die eigene Datenbank abfragt.
   //
-  // Vor der Umstellung gemessene Zahlen stammen aus dem GoatCounter-Import und
-  // kennen nur Aufrufe. Wo Besucher fehlen, steht deshalb ein Strich und keine
+  // Vor der Umstellung gemessene Zahlen stammen aus dem Import der früheren,
+  // fremden Zählung und kennen nur Aufrufe. Wo Besucher fehlen, steht deshalb ein Strich und keine
   // Null — eine Null würde behaupten, es sei niemand da gewesen.
 
   const numberFormat = new Intl.NumberFormat("en-US");
@@ -25,6 +25,7 @@
   async function openStats() {
     // Always land on the current week, regardless of the last range picked.
     state.statsPeriod = { preset: "week", from: "", to: "" };
+    closeStatsPicker();
     showView("stats");
     replaceNav();
     setStatsRangeButtons();
@@ -37,15 +38,12 @@
     els.statsRange.querySelectorAll(".stats-range-btn").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.period === active);
     });
-    if (els.statsCustom) els.statsCustom.hidden = active !== "custom";
-    if (els.statsFrom) els.statsFrom.value = state.statsPeriod.from || "";
-    if (els.statsTo) els.statsTo.value = state.statsPeriod.to || "";
     if (els.statsRangeLabel) els.statsRangeLabel.textContent = statsPeriodLabel(state.statsPeriod);
   }
 
   // Numbers are fetched live, but cached in memory per range for a few minutes
   // so flipping between ranges (or leaving and reopening the tab) is instant and
-  // doesn't hammer the GoatCounter API. The refresh button forces a live reload.
+  // doesn't re-query the database. The refresh button forces a live reload.
   const STATS_CACHE_TTL = 5 * 60 * 1000;
 
   function sharedStatsRequest(period, force = false) {
@@ -129,7 +127,7 @@
   // ansehen will, meint etwas anderes als wer ihre Quellen sehen will.
   //
   // Zeilen ohne `drill` bleiben unaufklappbar.
-  function statsExpandablePanel(title, rows, hinweis) {
+  function statsExpandablePanel(title, rows) {
     const items = (rows || []).filter(statsZeileSichtbar);
     const max = items.reduce((peak, row) => Math.max(peak, Number(row.count) || 0), 0);
     const body = items.length
@@ -155,5 +153,5 @@
           ].join("");
         })
       : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
-    return statsPanelRahmen(title, body, hinweis);
+    return statsPanelRahmen(title, body);
   }

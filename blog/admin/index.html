@@ -305,23 +305,33 @@ eleventyExcludeFromCollections: true
             <ol id="queueList" class="entry-list"></ol>
           </section>
 
-          <!-- Stats view: a compact read-only GoatCounter dashboard. All data
-               comes from /api/admin/stats (server-side, session-gated) — the
-               admin-level API token never reaches the browser. -->
+          <!-- Stats view: the site's own numbers. All data comes from
+               /api/admin/analytics (server-side, session-gated) — it reads the
+               D1 database, no third-party service is involved. -->
           <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
             <div class="library-head view-head">
               <h1 class="view-title">Statistics</h1>
               <div class="library-tools">
-                <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
-                  <button type="button" class="stats-range-btn is-active" data-period="week">Woche</button>
-                  <button type="button" class="stats-range-btn" data-period="month">Monat</button>
-                  <button type="button" class="stats-range-btn" data-period="quarter">Quartal</button>
-                  <button type="button" class="stats-range-btn" data-period="year">Jahr</button>
-                  <button type="button" class="stats-range-btn" data-period="custom">Frei</button>
-                </div>
-                <div id="statsCustom" class="stats-custom" hidden>
-                  <label class="stats-custom-field"><span>Von</span><input id="statsFrom" type="date"></label>
-                  <label class="stats-custom-field"><span>Bis</span><input id="statsTo" type="date"></label>
+                <!-- Die Presets und der freie Zeitraum sind eine Auswahl, keine
+                     zwei: "Zeitraum" ist der fünfte Knopf und klappt die beiden
+                     Datumsfelder darunter auf, statt sie dauerhaft in die Leiste
+                     zu stellen. Sie standen dort auch dann, wenn niemand sie
+                     brauchte, und machten die Zeile so lang, dass die Auswahl
+                     darüber nicht mehr als eine Auswahl zu lesen war. -->
+                <div class="stats-range-wrap">
+                  <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
+                    <button type="button" class="stats-range-btn is-active" data-period="week">Woche</button>
+                    <button type="button" class="stats-range-btn" data-period="month">Monat</button>
+                    <button type="button" class="stats-range-btn" data-period="quarter">Quartal</button>
+                    <button type="button" class="stats-range-btn" data-period="year">Jahr</button>
+                    <button id="statsCustomToggle" type="button" class="stats-range-btn" data-period="custom" aria-expanded="false" aria-controls="statsCustom">Zeitraum</button>
+                  </div>
+                  <div id="statsCustom" class="stats-picker" role="group" aria-label="Freier Zeitraum" hidden>
+                    <label class="stats-picker-field"><span>Von</span><input id="statsFrom" type="date"></label>
+                    <label class="stats-picker-field"><span>Bis</span><input id="statsTo" type="date"></label>
+                    <p id="statsCustomHint" class="stats-picker-hint" hidden></p>
+                    <button id="statsCustomApply" type="button" class="primary-action stats-picker-apply">Anzeigen</button>
+                  </div>
                 </div>
                 <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>

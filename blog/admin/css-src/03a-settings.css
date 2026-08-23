@@ -35,12 +35,8 @@
 .settings-field { display: grid; gap: 0.3rem; min-width: 0; }
 .settings-field > span { font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
 .settings-field small { font-size: 0.74rem; color: var(--ink-faint); line-height: 1.4; }
-.settings-field-indent { margin-left: 1.65rem; }
 /* Stats settings: dim the URL/token rows when the tab is switched off. */
 .settings-fields.is-disabled { opacity: 0.5; pointer-events: none; }
-.stats-token-status { font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
-.stats-token-status[data-tone="ok"] { color: var(--accent); }
-.stats-token-status[data-tone="pending"] { color: var(--amber); }
 
 /* Advanced = a card that's also a collapsible <details>. */
 .settings-advanced { padding-bottom: 0.95rem; }

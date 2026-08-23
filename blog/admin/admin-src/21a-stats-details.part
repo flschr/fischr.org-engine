@@ -140,7 +140,7 @@
   // zweite Anfrage nötig wäre.
   const STATS_ZEILEN = 10;
 
-  function statsPanelRahmen(title, zeilen, hinweis) {
+  function statsPanelRahmen(title, zeilen) {
     const versteckt = Math.max(0, zeilen.length - STATS_ZEILEN);
     const liste = zeilen.map((zeile, index) =>
       index < STATS_ZEILEN ? zeile : zeile.replace("<li ", `<li hidden data-stats-mehr="1" `)
@@ -148,14 +148,15 @@
     const mehr = versteckt
       ? `<button type="button" class="stats-more">${versteckt} weitere anzeigen</button>`
       : "";
-    // Eine Zeile Erklärung unter dem Titel, wo die Überschrift allein eine Frage
-    // offenlässt: was gezählt wird, oder was die Liste gerade nicht abdeckt.
-    const erklaerung = hinweis ? `<p class="stats-panel-hint">${escapeHtml(hinweis)}</p>` : "";
-    return `<section class="stats-panel"><h2 class="stats-panel-title">${escapeHtml(title)}</h2>${erklaerung}` +
+    // Kein Platz für eine Zeile Erklärung unter dem Titel: Jede Liste hier
+    // heißt nach dem, was in ihr steht, und was die Zahlen genau zählen, steht
+    // in der Dokumentation und nicht über sieben Zeilen Liste. Wo eine Liste
+    // ohne Satz nicht auskam, war der Titel das Problem.
+    return `<section class="stats-panel"><h2 class="stats-panel-title">${escapeHtml(title)}</h2>` +
       `<ol class="stats-rows">${liste}</ol>${mehr}</section>`;
   }
 
-  function statsBreakdownPanel(title, rows, options = {}) {
+  function statsBreakdownPanel(title, rows) {
     const items = (rows || []).filter(statsZeileSichtbar);
     const max = items.reduce((peak, row) => Math.max(peak, Number(row.count) || 0), 0);
     const body = items.length
@@ -165,33 +166,5 @@
             `${teile.bar}${teile.text}${teile.value}${teile.link}</li>`;
         })
       : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
-    return statsPanelRahmen(title, body, options.hinweis);
-  }
-
-  // A compact inline sparkline of the daily visit series.
-  function statsSparkline(series) {
-    const points = series
-      .map((entry) => {
-        if (typeof entry.daily === "number") return entry.daily;
-        if (Array.isArray(entry.hourly)) return entry.hourly.reduce((sum, value) => sum + (value || 0), 0);
-        return 0;
-      });
-    if (points.length < 2) return "";
-
-    const max = Math.max(1, ...points);
-    const width = 100;
-    const height = 28;
-    const step = width / (points.length - 1);
-    const coords = points.map((value, index) => {
-      const x = index * step;
-      const y = height - (value / max) * (height - 2) - 1;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    });
-    const area = `0,${height} ${coords.join(" ")} ${width},${height}`;
-    return [
-      `<svg class="stats-spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">`,
-      `<polygon class="stats-spark-fill" points="${area}" />`,
-      `<polyline class="stats-spark-line" points="${coords.join(" ")}" />`,
-      `</svg>`
-    ].join("");
+    return statsPanelRahmen(title, body);
   }

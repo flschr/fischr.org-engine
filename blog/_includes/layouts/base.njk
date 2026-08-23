@@ -166,15 +166,7 @@
       </svg>
     </a>
     <script type="module" src="{{ '/assets/js/page-start-link.js' | assetUrl }}"></script>
-    {% if env.environment == "production" and site.analytics.goatcounter %}
-    <script>
-      window.goatcounter = {
-        no_onload: navigator.doNotTrack === "1" || window.doNotTrack === "1"
-      };
-    </script>
-    <script type="module" data-goatcounter="{{ site.analytics.goatcounter.endpoint }}" src="{{ site.analytics.goatcounter.script | assetUrl }}"></script>
-    {% endif %}
-    {# Eigene Zählung, vorerst parallel zu GoatCounter — siehe count.js. #}
+    {# Eigene Zählung — siehe count.js. #}
     {% if env.environment == "production" and site.analytics.own %}
     <script type="module" data-count-endpoint="{{ site.analytics.own.endpoint }}" src="{{ site.analytics.own.script | assetUrl }}"></script>
     {% endif %}

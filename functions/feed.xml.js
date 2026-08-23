@@ -5,10 +5,10 @@
 // beim Ausliefern die einzige Möglichkeit — und anders als bei Webseiten ist der
 // "Bot" hier genau das, was gemessen werden soll.
 //
-// Die Zählung nach GoatCounter bleibt vorerst stehen, damit im Parallelbetrieb
-// beide Reihen entstehen. Sie hing bisher an einem Token und lief praktisch nie:
-// in sechzehn Monaten fünf aufgezeichnete Abrufe. Die eigene Zählung braucht
-// keinen Token und keinen fremden Dienst.
+// Gezählt wird nur noch in die eigene Datenbank. Der frühere Weg über einen
+// fremden Dienst hing an einem Token und lief praktisch nie: in sechzehn Monaten
+// fünf aufgezeichnete Abrufe. Die eigene Zählung braucht weder Token noch
+// fremden Dienst.
 
 import {
   berlinDay,
@@ -22,8 +22,6 @@ import {
   visitorHash
 } from "./_analytics.js";
 
-const GOATCOUNTER_COUNT_API_URL = "https://stats.mysite.example/api/v0/count";
-const FEED_FETCH_EVENT_PATH = "feed-fetch";
 const FEED_PATH = "/feed.xml";
 
 export async function onRequest(context) {
@@ -35,17 +33,12 @@ export async function onRequest(context) {
   // ETag und bekommen "nichts Neues" zurück — das ist ein Abruf wie jeder
   // andere, nur ohne Nutzlast. Nur response.ok zu zählen hieße, das stündliche
   // Nachsehen zu übersehen und bloß den ersten Abruf nach einem neuen Beitrag
-  // mitzunehmen. Genau daran ist die alte Zählung über GoatCounter gescheitert:
-  // fünf aufgezeichnete Ereignisse in sechzehn Monaten, bei gesetztem Token.
+  // mitzunehmen. Genau daran ist die alte Zählung über den fremden Dienst
+  // gescheitert: fünf Ereignisse in sechzehn Monaten, bei gesetztem Token.
   if (context.request.method === "GET" && (response.ok || response.status === 304)) {
     context.waitUntil(
       countOwn(context).catch((error) => {
         console.error("Eigene Feed-Zählung fehlgeschlagen:", error);
-      })
-    );
-    context.waitUntil(
-      countFeedFetch(context).catch((error) => {
-        console.error("Failed to track feed fetch:", error);
       })
     );
   }
@@ -97,32 +90,5 @@ async function countOwn({ env, request }) {
   // Der größte Posten der Leserliste hieß bislang "unbekannt" und blieb es.
   if (reader.reader === "unbekannt") {
     await recordFeedAgent(env.ANALYTICS, day, userAgent);
-  }
-}
-
-async function countFeedFetch({ env }) {
-  const token = env.GOATCOUNTER_API_TOKEN;
-  if (!token) return;
-
-  const response = await fetch(env.GOATCOUNTER_COUNT_API_URL || GOATCOUNTER_COUNT_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      no_sessions: true,
-      hits: [
-        {
-          path: FEED_FETCH_EVENT_PATH,
-          title: "Feed: Abruf",
-          event: true
-        }
-      ]
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`GoatCounter count API returned ${response.status}`);
   }
 }

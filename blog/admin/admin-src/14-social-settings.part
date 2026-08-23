@@ -68,38 +68,9 @@
     els.cfgMaxAgeDays.value = draft.maxAgeDays ?? "";
     els.cfgStartAfter.value = draft.startAfter ? dateInputValueFromIso(draft.startAfter) : "";
     if (els.cfgStatsEnabled) els.cfgStatsEnabled.checked = draft.stats?.enabled !== false;
-    if (els.cfgStatsUrl) els.cfgStatsUrl.value = draft.stats?.url || "";
-    updateStatsFieldsState();
-    refreshStatsTokenStatus();
     renderSocialCategoryCards();
     refreshDefaultCategoryOptions();
     updateSocialConfigDirty();
-  }
-
-  // Grey out the GoatCounter URL/token when the Stats tab is switched off.
-  function updateStatsFieldsState() {
-    if (!els.cfgStatsFields) return;
-    const on = els.cfgStatsEnabled?.checked !== false;
-    els.cfgStatsFields.classList.toggle("is-disabled", !on);
-    if (els.cfgStatsUrl) els.cfgStatsUrl.disabled = !on;
-  }
-
-  // Ask the server (cheap probe) whether the read-only token secret is set.
-  async function refreshStatsTokenStatus() {
-    const el = els.cfgStatsTokenStatus;
-    if (!el) return;
-    el.textContent = "checking …";
-    el.dataset.tone = "";
-    try {
-      const response = await fetch("/api/admin/stats?probe=1", { credentials: "same-origin", headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      el.textContent = data.tokenConfigured ? "configured ✓" : "not set";
-      el.dataset.tone = data.tokenConfigured ? "ok" : "pending";
-    } catch {
-      el.textContent = "unknown";
-      el.dataset.tone = "";
-    }
   }
 
   // The "Default post type" dropdown lists the current categories; its value

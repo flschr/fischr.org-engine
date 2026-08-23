@@ -1,14 +1,12 @@
 // Eigene Zählung. Ein Beacon, keine Cookies, kein Fingerabdruck.
 //
-// Läuft vorerst neben GoatCounter, damit sich beide Zahlenreihen zwei Wochen
-// lang vergleichen lassen. Erst wenn klar ist, wie groß der Unterschied durch
-// Blocklisten wirklich ist, wird GoatCounter abgeschaltet.
+// Die einzige Zählung der Seite, seit der fremde Dienst abgeschaltet ist.
 //
-// Do-Not-Track wird weiterhin respektiert — dieselbe Haltung wie bisher, und
-// nur so bleiben die zwei Reihen im Parallelbetrieb vergleichbar.
+// Do-Not-Track wird respektiert — dieselbe Haltung wie zuvor. Die Zahlen sind
+// dadurch niedriger als die Wirklichkeit; das ist der Preis und er wird bezahlt.
 
-// document.currentScript ist bei Modulen null — deshalb dasselbe Muster wie im
-// bisherigen Zählskript: das eigene Script-Tag über sein Datenattribut finden.
+// document.currentScript ist bei Modulen null — deshalb das Muster, das eigene
+// Script-Tag über sein Datenattribut zu finden.
 const tag = document.querySelector("script[type=module][data-count-endpoint]");
 const endpoint = tag?.dataset.countEndpoint || "/api/hit";
 

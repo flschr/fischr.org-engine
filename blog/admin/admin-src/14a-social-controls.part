@@ -48,8 +48,7 @@
       maxAgeDays: els.cfgMaxAgeDays.value,
       startAfter: els.cfgStartAfter.value.trim() ? isoFromDateInputValue(els.cfgStartAfter.value.trim()) : "",
       defaultTemplate: els.cfgDefaultCategory?.value || "",
-      statsEnabled: els.cfgStatsEnabled ? els.cfgStatsEnabled.checked : true,
-      statsUrl: els.cfgStatsUrl ? els.cfgStatsUrl.value.trim() : ""
+      statsEnabled: els.cfgStatsEnabled ? els.cfgStatsEnabled.checked : true
     }, {
       clone: socialDeepClone,
       normalizeRule,
@@ -108,12 +107,11 @@
       state.socialConfig = JSON.parse(content);
       state.socialConfigDraft = normalizeSocialConfigDraft(state.socialConfig);
       renderSocialConfig();
-      // Use the same canonical representation as socialConfigDirty(). Optional
-      // empty fields (for example stats.url) may be present in the normalized
-      // draft but are intentionally omitted by collectSocialConfigDraft().
+      // Use the same canonical representation as socialConfigDirty(): the
+      // normalized draft may carry optional keys that collectSocialConfigDraft()
+      // intentionally omits.
       state.socialConfigLoaded = JSON.stringify(collectSocialConfigDraft());
       applyStatsTabVisibility();
-      // The Stats dashboard may now point at a different URL — drop its cache.
       state.statsCache.clear();
       showStatus("Social configuration saved.");
       setSocialConfigStatus("Gespeichert", "ok");

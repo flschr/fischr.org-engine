@@ -1,4 +1,4 @@
-/* ---- Stats (GoatCounter dashboard) ------------------------------------- */
+/* ---- Stats (eigene Auswertung) ----------------------------------------- */
 .stats-view { max-width: var(--content-w); margin: 0 auto 0 0; }
 .stats-range { display: inline-flex; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel-2); }
 .stats-range-btn {
@@ -14,17 +14,6 @@
 }
 .stats-range-btn:hover { color: var(--ink); }
 .stats-range-btn.is-active { background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
-.stats-custom { display: inline-flex; gap: 0.5rem; align-items: center; }
-.stats-custom-field { display: inline-flex; gap: 0.35rem; align-items: center; color: var(--ink-faint); font-size: 0.82rem; }
-.stats-custom-field input {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 0.28rem 0.45rem;
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.82rem;
-}
 .stats-range-label {
   margin: 0 0 1.1rem;
   color: var(--ink);
@@ -47,10 +36,6 @@
 .stats-total-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .stats-total-label { color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
 .stats-total-value { color: var(--ink); font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 720; letter-spacing: -0.03em; }
-.stats-spark { display: block; width: 100%; height: 3rem; overflow: visible; }
-.stats-spark-fill { fill: var(--accent-weak); }
-.stats-spark-line { fill: none; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
@@ -187,12 +172,3 @@
 .stats-row-group:hover .stats-row-open,
 .stats-row:hover .stats-row-open,
 .stats-row-open:focus-visible { opacity: 1; }
-
-/* Eine Zeile Erklärung unter dem Titel einer Liste, wo die Überschrift allein
-   offenlässt, was gezählt wird. */
-.stats-panel-hint {
-  margin: -0.4rem 0 0.6rem;
-  color: var(--ink-faint);
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
