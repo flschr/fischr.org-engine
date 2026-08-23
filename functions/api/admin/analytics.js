@@ -6,9 +6,10 @@
 // Zwei Dinge, die diese Zahlen von den bisherigen unterscheiden und die das
 // Dashboard deshalb sichtbar machen muss:
 //
-//   - Historie vor der Umstellung stammt aus dem GoatCounter-Import und kennt
-//     nur Aufrufe, keine Besucher. Erfundene Besucherkurven gibt es hier nicht;
-//     stattdessen sagt das Feld visitorsFrom, ab wann die Zahl belastbar ist.
+//   - Import und eigene Messung gelten als eine Quelle. Die Antwort trennt sie
+//     nicht, und das Dashboard zeigt nirgends, woher eine Zahl stammt. Intern
+//     wird ein Tag trotzdem nur aus einer Quelle gelesen, sonst zählte der
+//     Parallelbetrieb dieselben Tage doppelt.
 //   - Aufrufe werden als eine Zahl geliefert, egal ob importiert oder selbst
 //     gemessen. Die Herkunft auseinanderzuhalten war ausdrücklich nicht
 //     gewünscht: Wer nur GoatCounter sehen will, geht zu GoatCounter. Ein Tag
@@ -100,7 +101,7 @@ export async function onRequest(context) {
     });
   }
 
-  const [series, totals, visitors, pages, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents, since] = await Promise.all([
+  const [series, totals, visitors, pages, refs, feed, feedReads, readers, feedBots, abos, feedPages, feedCountries, agents] = await Promise.all([
     all(
       `SELECT day, SUM(hits) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
@@ -212,7 +213,6 @@ export async function onRequest(context) {
        WHERE day BETWEEN ?1 AND ?2 GROUP BY agent ORDER BY hits DESC LIMIT 50`,
       start, end
     ),
-    one(`SELECT MIN(day) AS tag FROM daily_page WHERE source = 'live'`)
   ]);
 
   return jsonResponse({
@@ -254,9 +254,6 @@ export async function onRequest(context) {
       subscribers: row.subscribers === null ? null : Number(row.subscribers),
       hits: Number(row.hits) || 0
     })),
-    // Ab diesem Tag stammt die Messung aus eigener Zählung. Davor gibt es keine
-    // Besucherzahlen, nur Aufrufe.
-    visitorsFrom: since?.tag || null
   });
 }
 

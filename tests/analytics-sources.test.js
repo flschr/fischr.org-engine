@@ -381,7 +381,11 @@ test("Laenderliste und Abonnentenzahl rechnen gleich", () => {
     "die Summe der Laender muss die Zahl der Installationen ergeben, nicht ein Vielfaches");
 });
 
-test("die Besucherzeile steht im richtigen Fall und schweigt bei null", () => {
+test("die Besucherzeile nennt nur die Besucher, ohne Verhältnis", () => {
+  // Import und eigene Messung gelten als eine Quelle. Besucher gibt es aber
+  // erst ab der eigenen Messung, Aufrufe schon davor — "48 Aufrufe von 10
+  // Besuchern" behauptete deshalb ein Verhältnis aus zwei Zeiträumen. Die Zahl
+  // allein behauptet nichts.
   const quelle = fs.readdirSync(path.join(__dirname, "../blog/admin/admin-src"))
     .filter((name) => /^21/.test(name)).sort()
     .map((name) => fs.readFileSync(path.join(__dirname, "../blog/admin/admin-src", name), "utf8")).join("\n");
@@ -394,15 +398,12 @@ test("die Besucherzeile steht im richtigen Fall und schweigt bei null", () => {
     showView: () => {}, pushNav: () => {}, setCollection: () => {}, document: { querySelector: () => null }
   };
   const zeile = new Function(...Object.keys(kontext), `${quelle}\nreturn statsBesucherZeile;`)(...Object.values(kontext));
-  const toggle = (zahl) => ({ querySelector: () => (zahl === null ? null : { textContent: zahl }) });
-  const text = (b, a) => zeile(b, toggle(a)).replace(/<[^>]+>/g, "");
+  const text = (b) => zeile(b).replace(/<[^>]+>/g, "");
 
-  // "von … Besuchern" verlangt den Dativ, "… Besucher" allein den Nominativ.
-  assert.equal(text(31, "47"), "47 Aufrufe von 31 Besuchern");
-  assert.equal(text(1, "47"), "47 Aufrufe von 1 Besucher");
-  assert.equal(text(5, null), "5 Besucher");
-  // Ohne gemessene Besucher — etwa für Zeiträume vor der eigenen Zählung —
-  // bleibt die Zeile weg, statt eine Null zu behaupten.
-  assert.equal(zeile(0, toggle("47")), "");
-  assert.equal(zeile(undefined, toggle("47")), "");
+  assert.equal(text(31), "31 Besucher");
+  assert.equal(text(1), "1 Besucher");
+  assert.doesNotMatch(zeile(31), /Aufrufe/, "kein Verhältnis zu den Aufrufen");
+  // Ohne gemessene Besucher bleibt die Zeile weg, statt eine Null zu behaupten.
+  assert.equal(zeile(0), "");
+  assert.equal(zeile(undefined), "");
 });

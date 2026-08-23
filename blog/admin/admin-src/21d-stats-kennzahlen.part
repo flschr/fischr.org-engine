@@ -5,25 +5,18 @@
   // was gezeigt werden darf, was ein Strich statt einer Null sein muss und
   // welche Beschriftung keine Absicht behaupten darf, die nicht gemessen wurde.
 
-  // Aufrufe sind eine Zahl, egal woher sie stammen — importierte Historie und
-  // eigene Messung werden nicht auseinandergehalten. Wer die Herkunft wissen
-  // will, hat dafür GoatCounter.
+  // Import und eigene Messung sind eine Quelle. Keine Aufteilung, kein Hinweis,
+  // woher eine Zahl stammt — wer nur GoatCounter sehen will, geht zu
+  // GoatCounter. Ein Tag wird intern trotzdem nur aus einer Quelle gelesen,
+  // sonst zählte der Parallelbetrieb doppelt; sichtbar ist davon nichts.
   //
-  // Bei Besuchern geht das nicht: Sie wurden vor der Umstellung gar nicht
-  // gemessen. Eine Null wäre gelogen, und eine nackte Zahl neben viel höheren
-  // Aufrufen sähe nach einem Fehler aus. Deshalb hängt die Einschränkung an der
-  // Beschriftung statt in einem Absatz darunter — und verschwindet von selbst,
-  // sobald der Zeitraum keine Historie mehr enthält.
-  function statsWebsiteKennzahlen(total, visitorsFrom, range) {
-    const visitorsKnown = visitorsFrom && range?.end >= visitorsFrom;
-    const teilweise = visitorsKnown && range?.start < visitorsFrom;
+  // Besucher gibt es erst ab der eigenen Messung, Aufrufe schon davor. Die Zahl
+  // steht deshalb für sich und wird nirgends zu den Aufrufen ins Verhältnis
+  // gesetzt — so behauptet sie nichts, was aus zwei Zeiträumen stammt.
+  function statsWebsiteKennzahlen(total) {
     return [
       { label: "Aufrufe", value: numberFormat.format(Number(total.hits) || 0) },
-      {
-        label: "Besucher",
-        value: visitorsKnown ? numberFormat.format(Number(total.visitors) || 0) : "–",
-        hint: teilweise ? `seit ${statsShortDate(visitorsFrom)}` : ""
-      }
+      { label: "Besucher", value: numberFormat.format(Number(total.visitors) || 0) }
     ];
   }
 
@@ -77,7 +70,3 @@
     };
   }
 
-  function statsShortDate(day) {
-    const datum = new Date(`${day}T12:00:00`);
-    return Number.isNaN(datum.getTime()) ? day : statsDayFormat.format(datum);
-  }

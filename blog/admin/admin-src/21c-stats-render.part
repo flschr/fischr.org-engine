@@ -15,7 +15,7 @@
     const total = data.total || {};
 
     els.statsBody.innerHTML = [
-      statsSection("Website", statsWebsiteKennzahlen(total, data.visitorsFrom, data.range), [
+      statsSection("Website", statsWebsiteKennzahlen(total), [
         statsSparkline(statsSeries(data.series, data.range))
       ], statsWebsitePanels(data)),
       statsSection("Feed", statsFeedKennzahlen(total), [], statsFeedPanels(data))
