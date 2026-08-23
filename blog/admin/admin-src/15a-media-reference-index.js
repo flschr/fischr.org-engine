@@ -16,7 +16,8 @@ function addMediaReferencesFromEntry(index, path, content) {
   extractMediaReferences(content).forEach((mediaReference) => {
     addMediaReference(index, mediaReference.publicPath, {
       ...entryReference,
-      orderInEntry: mediaReference.orderInEntry
+      orderInEntry: mediaReference.orderInEntry,
+      alt: mediaReference.alt || ""
     });
   });
 }
@@ -37,8 +38,8 @@ export async function refreshMediaReferenceIndex(tree, changes = []) {
   for (const [path, meta] of indexData) {
     if (pendingPaths.has(path)) continue; // a pending edit overrides its index entry
     const reference = { path, title: meta.title, sortKey: meta.sortKey, publicPath: meta.url || "", collection: "posts" };
-    (meta.media || []).forEach((imagePublicPath, order) => {
-      addMediaReference(index, imagePublicPath, { ...reference, orderInEntry: order });
+    (meta.media || []).forEach((media, order) => {
+      addMediaReference(index, media.url, { ...reference, orderInEntry: order, alt: media.alt || "" });
     });
   }
   for (const change of pendingEntries) {
@@ -92,8 +93,19 @@ export function mediaSearchText(item) {
     item.path,
     item.publicPath,
     item.name,
-    ...(item.references || []).flatMap((reference) => [reference.title, reference.path, reference.publicPath])
+    ...(item.references || []).flatMap((reference) => [reference.title, reference.path, reference.publicPath, reference.alt])
   ].filter(Boolean).join(" ").toLowerCase();
+}
+
+// The same image can be described differently in each post that uses it, and
+// most images carry no alt at all. Show the descriptions that exist, once each.
+export function mediaAltTexts(item) {
+  const texts = [];
+  (item?.references || []).forEach((reference) => {
+    const alt = String(reference.alt || "").trim();
+    if (alt && !texts.includes(alt)) texts.push(alt);
+  });
+  return texts;
 }
 
 export const { findHtmlMedia, findMarkdownImages, findMediaShortcuts, visibleMarkdownSource, markdownAltHasText, escapeMarkdownAlt, imageMimeType } = RWMarkdownMedia.create({

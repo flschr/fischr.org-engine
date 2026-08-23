@@ -93,6 +93,18 @@ function entryListMeta(path, change) {
   return { date: info?.date || "", sortKey: info?.sortKey || 0, draft: false };
 }
 
+// The build emits each media reference as { url, alt }. An older index — or one
+// still in a cache — carries bare path strings; both read as a reference without
+// an alt text.
+function normalizeIndexMedia(media) {
+  if (!Array.isArray(media)) return [];
+  return media
+    .map((entry) => (typeof entry === "string"
+      ? { url: entry, alt: "" }
+      : { url: String(entry?.url || ""), alt: String(entry?.alt || "") }))
+    .filter((entry) => entry.url);
+}
+
 // Real title + date + draft flag for remote posts live in their frontmatter.
 // The build emits them all as one small auth-protected JSON, so the list can
 // look them up in a single request instead of one GitHub blob fetch per post.
@@ -115,7 +127,7 @@ export async function loadPublishedPostsIndex() {
           date: iso.slice(0, 10),
           sortKey: Date.parse(iso) || 0,
           draft: Boolean(item.draft),
-          media: Array.isArray(item.media) ? item.media : []
+          media: normalizeIndexMedia(item.media)
         });
       });
       state.postsIndex = map;

@@ -4,6 +4,7 @@ import { showStatus } from "./03-status.js";
 import { getChange } from "./04-drafts.js";
 import { deleteChange, putChange } from "./04a-draft-writes.js";
 import { requireGithubAccess } from "./05-github-auth.js";
+import { mediaAltTexts } from "./15a-media-reference-index.js";
 import { refreshMedia } from "./26a-media-library.js";
 import { commitMediaManifestDelete } from "./26a2-media-manifest-writes.js";
 import { renderMedia } from "./26b-media-render.js";
@@ -28,8 +29,22 @@ export function mediaReferencesSignature(item) {
     reference.path || "",
     reference.title || "",
     reference.publicPath || "",
-    reference.orderInEntry || 0
+    reference.orderInEntry || 0,
+    reference.alt || ""
   ]));
+}
+
+// The alt text is what a search for it matched, so the card has to show it —
+// otherwise a hit on an image whose filename says nothing looks like a bug.
+export function renderMediaAlt(item) {
+  const texts = mediaAltTexts(item);
+  if (!texts.length) return null;
+
+  const line = document.createElement("div");
+  line.className = "media-alt";
+  line.textContent = texts.join(" · ");
+  line.title = texts.join("\n");
+  return line;
 }
 
 // Reference discovery can change labels and ordering, but not the media cards
@@ -74,9 +89,13 @@ export function refreshRenderedMediaMetadata() {
       const info = card.querySelector(".media-info");
       const meta = info?.querySelector(".entry-meta");
       if (meta) meta.textContent = mediaMetaText(item, pendingDeletes.has(item.path));
+      info?.querySelector(".media-alt")?.remove();
       info?.querySelector(".media-references")?.remove();
+      const alt = renderMediaAlt(item);
       const references = renderMediaReferences(item.references || []);
-      if (references && info) info.insertBefore(references, info.querySelector(".media-actions"));
+      const tail = info?.querySelector(".media-actions") || null;
+      if (alt && info) info.insertBefore(alt, tail);
+      if (references && info) info.insertBefore(references, tail);
       card.dataset.mediaReferences = nextSignature;
     }
     if (card !== insertionPoint) els.mediaGrid.insertBefore(card, insertionPoint);

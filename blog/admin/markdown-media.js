@@ -122,7 +122,9 @@
     for (const match of String(markdown || "").matchAll(/<(img|video|source)\b[^>]*>/gi)) {
       const attribute = match[0].match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
       const src = decode(attribute?.[1] || attribute?.[2] || attribute?.[3] || "");
-      if (src) media.push({ type: match[1].toLowerCase(), src, from: match.index });
+      const altAttribute = match[0].match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+      const alt = decode(altAttribute?.[1] || altAttribute?.[2] || altAttribute?.[3] || "");
+      if (src) media.push({ type: match[1].toLowerCase(), src, alt, from: match.index });
     }
 
     return media;

@@ -105,17 +105,22 @@ export function extractMediaReferences(content) {
   const text = parsed.body || String(content || "");
   const visibleText = visibleMarkdownSource(text);
   const references = new Map();
-  const add = (value, orderInEntry) => {
+  const add = (value, orderInEntry, alt = "") => {
     const publicPath = normalizeMediaReferencePath(value);
     if (!publicPath) return;
     const previous = references.get(publicPath);
+    // First alt that says something wins: an image used twice in one post may
+    // only describe itself in one of the two places.
+    const keptAlt = previous?.alt || String(alt || "").trim();
     if (!previous || orderInEntry < previous.orderInEntry) {
-      references.set(publicPath, { publicPath, orderInEntry });
+      references.set(publicPath, { publicPath, orderInEntry, alt: keptAlt });
+    } else if (keptAlt !== previous.alt) {
+      references.set(publicPath, { ...previous, alt: keptAlt });
     }
   };
 
-  findMarkdownImages(visibleText).forEach((image) => add(image.src, image.from));
-  findHtmlMedia(visibleText).forEach((media) => add(media.src, media.from));
+  findMarkdownImages(visibleText).forEach((image) => add(image.src, image.from, image.alt));
+  findHtmlMedia(visibleText).forEach((media) => add(media.src, media.from, media.alt));
 
   findMediaShortcuts(visibleText)
     .filter((shortcut) => ["video", "gpx"].includes(shortcut.type))

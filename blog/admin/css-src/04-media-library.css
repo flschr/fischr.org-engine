@@ -28,6 +28,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.media-alt {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 0.73rem;
+  line-height: 1.35;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .media-references {
   display: grid;
   gap: 0.25rem;

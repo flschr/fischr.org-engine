@@ -26,7 +26,7 @@ test("keeps sitemap images separate from admin video references", () => {
     "---",
     'title: "Example !video(/assets/videos/uploads/frontmatter.mp4)"',
     "---",
-    "![Foto](/assets/images/uploads/photo.webp)",
+    "![Zwei Kraniche im Nebel](/assets/images/uploads/photo.webp)",
     "![Foto](/assets/images/uploads/photo_(1).webp)",
     "!video(/assets/videos/uploads/clip.mp4)",
     "!video(</assets/videos/uploads/angle.mp4>)",
@@ -41,11 +41,11 @@ test("keeps sitemap images separate from admin video references", () => {
     "/assets/images/uploads/photo_(1).webp"
   ]);
   assert.deepEqual(media.getAdminMediaReferences(item), [
-    "/assets/images/uploads/photo.webp",
-    "/assets/images/uploads/photo_(1).webp",
-    "/assets/videos/uploads/clip.mp4",
-    "/assets/videos/uploads/angle.mp4",
-    "/assets/videos/uploads/clip_(1).mp4"
+    { url: "/assets/images/uploads/photo.webp", alt: "Zwei Kraniche im Nebel" },
+    { url: "/assets/images/uploads/photo_(1).webp", alt: "Foto" },
+    { url: "/assets/videos/uploads/clip.mp4", alt: "" },
+    { url: "/assets/videos/uploads/angle.mp4", alt: "" },
+    { url: "/assets/videos/uploads/clip_(1).mp4", alt: "" }
   ]);
 });
 
@@ -69,19 +69,19 @@ test("reads and parses each source only once across sitemap and admin consumers"
 
   assert.deepEqual(extractor.getSitemapImages(item), ["/assets/images/photo.webp"]);
   assert.deepEqual(extractor.getAdminMediaReferences(item), [
-    "/assets/images/photo.webp",
-    "/assets/videos/clip.mp4"
+    { url: "/assets/images/photo.webp", alt: "Foto" },
+    { url: "/assets/videos/clip.mp4", alt: "" }
   ]);
   assert.equal(reads, 1);
 
   ctimeMs = 2;
   content = "!video(/assets/videos/other.mp4)";
-  assert.deepEqual(extractor.getAdminMediaReferences(item), ["/assets/videos/other.mp4"]);
+  assert.deepEqual(extractor.getAdminMediaReferences(item), [{ url: "/assets/videos/other.mp4", alt: "" }]);
   assert.equal(reads, 2);
 
   ctimeMs = 3;
   content = "!video(/assets/videos/third.mp4)";
-  assert.deepEqual(extractor.getAdminMediaReferences(item), ["/assets/videos/third.mp4"]);
+  assert.deepEqual(extractor.getAdminMediaReferences(item), [{ url: "/assets/videos/third.mp4", alt: "" }]);
   assert.equal(reads, 3);
 });
 
@@ -113,7 +113,7 @@ test("ignores media syntax in code and comments", () => {
 
   assert.deepEqual(
     extractor.getAdminMediaReferences({ inputPath: "/project/blog/posts/test.md", data: {} }),
-    ["/assets/videos/real.mp4", "/assets/videos/html.mp4"]
+    [{ url: "/assets/videos/real.mp4", alt: "" }, { url: "/assets/videos/html.mp4", alt: "" }]
   );
 });
 
@@ -142,4 +142,72 @@ test("wires videos into the admin index without adding them to the sitemap", () 
   assert.doesNotMatch(adminIndex, /post \| sitemapImages/);
   assert.match(sitemap, /item \| sitemapImages/);
   assert.doesNotMatch(sitemap, /item \| adminMediaReferences/);
+});
+
+// Der Alt-Text gehört zur Verwendung, nicht zur Datei: Dasselbe Bild kann in zwei Beiträgen
+// unterschiedlich beschrieben sein, und in einem davon gar nicht. Der Index trägt deshalb je
+// Referenz einen Alt-Text — und behält innerhalb eines Beitrags den ersten, der etwas sagt.
+test("carries the alt text of each image reference into the admin index", () => {
+  const content = [
+    "![](/assets/images/leer.webp)",
+    "![Ein Reh am Waldrand](/assets/images/leer.webp)",
+    '<img src="/assets/images/html.webp" alt="Nebel &amp; Licht">',
+    "![Nur hier beschrieben](/assets/images/einzeln.webp)"
+  ].join("\n");
+  const extractor = createMediaReferenceExtractor({
+    getLocalImageAsset: (src) => src ? { publicPath: src } : null,
+    getLocalVideoAsset: () => null,
+    fileSystem: {
+      statSync: () => ({ mtimeMs: 1, ctimeMs: 1, ino: 1, size: content.length }),
+      readFileSync: () => content
+    }
+  });
+
+  assert.deepEqual(
+    extractor.getAdminMediaReferences({ inputPath: "/project/blog/posts/test.md", data: {} }),
+    [
+      { url: "/assets/images/leer.webp", alt: "Ein Reh am Waldrand" },
+      { url: "/assets/images/html.webp", alt: "Nebel & Licht" },
+      { url: "/assets/images/einzeln.webp", alt: "Nur hier beschrieben" }
+    ]
+  );
+});
+
+test("takes the alt text of the frontmatter preview image from image_alt", () => {
+  const content = "";
+  const extractor = createMediaReferenceExtractor({
+    getLocalImageAsset: (src) => src ? { publicPath: src } : null,
+    getLocalVideoAsset: () => null,
+    fileSystem: {
+      statSync: () => ({ mtimeMs: 1, ctimeMs: 1, ino: 1, size: 0 }),
+      readFileSync: () => content
+    }
+  });
+
+  assert.deepEqual(
+    extractor.getAdminMediaReferences({
+      inputPath: "/project/blog/posts/test.md",
+      data: { image: "/assets/images/vorschau.webp", image_alt: "Blick über den See" }
+    }),
+    [{ url: "/assets/images/vorschau.webp", alt: "Blick über den See" }]
+  );
+});
+
+// Die Sitemap kennt weiterhin nur Adressen. Ein Objekt an dieser Stelle würde als
+// "[object Object]" in die XML-Ausgabe wandern, ohne dass ein Test das bemerkt.
+test("keeps sitemap images as plain public paths", () => {
+  const content = "![Foto](/assets/images/photo.webp)";
+  const extractor = createMediaReferenceExtractor({
+    getLocalImageAsset: (src) => src ? { publicPath: src } : null,
+    getLocalVideoAsset: () => null,
+    fileSystem: {
+      statSync: () => ({ mtimeMs: 1, ctimeMs: 1, ino: 1, size: content.length }),
+      readFileSync: () => content
+    }
+  });
+
+  assert.deepEqual(
+    extractor.getSitemapImages({ inputPath: "/project/blog/posts/test.md", data: {} }),
+    ["/assets/images/photo.webp"]
+  );
 });

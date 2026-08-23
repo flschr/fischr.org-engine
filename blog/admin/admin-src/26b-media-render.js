@@ -5,7 +5,7 @@ import { hasGithubAccess } from "./05-github-auth.js";
 import { buildMediaThumbImage } from "./07-images.js";
 import { chooseSocialImage, copyMediaMarkdown } from "./15-media-references.js";
 import { mediaSearchText } from "./15a-media-reference-index.js";
-import { mediaMetaText, mediaReferencesSignature, queueMediaDelete, renderMediaReferences } from "./26d-media-metadata.js";
+import { mediaMetaText, mediaReferencesSignature, queueMediaDelete, renderMediaAlt, renderMediaReferences } from "./26d-media-metadata.js";
 import { hasActiveMediaWork } from "./26d-publish-sync.js";
 
 export function renderMedia() {
@@ -79,6 +79,7 @@ export function renderMedia() {
     meta.className = "entry-meta";
     meta.textContent = mediaMetaText(item, isPendingDelete);
 
+    const altLine = renderMediaAlt(item);
     const references = renderMediaReferences(item.references || []);
 
     // Pick mode: the whole card selects the image as the post's social image.
@@ -96,6 +97,7 @@ export function renderMedia() {
         }
       });
       info.append(name, meta);
+      if (altLine) info.append(altLine);
       if (references) info.append(references);
       card.append(thumb, info);
       fragment.append(card);
@@ -141,6 +143,7 @@ export function renderMedia() {
     actions.append(deleteButton);
 
     info.append(name, meta);
+    if (altLine) info.append(altLine);
     if (references) info.append(references);
     info.append(actions);
     card.append(thumb, info);

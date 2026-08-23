@@ -104,6 +104,21 @@ test("media parsing normalizes angle shortcuts and complete HTML attributes", ()
     { type: "video", label: "", source: "/assets/videos/angle.mp4", from: 0 }
   ]);
   assert.deepEqual(media.findHtmlMedia('<video><source src="/assets/videos/a_(1).mp4"></video>'), [
-    { type: "source", src: "/assets/videos/a_(1).mp4", from: 7 }
+    { type: "source", src: "/assets/videos/a_(1).mp4", alt: "", from: 7 }
+  ]);
+});
+
+test("reads the alt attribute of HTML images and leaves videos without one", () => {
+  const found = media.findHtmlMedia([
+    '<img src="/assets/images/a.webp" alt="Nebel &amp; Licht">',
+    "<img src='/assets/images/b.webp'>",
+    '<video src="/assets/videos/c.mp4" alt="ignoriert"><source src="/assets/videos/d.mp4"></video>'
+  ].join("\n"));
+
+  assert.deepEqual(found.map((item) => [item.type, item.src, item.alt]), [
+    ["img", "/assets/images/a.webp", "Nebel & Licht"],
+    ["img", "/assets/images/b.webp", ""],
+    ["video", "/assets/videos/c.mp4", "ignoriert"],
+    ["source", "/assets/videos/d.mp4", ""]
   ]);
 });
