@@ -10,6 +10,9 @@ _site/
 .DS_Store
 npm-debug.log*
 playwright-report/
+# Session-lokale Claude-Code-Ablage: launch.json und kurzlebige Worktrees. Gehört keinem
+# Commit an und soll `git status` nicht dauerhaft schmutzig halten.
+.claude/
 test-results/
 blog/admin/vendor/
 blog/assets/css/generated/
