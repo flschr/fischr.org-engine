@@ -1,0 +1,101 @@
+import { draftRepository } from "./01-bootstrap.js";
+import { state } from "./01c-state.js";
+import { getBlobText } from "./04-drafts.js";
+import { isVideoPath } from "./06-paths.js";
+import { syncEditorFromVisible } from "./17-editor.js";
+import { scheduleAutosave } from "./19-recovery.js";
+import { preparedMediaChange } from "./26-media.js";
+
+// --- Atomic cleanup helpers for failed media families ------------------
+
+export function removeMediaReferences(content, publicPaths = []) {
+  let result = String(content || "");
+  publicPaths.filter(Boolean).forEach((publicPath) => {
+    const escaped = publicPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result
+      .replace(new RegExp(`!\\[[^\\]]*\\]\\(${escaped}(?:\\s+\"[^\"]*\")?\\)`, "g"), "")
+      .replace(new RegExp(`!video(?:\\[[^\\]]*\\])?\\(${escaped}\\)`, "g"), "")
+      .replace(/^\s+$/gm, "")
+      .replace(/\n{3,}/g, "\n\n");
+  });
+  return result.trimEnd();
+}
+
+export function syncEditorAfterMediaRemoval(publicPaths) {
+  if (!state.current) return;
+  syncEditorFromVisible();
+  const next = removeMediaReferences(state.bodyMarkdown, publicPaths);
+  if (next === state.bodyMarkdown) return;
+  state.bodyMarkdown = next;
+  state.editor?.setValue(next);
+  scheduleAutosave();
+}
+
+export function parseVideoMetadata(content, label) {
+  try {
+    const value = JSON.parse(String(content || "{}"));
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("root must be an object");
+    Object.entries(value).forEach(([videoPath, metadata]) => {
+      if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+        throw new Error(`${videoPath} must contain an object`);
+      }
+      if (metadata.poster && !repositoryPosterPath(metadata.poster)) {
+        throw new Error(`${videoPath} contains an unsafe poster path`);
+      }
+    });
+    return value;
+  } catch (error) {
+    throw new Error(`${label || "Video-Metadaten"} sind ungültig; die Bereinigung wurde zum Schutz bestehender Videos abgebrochen.`);
+  }
+}
+
+function repositoryPosterPath(publicPath) {
+  const value = String(publicPath || "");
+  return /^\/assets\/images\/video-posters\/[a-zA-Z0-9._-]+\.webp$/.test(value)
+    ? `blog${value}`
+    : "";
+}
+
+export function appendRestoredMediaPaths(paths, draftMap, mainMap, entries, expectedBlobs) {
+  paths.forEach((path) => {
+    const draftSha = draftMap.get(path) || null;
+    const mainSha = mainMap.get(path) || null;
+    if (draftSha === mainSha) return;
+    entries.push({ path, mode: "100644", type: "blob", sha: mainSha });
+    expectedBlobs[path] = draftSha;
+  });
+}
+
+export async function appendFailedVideoCleanup(items, draftMap, mainMap, entries, expectedBlobs) {
+  const videoPaths = Array.from(new Set(items
+    .map((item) => preparedMediaChange(item.change))
+    .filter((change) => isVideoPath(change.path))
+    .map((change) => change.publicPath)));
+  if (!videoPaths.length) return;
+
+  const metadataPath = "blog/_data/videoMetadata.json";
+  const draftSha = draftMap.get(metadataPath) || null;
+  const mainSha = mainMap.get(metadataPath) || null;
+  const draftMetadata = draftSha ? parseVideoMetadata(await getBlobText(draftSha), "Video-Metadaten im Entwurf") : {};
+  const mainMetadata = mainSha ? parseVideoMetadata(await getBlobText(mainSha), "Veröffentlichte Video-Metadaten") : {};
+  const nextMetadata = { ...draftMetadata };
+  const posterPaths = new Set();
+
+  videoPaths.forEach((videoPath) => {
+    const draftPoster = repositoryPosterPath(draftMetadata[videoPath]?.poster);
+    const mainPoster = repositoryPosterPath(mainMetadata[videoPath]?.poster);
+    if (draftPoster) posterPaths.add(draftPoster);
+    if (mainPoster) posterPaths.add(mainPoster);
+    if (Object.hasOwn(mainMetadata, videoPath)) nextMetadata[videoPath] = mainMetadata[videoPath];
+    else delete nextMetadata[videoPath];
+  });
+
+  appendRestoredMediaPaths(posterPaths, draftMap, mainMap, entries, expectedBlobs);
+  const content = `${JSON.stringify(nextMetadata, null, 2)}\n`;
+  const currentContent = `${JSON.stringify(draftMetadata, null, 2)}\n`;
+  if (draftSha && content !== currentContent) {
+    const blob = await draftRepository.createBlob(content);
+    entries.push({ path: metadataPath, mode: "100644", type: "blob", sha: blob.sha });
+    expectedBlobs[metadataPath] = draftSha;
+  }
+}

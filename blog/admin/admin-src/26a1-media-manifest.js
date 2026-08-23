@@ -1,0 +1,203 @@
+import { mediaDeliveryOrigin } from "./00-konstanten.js";
+import { collections, mediaManifestPath, mediaUploadsDir } from "./01-bootstrap.js";
+import { state } from "./01c-state.js";
+import { blobShaMap, diffChange, getBlobText } from "./04-drafts.js";
+import { fetchTree } from "./05-github-auth.js";
+import { fileName, isMediaLibraryPath, isVideoPath, mediaDateSortValue, publicMediaPath, referencedEntryFromMediaPath, videoPosterPath } from "./06-paths.js";
+import { mediaManifestKeys } from "./19-recovery.js";
+import { refreshMedia } from "./26a-media-library.js";
+
+// --- Media manifest (the R2 index) ---------------------------------------
+
+// Map between a repository path and its key in automation/media-manifest.json. Mirrors
+// objectKeyForPublicPath in scripts/lib/r2-media.js — the manifest key is the R2 object key,
+// and since DB-1129 it is what identifies a media file, not a blob sha.
+export function mediaManifestKeyFor(path) {
+  const value = String(path || "");
+  if (value.startsWith(`${collections.media.dir}/`)) return `images/${value.slice(collections.media.dir.length + 1)}`;
+  if (value.startsWith(`${collections.media.videoDir}/`)) return `videos/${value.slice(collections.media.videoDir.length + 1)}`;
+  return "";
+}
+
+function mediaManifestKeyForPublicPath(publicPath) {
+  const value = String(publicPath || "");
+  if (value.startsWith("/assets/images/")) return `images/${value.slice("/assets/images/".length)}`;
+  if (value.startsWith("/assets/videos/")) return `videos/${value.slice("/assets/videos/".length)}`;
+  return "";
+}
+
+// Wohin ein /assets/…-Pfad für die Anzeige im Admin zeigt. Der Browser käme sonst nur über die
+// pfadbasierte Weiterleitung in _redirects dorthin, und die kann eine Inhaltsadresse nicht
+// kennen — für ein neu hochgeladenes Bild endet sie in einem 404. Nachschlagen statt ableiten;
+// ohne Manifest bleibt es beim lokalen Pfad. Siehe docs/architecture.md, "Media boundary (R2)".
+export function mediaDisplayUrl(publicPath) {
+  const value = String(publicPath || "");
+  const key = mediaManifestKeyForPublicPath(value);
+  const entry = key && state.mediaManifest ? state.mediaManifest[key] : null;
+  return entry && entry.objectKey ? `${mediaDeliveryOrigin}/${entry.objectKey}` : value;
+}
+
+function repositoryPathForMediaManifestKey(key) {
+  const value = String(key || "");
+  if (value.startsWith("images/")) return `${collections.media.dir}/${value.slice("images/".length)}`;
+  if (value.startsWith("videos/")) return `${collections.media.videoDir}/${value.slice("videos/".length)}`;
+  return "";
+}
+
+// Path of the small per-upload record functions/api/admin/media/normalize.js (or
+// scripts/admin-normalize-image.js) commits before the next production build folds it into
+// automation/media-manifest.json — see lib/media-manifest.js's pendingUploadFileName, which
+// this mirrors. Its presence in the current tree is proof an upload reached R2 even before
+// that fold happens, which loadMediaManifest()/mediaManifestKeys() alone cannot see.
+export function pendingUploadPathFor(key) {
+  return key ? `${mediaUploadsDir}/${key.replace(/[^a-zA-Z0-9._-]+/g, "__")}.json` : "";
+}
+
+function isPendingUploadPath(path) {
+  return String(path || "").startsWith(`${mediaUploadsDir}/`) && String(path).endsWith(".json");
+}
+
+// An upload that reached R2 leaves no blob at its media path — its only trace on drafts is
+// the small record here. Without turning that back into a media change, an upload is
+// invisible in the publish queue and "unbenutzte Uploads verwerfen" cannot see a photo that
+// never made it into an article: it would travel to main and stay in the bucket forever.
+export async function pendingUploadChanges(draftsMap, mainMap) {
+  const records = Array.from(draftsMap).filter(([path, sha]) => isPendingUploadPath(path) && mainMap.get(path) !== sha);
+  const changes = await Promise.all(records.map(async ([path, sha]) => {
+    let mediaPath = "";
+    try {
+      mediaPath = repositoryPathForMediaManifestKey(validMediaUploadRecord(await getBlobText(sha), path).key);
+    } catch (error) {
+      // A malformed record must not take the whole queue down with it; the media library
+      // reports it loudly enough (loadMediaManifest).
+      return null;
+    }
+    // A raw upload that is still a blob already produced its own change above.
+    if (!mediaPath || !isMediaLibraryPath(mediaPath) || draftsMap.has(mediaPath)) return null;
+    return { ...diffChange(mediaPath, "upsert", "", !mainMap.has(mediaPath)), recordPath: path, recordSha: sha };
+  }));
+  return changes.filter(Boolean);
+}
+
+// DB-1129 moved the media bytes out of Git, and the effective manifest is two files: the
+// committed manifest plus one small record per upload the next production build has not
+// folded in yet. Both together are the media library's index — the tree only still holds
+// legacy media and raw uploads whose normalization has not run, which refreshMedia merges
+// on top. Same read and same precedence as readMergedManifest in lib/media-manifest.js: a
+// record wins, because it is by definition the newer upload for that key.
+export async function loadMediaManifest(force = false) {
+  const tree = state.tree?.tree ? state.tree : await fetchTree(false);
+  const blobs = blobShaMap(tree);
+  const baseSha = blobs.get(mediaManifestPath) || "";
+  const recordBlobs = Array.from(blobs).filter(([path]) => isPendingUploadPath(path));
+  const signature = mediaManifestSignature(baseSha, recordBlobs);
+  if (!force && state.mediaManifest && state.mediaManifestSignature === signature) return state.mediaManifest;
+
+  const base = baseSha ? validMediaManifest(await getBlobText(baseSha)) : {};
+  const records = new Map();
+  for (const [path, sha] of recordBlobs) {
+    const record = validMediaUploadRecord(await getBlobText(sha), path);
+    records.set(record.key, { path, sha, entry: record.entry });
+  }
+  applyMediaManifestState({ base, baseSha, records, signature });
+  return state.mediaManifest;
+}
+
+// Identity of the two-file manifest: the committed blob plus every upload record blob. A new
+// record changes it, so a fresh upload invalidates the cached gallery index by itself.
+export function mediaManifestSignature(baseSha, recordBlobs) {
+  return [baseSha, ...recordBlobs.map(([path, sha]) => `${path}:${sha}`).sort()].join("|");
+}
+
+export function applyMediaManifestState({ base, baseSha, records, signature }) {
+  state.mediaManifestBase = base;
+  state.mediaManifestBaseSha = baseSha;
+  state.mediaManifestRecords = records;
+  state.mediaManifestSignature = signature;
+  state.mediaManifest = { ...base, ...Object.fromEntries(Array.from(records, ([key, record]) => [key, record.entry])) };
+  return state.mediaManifest;
+}
+
+function validMediaManifest(content) {
+  let value = null;
+  try {
+    value = JSON.parse(String(content || "{}"));
+  } catch (error) {
+    value = null;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Das Medien-Manifest ist ungültig; die Mediathek kann nicht geladen werden.");
+  }
+  return value;
+}
+
+// Mirrors the { key, entry } contract lib/media-manifest.js enforces on the build side.
+// A malformed record is a defect, not an empty gallery: staying silent here is what made
+// the manifest look empty in the first place.
+function validMediaUploadRecord(content, path) {
+  let value = null;
+  try {
+    value = JSON.parse(String(content || ""));
+  } catch (error) {
+    value = null;
+  }
+  if (!value || typeof value.key !== "string" || !value.key || !value.entry) {
+    throw new Error(`${path} ist kein gültiger Upload-Datensatz; die Mediathek kann nicht geladen werden.`);
+  }
+  return value;
+}
+
+export function manifestMediaItems(manifest, pendingByPath) {
+  return Object.entries(manifest)
+    .map(([key, entry]) => ({
+      key,
+      entry: entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {},
+      path: repositoryPathForMediaManifestKey(key)
+    }))
+    .filter(({ path }) => path && isMediaLibraryPath(path))
+    .map(({ key, entry, path }) => buildMediaItem(path, {
+      size: Number(entry.size) || 0,
+      contentHash: String(entry.sha256 || ""),
+      manifestKey: key,
+      pending: pendingByPath.has(path),
+      preview: pendingByPath.get(path)?.preview || ""
+    }));
+}
+
+// One shape for all three sources (manifest, tree, queued upload) so the card, the sort and
+// the delete path never have to ask where an item came from.
+export function buildMediaItem(path, overrides = {}) {
+  const referencedEntry = referencedEntryFromMediaPath(path);
+  const publicPath = overrides.publicPath || publicMediaPath(path);
+  const mediaKind = overrides.mediaKind || (isVideoPath(path) ? "video" : "image");
+  return {
+    path,
+    publicPath,
+    name: fileName(path),
+    size: 0,
+    // Empty for anything that only exists in R2: there is no blob, and the delete path uses
+    // that to decide between removing a blob and removing a manifest entry.
+    sha: "",
+    contentHash: "",
+    manifestKey: "",
+    pending: false,
+    preview: "",
+    mediaKind,
+    entryDate: referencedEntry?.date || "",
+    entryPath: referencedEntry?.path || "",
+    entrySort: referencedEntry?.sortKey || 0,
+    uploadSort: mediaDateSortValue(path),
+    poster: mediaKind === "video" ? videoPosterPath(publicPath) : "",
+    references: [],
+    duplicate: false,
+    ...overrides
+  };
+}
+
+// Content identity for the duplicate marker: the manifest's sha256 for R2 objects, the blob
+// sha for anything still tracked. The two are different hashes of different framings, so a
+// duplicate is only ever detected within one of the two worlds — which is what matters,
+// since Git-tracked media is what the migration left behind.
+export function mediaFingerprint(item) {
+  return item.contentHash || item.sha || "";
+}

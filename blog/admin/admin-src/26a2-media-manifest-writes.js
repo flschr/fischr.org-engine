@@ -1,0 +1,86 @@
+import { draftRepository, mediaManifestPath } from "./01-bootstrap.js";
+import { state } from "./01c-state.js";
+import { blobShaMap } from "./04-drafts.js";
+import { commitToDrafts } from "./04a-draft-writes.js";
+import { baseName } from "./06-paths.js";
+import { applyMediaManifestState, loadMediaManifest, mediaManifestKeyFor, mediaManifestSignature } from "./26a1-media-manifest.js";
+import { commitMediaDiscardPlan } from "./26c-video-derivatives.js";
+
+// --- Media manifest (removal) --------------------------------------------
+
+// A file that only exists in R2 has no blob to remove, so its deletion is the removal of its
+// bookkeeping — the same reasoning that keeps untracked video posters out of the tree request
+// in commitMediaDiscardPlan. Since the effective manifest is two files, that can mean two
+// entries for one key: the rewritten manifest blob, and a blob deletion for an upload record
+// the next production build has not folded in yet. Both halves must land in one commit, or a
+// folded-in record would resurrect the entry the manifest just lost.
+// The R2 object itself stays: it is content-addressed, unreferenced once its bookkeeping is
+// gone, and nothing in the pipeline collects the bucket today.
+export async function buildMediaManifestChange(keys) {
+  await loadMediaManifest(true);
+  const base = state.mediaManifestBase;
+  const records = state.mediaManifestRecords;
+  const wanted = keys.filter(Boolean);
+  const fromBase = wanted.filter((key) => Object.hasOwn(base, key));
+  const fromRecords = wanted.filter((key) => records.has(key));
+  if (!fromBase.length && !fromRecords.length) return null;
+
+  const entries = [];
+  let nextBase = base;
+  if (fromBase.length) {
+    nextBase = { ...base };
+    fromBase.forEach((key) => delete nextBase[key]);
+    const blob = await draftRepository.createBlob(serializeMediaManifest(nextBase));
+    entries.push({ path: mediaManifestPath, mode: "100644", type: "blob", sha: blob.sha });
+  }
+  fromRecords.forEach((key) => {
+    entries.push({ path: records.get(key).path, mode: "100644", type: "blob", sha: null });
+  });
+
+  const draftBlobs = blobShaMap(state.tree);
+  return {
+    base: nextBase,
+    removedRecordKeys: fromRecords,
+    entries,
+    expectedBlobs: Object.fromEntries(entries.map((entry) => [entry.path, draftBlobs.get(entry.path) || null]))
+  };
+}
+
+export async function commitMediaManifestDelete(item) {
+  const change = await buildMediaManifestChange([mediaManifestKeyFor(item.path)]);
+  if (!change) return false;
+  await commitToDrafts(
+    change.entries,
+    `Delete ${item.name || baseName(item.path)} from the media manifest`,
+    change.expectedBlobs
+  );
+  adoptMediaManifestChange(change);
+  return true;
+}
+
+// Keep the cached manifest in step with the commit instead of dropping it: re-reading means
+// pulling the ~2.7 MB manifest blob again on every single deletion.
+export function adoptMediaManifestChange(change) {
+  const records = new Map(state.mediaManifestRecords);
+  change.removedRecordKeys.forEach((key) => records.delete(key));
+  const blobs = blobShaMap(state.tree);
+  const baseSha = blobs.get(mediaManifestPath) || "";
+  const recordBlobs = Array.from(records.values(), (record) => [record.path, blobs.get(record.path) || record.sha]);
+  applyMediaManifestState({
+    base: change.base,
+    baseSha,
+    records,
+    signature: mediaManifestSignature(baseSha, recordBlobs)
+  });
+}
+
+// Byte-identical to saveManifest in scripts/lib/r2-media.js, so an admin-side deletion and a
+// pipeline-side write never differ in formatting and produce a diff of exactly the removed
+// entries.
+function serializeMediaManifest(manifest) {
+  const sorted = Object.keys(manifest).sort().reduce((result, key) => {
+    result[key] = manifest[key];
+    return result;
+  }, {});
+  return `${JSON.stringify(sorted, null, 2)}\n`;
+}

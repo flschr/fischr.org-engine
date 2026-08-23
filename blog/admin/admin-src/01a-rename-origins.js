@@ -1,0 +1,71 @@
+import { renameOriginsPath } from "./00-konstanten.js";
+import { draftRepository } from "./01-bootstrap.js";
+import { state } from "./01c-state.js";
+import { blobShaMap, fetchMainTree, getBlobText } from "./04-drafts.js";
+import { fetchTree } from "./05-github-auth.js";
+
+// --- Persisted rename identity ------------------------------------------
+
+function validRenameOrigins(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const postPath = /^blog\/posts\/\d{4}-\d{2}-\d{2}-.+\.md$/;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([targetPath, originPath]) =>
+      postPath.test(targetPath) &&
+      typeof originPath === "string" &&
+      postPath.test(originPath) &&
+      targetPath !== originPath
+    )
+    .sort(([left], [right]) => left.localeCompare(right)));
+}
+
+export async function loadRenameOriginsFromDrafts() {
+  const tree = await fetchTree(false);
+  const sha = blobShaMap(tree).get(renameOriginsPath) || "";
+  if (state.renameOriginsLoadedSha === sha) return state.renameOrigins;
+  try {
+    state.renameOrigins = sha ? validRenameOrigins(JSON.parse(await getBlobText(sha))) : {};
+  } catch {
+    state.renameOrigins = {};
+  }
+  state.renameOriginsLoadedSha = sha;
+  return state.renameOrigins;
+}
+
+async function buildRenameOriginsChange(origins) {
+  const current = await loadRenameOriginsFromDrafts();
+  const normalized = validRenameOrigins(origins);
+  if (JSON.stringify(current) === JSON.stringify(normalized)) return null;
+  const keys = Object.keys(normalized);
+  const blob = keys.length
+    ? await draftRepository.createBlob(`${JSON.stringify(normalized, null, 2)}\n`)
+    : null;
+  return {
+    origins: normalized,
+    entry: { path: renameOriginsPath, mode: "100644", type: "blob", sha: blob?.sha || null },
+    expectedSha: blobShaMap(state.tree).get(renameOriginsPath) || null
+  };
+}
+
+export async function prepareRenameOriginChange(path, originPath, previousPath) {
+  if (!path || !originPath) return null;
+  const origins = { ...(await loadRenameOriginsFromDrafts()) };
+  if (previousPath) delete origins[previousPath];
+  if (path !== originPath) origins[path] = originPath;
+  return buildRenameOriginsChange(origins);
+}
+
+export async function preparePrunedRenameOriginsChange(treeEntries = []) {
+  const origins = await loadRenameOriginsFromDrafts();
+  if (!Object.keys(origins).length) return null;
+  const draftMap = blobShaMap(state.tree);
+  treeEntries.forEach((entry) => {
+    if (entry.sha === null) draftMap.delete(entry.path);
+    else draftMap.set(entry.path, entry.sha);
+  });
+  const mainMap = blobShaMap(await fetchMainTree(true));
+  const pruned = Object.fromEntries(Object.entries(origins).filter(([targetPath, originPath]) =>
+    draftMap.has(targetPath) && !draftMap.has(originPath) && mainMap.has(originPath)
+  ));
+  return buildRenameOriginsChange(pruned);
+}

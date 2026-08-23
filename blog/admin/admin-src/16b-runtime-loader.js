@@ -1,0 +1,59 @@
+import { runtimeAssets, state } from "./01c-state.js";
+
+// --- On-demand editor and preview runtimes -------------------------------
+
+const runtimeLoadAttempts = new Map();
+
+function loadScriptOnce(src, ready) {
+  if (ready()) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const absoluteSrc = new URL(src, location.href).href;
+    const existing = Array.from(document.scripts).find((script) => script.dataset.runtimeSrc === absoluteSrc || script.src === absoluteSrc);
+    // A caller only reaches this point when the expected global is missing.
+    // Reusing an earlier script is unsafe: its load/error event may already
+    // have fired, which would leave a retry pending forever.
+    existing?.remove();
+    const script = document.createElement("script");
+    const fail = (message) => {
+      script.remove();
+      reject(new Error(message));
+    };
+    const finish = () => ready() ? resolve() : fail(`Runtime fehlt: ${src}`);
+    script.addEventListener("load", finish, { once: true });
+    script.addEventListener("error", () => fail(`Runtime konnte nicht geladen werden: ${src}`), { once: true });
+    const attempt = (runtimeLoadAttempts.get(absoluteSrc) || 0) + 1;
+    runtimeLoadAttempts.set(absoluteSrc, attempt);
+    const requestUrl = new URL(absoluteSrc);
+    if (attempt > 1) requestUrl.searchParams.set("runtime-retry", String(attempt));
+    script.dataset.runtimeSrc = absoluteSrc;
+    script.src = requestUrl.href;
+    script.async = true;
+    document.head.append(script);
+  });
+}
+
+export function loadEditorRuntime() {
+  if (window.RWEditor) return Promise.resolve();
+  if (!state.editorRuntimePromise) {
+    state.editorRuntimePromise = loadScriptOnce(runtimeAssets.editorSrc, () => Boolean(window.RWEditor))
+      .catch((error) => {
+        state.editorRuntimePromise = null;
+        throw error;
+      });
+  }
+  return state.editorRuntimePromise;
+}
+
+export function loadPreviewRuntime() {
+  if (window.RWPreviewRenderer) return Promise.resolve();
+  if (!state.previewRuntimePromise) {
+    state.previewRuntimePromise = loadScriptOnce(runtimeAssets.conventionsSrc, () => Boolean(window.RWMarkdownConventions))
+      .then(() => loadScriptOnce(runtimeAssets.markdownSrc, () => typeof window.markdownit === "function"))
+      .then(() => loadScriptOnce(runtimeAssets.previewSrc, () => Boolean(window.RWPreviewRenderer)))
+      .catch((error) => {
+        state.previewRuntimePromise = null;
+        throw error;
+      });
+  }
+  return state.previewRuntimePromise;
+}

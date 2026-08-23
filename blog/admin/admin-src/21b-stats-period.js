@@ -1,0 +1,106 @@
+// --- Statistik-Zeiträume ---------------------------------------------------
+//
+// Die Presets sind Kalenderzeiträume, keine rollenden Fenster: "Woche" ist die
+// laufende ISO-Woche ab Montag, nicht "die letzten sieben Tage". Die Buttons
+// hießen schon vorher so — die Rechnung dahinter war eine andere.
+//
+// Alles hier ist Client-Rechnung. /api/admin/stats kennt nur start und end und
+// behält damit eine einzige, stabile Signatur, egal wie viele Presets oben
+// dazukommen. Ein freier Zeitraum ist deshalb kein Sonderfall, sondern nur ein
+// weiteres Paar Datumsgrenzen.
+
+const STATS_PRESETS = ["week", "month", "quarter", "year", "custom"];
+const statsDayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const statsMonthFormat = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
+export const statsShortDayFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" });
+
+export function statsIsPreset(value) {
+  return STATS_PRESETS.includes(value);
+}
+
+// Montag als Wochenanfang (ISO 8601), auch wenn der Sonntag davor liegt.
+function statsStartOfWeek(date) {
+  const start = new Date(date);
+  const weekday = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - weekday);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function statsParseDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// Die letzte volle Stunde des Schlusstages statt 23:59:59. Der Endpunkt liest
+// ohnehin nur den Tag heraus, aber der Zeitstempel bleibt so lesbar.
+function statsEndOfDay(date) {
+  const end = new Date(date);
+  end.setHours(23, 0, 0, 0);
+  return end;
+}
+
+// Liefert { start, end } als ISO-Strings oder null, wenn ein freier Zeitraum
+// noch unvollständig oder verdreht ist. null heißt: nicht laden, nachfragen.
+export function statsPeriodBounds(period) {
+  const now = new Date();
+  const end = new Date(now);
+  end.setMinutes(0, 0, 0);
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+
+  switch (period.preset) {
+    case "week":
+      return { start: statsStartOfWeek(now).toISOString(), end: end.toISOString() };
+    case "month":
+      start.setDate(1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    case "quarter":
+      start.setMonth(Math.floor(start.getMonth() / 3) * 3, 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    case "year":
+      start.setMonth(0, 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    case "custom": {
+      const from = statsParseDate(period.from);
+      const to = statsParseDate(period.to);
+      if (!from || !to || from > to) return null;
+      return { start: from.toISOString(), end: statsEndOfDay(to).toISOString() };
+    }
+    default:
+      return null;
+  }
+}
+
+// Cache, laufende Anfrage und AbortController hängen an diesem Schlüssel. Ein
+// freier Zeitraum bekommt seine Datumsgrenzen mit hinein, sonst würde die
+// zweite freie Abfrage die Antwort der ersten servieren.
+export function statsPeriodKey(period) {
+  return period.preset === "custom" ? `custom:${period.from}:${period.to}` : period.preset;
+}
+
+export function statsPeriodLabel(period) {
+  const now = new Date();
+  switch (period.preset) {
+    case "week": {
+      const from = statsStartOfWeek(now);
+      return `Diese Woche · ${statsShortDayFormat.format(from)} – ${statsShortDayFormat.format(now)}`;
+    }
+    case "month":
+      return `Dieser Monat · ${statsMonthFormat.format(now)}`;
+    case "quarter":
+      return `Dieses Quartal · Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
+    case "year":
+      return `Dieses Jahr · ${now.getFullYear()}`;
+    case "custom": {
+      const from = statsParseDate(period.from);
+      const to = statsParseDate(period.to);
+      if (!from || !to) return "Freier Zeitraum · bitte Von und Bis wählen";
+      if (from > to) return "Freier Zeitraum · Von liegt nach Bis";
+      return `${statsDayFormat.format(from)} – ${statsDayFormat.format(to)}`;
+    }
+    default:
+      return "";
+  }
+}

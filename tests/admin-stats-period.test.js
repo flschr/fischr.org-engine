@@ -10,10 +10,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const SOURCE = fs.readFileSync(
-  path.join(__dirname, "../blog/admin/admin-src/21b-stats-period.part"),
-  "utf8"
-);
+// Das Modul wird als Text gelesen und in eine Funktion gehüllt, damit `Date` überdeckt werden
+// kann (siehe moduleAt). Dafür müssen die ESM-Schlüsselwörter weg — die Datei ist ein Blatt und
+// importiert nichts, es bleibt also beim Abstreifen des vorangestellten `export`.
+const SOURCE = fs
+  .readFileSync(path.join(__dirname, "../blog/admin/admin-src/21b-stats-period.js"), "utf8")
+  .replace(/^export /gm, "");
 
 // Das Part liegt im Browser in einer großen Closure. Für den Test wird es in
 // eine Funktion gehüllt, deren Parameter `Date` die globale Klasse überdeckt —

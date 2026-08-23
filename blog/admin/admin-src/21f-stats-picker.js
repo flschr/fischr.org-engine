@@ -1,0 +1,66 @@
+import { els } from "./01b-elements.js";
+import { state } from "./01c-state.js";
+import { loadStats, setStatsRangeButtons } from "./21-stats.js";
+import { statsPeriodBounds } from "./21b-stats-period.js";
+
+// --- Der freie Zeitraum ----------------------------------------------------
+//
+// Ein Blatt unter dem fünften Knopf statt zweier Felder in der Leiste. Die
+// Felder standen dort dauerhaft, auch wenn niemand sie brauchte; die Zeile war
+// damit länger als die Auswahl, die sie bedient.
+//
+// Der Zeitraum wechselt erst beim Anzeigen. Vorher zog schon der Klick auf
+// "Frei" die Ansicht auf einen Zeitraum, den es noch nicht gab, und ersetzte
+// die Zahlen durch die Aufforderung, zwei Daten zu wählen. Jetzt bleibt
+// stehen, was zu sehen war, bis es etwas Neues zu sehen gibt.
+function openStatsPicker() {
+  if (!els.statsCustom) return;
+  // Vorbelegt mit dem Zeitraum, der gerade zu sehen ist: Ein Wähler, der bei
+  // "TT.MM.JJJJ" beginnt, verlangt zwei vollständige Daten, obwohl meist nur
+  // eine Grenze verschoben werden soll.
+  const bounds = statsPeriodBounds(state.statsPeriod);
+  if (els.statsFrom) els.statsFrom.value = state.statsPeriod.from || statsTagWert(bounds?.start);
+  if (els.statsTo) els.statsTo.value = state.statsPeriod.to || statsTagWert(bounds?.end);
+  setStatsPickerHint("");
+  els.statsCustom.hidden = false;
+  els.statsCustomToggle?.setAttribute("aria-expanded", "true");
+  els.statsFrom?.focus();
+}
+
+export function closeStatsPicker({ focusToggle = false } = {}) {
+  if (!els.statsCustom || els.statsCustom.hidden) return;
+  els.statsCustom.hidden = true;
+  els.statsCustomToggle?.setAttribute("aria-expanded", "false");
+  if (focusToggle) els.statsCustomToggle?.focus();
+}
+
+export function toggleStatsPicker() {
+  if (els.statsCustom?.hidden) openStatsPicker();
+  else closeStatsPicker({ focusToggle: true });
+}
+
+function setStatsPickerHint(text) {
+  if (!els.statsCustomHint) return;
+  els.statsCustomHint.textContent = text;
+  els.statsCustomHint.hidden = !text;
+}
+
+// Die Grenzen kommen als Zeitstempel zurück, das Feld will einen Kalendertag.
+function statsTagWert(iso) {
+  const datum = iso ? new Date(iso) : null;
+  if (!datum || Number.isNaN(datum.getTime())) return "";
+  return `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
+}
+
+// Ein unvollständiger oder verdrehter Zeitraum bleibt im Wähler stehen und
+// sagt dort, was fehlt — statt die Ansicht dahinter zu leeren.
+export function applyStatsPicker() {
+  const from = els.statsFrom?.value || "";
+  const to = els.statsTo?.value || "";
+  if (!from || !to) return setStatsPickerHint("Beide Tage wählen.");
+  if (from > to) return setStatsPickerHint("Der erste Tag liegt nach dem letzten.");
+  state.statsPeriod = { preset: "custom", from, to };
+  closeStatsPicker({ focusToggle: true });
+  setStatsRangeButtons();
+  loadStats();
+}

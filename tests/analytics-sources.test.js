@@ -10,6 +10,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+
+const adminStatsSource = require("./helpers/admin-stats-source");
 const { DatabaseSync } = require("node:sqlite");
 
 let eineQuelle;
@@ -264,11 +266,7 @@ test("alte Rohzeilen verschwinden, die Tagesaggregate bleiben", async () => {
 function statsBausteine(...namen) {
   // Nur die Statistik-Bausteine: Der vollständige Admin-Quelltext führt beim
   // Auswerten seinen Startcode aus und verlangt Dinge, die es hier nicht gibt.
-  const verzeichnis = path.join(__dirname, "../blog/admin/admin-src");
-  const quelle = fs.readdirSync(verzeichnis)
-    .filter((name) => /^21/.test(name)).sort()
-    .map((name) => fs.readFileSync(path.join(verzeichnis, name), "utf8"))
-    .join("\n");
+  const quelle = adminStatsSource();
   const kontext = {
     els: { statsBody: { innerHTML: "" } },
     escapeHtml: (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])),

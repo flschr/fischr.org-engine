@@ -1,0 +1,86 @@
+import { repo } from "./00-konstanten.js";
+
+import { state } from "./01c-state.js";
+import { encodePath } from "./05-github-auth.js";
+import { currentEntrySlug, fileName, isImagePath, publicImagePath } from "./06-paths.js";
+import { mediaDisplayUrl } from "./26a1-media-manifest.js";
+
+// --- Image path resolution (for preview & insertion) ---------------------
+
+function imageTreeMatches(value) {
+  const tree = state.tree?.tree || [];
+  const normalized = String(value || "").replace(/^\/+/, "");
+  if (!normalized) return [];
+  return tree
+    .filter((item) => item.type === "blob" && isImagePath(item.path))
+    .filter((item) => item.path === normalized || item.path.endsWith(`/${normalized}`) || fileName(item.path) === normalized);
+}
+
+function bestImageAsset(value) {
+  const slug = currentEntrySlug();
+  const pendingMatch = Array.from(state.changes.values()).find((change) => {
+    return change.collection === "media" && change.kind === "upsert" && !["video", "gpx"].includes(change.mediaKind) && (
+      change.publicPath === value || change.path === value || fileName(change.path) === value || change.path.endsWith(`/${value}`)
+    );
+  });
+  const mediaMatch = state.media.find((item) => {
+    return !["video", "gpx"].includes(item.mediaKind) && (item.name === value || fileName(item.path) === value || item.path.endsWith(`/${value}`));
+  });
+
+  if (pendingMatch) {
+    return { preview: pendingMatch.preview || "", publicPath: pendingMatch.publicPath || publicImagePath(pendingMatch.path), repoPath: pendingMatch.path };
+  }
+  if (mediaMatch) {
+    return { preview: mediaMatch.preview || "", publicPath: mediaMatch.publicPath, repoPath: mediaMatch.path };
+  }
+
+  const matches = imageTreeMatches(value);
+  const samePostMatch = matches.find((item) => slug && item.path.includes(`/imported/${slug}/`));
+  const uploadsMatch = matches.find((item) => item.path.includes("/uploads/"));
+  const importedMatch = matches.find((item) => item.path.includes("/imported/"));
+  const match = samePostMatch || uploadsMatch || importedMatch || matches[0];
+
+  return match ? { preview: "", publicPath: publicImagePath(match.path), repoPath: match.path } : null;
+}
+
+function repoImagePath(src) {
+  const value = String(src || "").trim();
+  if (!value || /^https?:\/\//i.test(value)) return "";
+  if (value.startsWith("/assets/images/")) return `blog${value}`;
+  if (value.startsWith("assets/images/")) return `blog/${value}`;
+  if (value.startsWith("blog/assets/images/")) return value;
+  return bestImageAsset(value)?.repoPath || "";
+}
+
+export function rawGitHubImageUrl(src) {
+  const path = repoImagePath(src);
+  return path ? `https://raw.githubusercontent.com/${repo.owner}/${repo.name}/${repo.branch}/${encodePath(path)}` : "";
+}
+
+export function previewImagePath(src) {
+  const value = String(src || "").trim();
+  if (!value) return publicImagePath(value);
+  const match = bestImageAsset(value);
+  if (match?.preview) return match.preview;
+  if (value.startsWith("/") || /^https?:\/\//i.test(value)) return mediaDisplayUrl(publicImagePath(value));
+  if (match) return mediaDisplayUrl(match.publicPath);
+  return mediaDisplayUrl(publicImagePath(value));
+}
+
+// Shared thumbnail <img> for the gallery and the social-image picker. Lazy +
+// async decoding so a grid of hundreds of images only loads what is on
+// screen, with a raw-GitHub fallback when the published path is not live yet.
+export function buildMediaThumbImage(item) {
+  const image = document.createElement("img");
+  image.src = item.preview || mediaDisplayUrl(item.publicPath);
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  const fallback = rawGitHubImageUrl(item.path || item.publicPath);
+  if (fallback && fallback !== image.src) {
+    image.addEventListener("error", () => {
+      image.src = fallback;
+    }, { once: true });
+  }
+  return image;
+}

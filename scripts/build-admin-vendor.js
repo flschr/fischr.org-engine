@@ -10,7 +10,7 @@ const output = (file) => path.join(root, file);
 const editorSource = path.join(root, "blog/admin/editor-src/editor.js");
 
 async function main() {
-  buildAdminBundle();
+  await buildAdminBundle();
   copyMarkdownItBundle();
   buildStyles();
   buildIconBundle({ root, outfile: output(adminVendorBundles.icons) });
@@ -21,15 +21,31 @@ async function main() {
   console.log(`Generated asset manifest → ${manifestFile}`);
 }
 
-function buildAdminBundle() {
-  const sourceDir = path.join(root, "blog/admin/admin-src");
-  const parts = fs.readdirSync(sourceDir).filter((name) => name.endsWith(".part")).sort();
-  if (!parts.length) throw new Error("Admin application source parts are missing.");
-  const source = parts.map((name) => fs.readFileSync(path.join(sourceDir, name), "utf8")).join("");
-  if (!source.startsWith("(function () {") || !source.trimEnd().endsWith("})();")) {
-    throw new Error("Admin application source parts do not form a complete application.");
-  }
-  write(adminVendorBundles.app, source);
+// Bündelt den Admin aus seinem Modulbaum, so wie buildEditorBundle es für den Editor schon tut.
+//
+// Vorher war das eine Aneinanderreihung von .part-Fragmenten in einer gemeinsamen Closure. Die
+// Reihenfolge kam aus Zahlen im Dateinamen, und alle 490 Bezeichner sahen einander. Jetzt sagt
+// jedes Modul, was es braucht; esbuild löst das auf und erzeugt dieselbe IIFE wie zuvor.
+//
+// Kein Minify: Der Admin wird von Hand gelesen, wenn etwas nicht stimmt, und die Ersparnis
+// wäre bei einer Seite hinter Anmeldung ohnehin niemandes Problem.
+async function buildAdminBundle() {
+  const esbuild = require("esbuild");
+  const entry = path.join(root, "blog/admin/admin-src/main.js");
+  if (!fs.existsSync(entry)) throw new Error(`Admin application entry missing: ${path.relative(root, entry)}`);
+
+  await esbuild.build({
+    entryPoints: [entry],
+    outfile: output(adminVendorBundles.app),
+    bundle: true,
+    format: "iife",
+    target: ["es2019"],
+    minify: false,
+    sourcemap: false,
+    legalComments: "none",
+    logLevel: "warning"
+  });
+
   console.log(`Admin application bundled → ${adminVendorBundles.app}`);
 }
 

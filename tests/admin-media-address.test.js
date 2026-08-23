@@ -29,7 +29,7 @@ function adminSource() {
   const dir = path.join(adminRoot, "admin-src");
   return fs
     .readdirSync(dir)
-    .filter((name) => name.endsWith(".part"))
+    .filter((name) => name.endsWith(".js"))
     .sort()
     .map((name) => fs.readFileSync(path.join(dir, name), "utf8"))
     .join("");
@@ -58,9 +58,9 @@ test("the delivery host appears once, as a declared constant", () => {
 
   assert.equal(occurrences.length, 1, "the delivery host belongs in exactly one place");
   assert.match(
-    withoutComments(fs.readFileSync(path.join(adminRoot, "admin-src/01-bootstrap.part"), "utf8")),
+    withoutComments(fs.readFileSync(path.join(adminRoot, "admin-src/00-konstanten.js"), "utf8")),
     new RegExp(`const mediaDeliveryOrigin = "https://${deliveryHost.source}"`),
-    "and that place is the configuration block"
+    "and that place is the constants module"
   );
 });
 
