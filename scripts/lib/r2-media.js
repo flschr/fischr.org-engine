@@ -8,7 +8,7 @@ const sharp = require("sharp");
 const { imageMimeType, videoMimeType } = require("../../lib/eleventy/social");
 const {
   contentAddressedKey,
-  objectKeyFor,
+  storedObjectKey,
   pendingUploadFileName,
   pendingUploadsRelativeDir,
   readBaseManifest,
@@ -253,7 +253,11 @@ async function getObject({ accountId, accessKeyId, secretAccessKey, key, env }) 
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`R2 download failed for ${key}: ${response.status} ${detail}`.trim());
+    const error = new Error(`R2 download failed for ${key}: ${response.status} ${detail}`.trim());
+    // Markiert diesen Fehler als "die Gegenstelle hat geantwortet". Der Aufrufer unterscheidet
+    // daran eine Ablehnung von einem Transportfehler — siehe downloadFromBucket.
+    error.httpStatus = response.status;
+    throw error;
   }
 
   return Buffer.from(await response.arrayBuffer());
@@ -279,7 +283,7 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
   // address is baked into published feed items, syndicated posts and the absolute URLs in the
   // post archive, and all of those have to keep resolving. Recording it here is what keeps the
   // drift report from calling it an orphan.
-  const previousObjectKey = existing ? objectKeyFor(existing, key) : null;
+  const previousObjectKey = existing ? storedObjectKey(existing, key) : null;
   const superseded = [
     ...(existing && Array.isArray(existing.supersededObjectKeys) ? existing.supersededObjectKeys : []),
     ...(previousObjectKey && previousObjectKey !== objectKey ? [previousObjectKey] : [])
@@ -377,14 +381,24 @@ function hashMismatch(key, bytes, expectedSha256, destinationPath) {
 
 async function downloadFromBucket({ credentials, key, destinationPath, expectedSha256, env }) {
   return withRetry(`Media download ${key}`, async () => {
-    // AwsClient has already repeated the retryable statuses by the time this rejects, so a
-    // failure arriving here is final — repeating it would only multiply the two budgets
-    // together, the same reason the upload side carries no wrapper of its own.
+    // Zwei Fehlerarten, und sie dürfen nicht gleich behandelt werden.
+    //
+    // Hat die Gegenstelle geantwortet (`httpStatus` gesetzt), ist die Sache erledigt: AwsClient
+    // hat 5xx und 429 zu diesem Zeitpunkt schon abgearbeitet, und ein 403 oder 404 wird von
+    // keiner Wiederholung besser. Nochmal drüberzugehen multiplizierte nur die beiden Budgets.
+    //
+    // Kam gar keine Antwort — Verbindungsabbruch, DNS, abgelaufene Zeitschranke —, dann hat
+    // AwsClient nichts wiederholt: seine Schleife prüft `res.status`, und ein geworfener
+    // fetch-Fehler verlässt sie, bevor sie dazu kommt. Genau das ist der Fall, für den der
+    // Wiederholungs-Rahmen oben überhaupt existiert (siehe den Kommentar bei
+    // downloadAttempts): ein Build zieht über tausend Dateien hier durch, und ein einzelner
+    // Abbruch hat früher den ganzen Deploy scheitern lassen. Seit der Bucket der Weg des CI
+    // ist, gilt das für ihn erst recht.
     let bytes;
     try {
       bytes = await getObject({ ...credentials, key, env });
     } catch (error) {
-      return { ok: false, retryable: false, error };
+      return { ok: false, retryable: !error?.httpStatus, error };
     }
 
     // A truncated body reads as a hash mismatch, and against the bucket that is the only way

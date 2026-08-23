@@ -461,3 +461,89 @@ test("a partial credential set falls back to the delivery domain instead of fail
     await delivery.close();
   }
 });
+
+// Der Grund, aus dem der öffentliche Weg überhaupt einen Wiederholungs-Rahmen hat, steht als
+// Kommentar in scripts/lib/r2-media.js: ein einziger Verbindungsabbruch hat den ganzen Deploy
+// scheitern lassen, und ein Build zieht über tausend Dateien durch diesen Pfad.
+//
+// Für den Bucket-Weg gilt das erst recht, seit er der Weg des CI ist. aws4fetch wiederholt
+// ausschliesslich HTTP 5xx und 429 — ein Verbindungsabbruch fliegt aus seiner Schleife heraus,
+// ohne je wiederholt worden zu sein. Wer ihn hier als endgültig behandelt, hat die Regression
+// wieder eingebaut.
+test("a dropped connection against the bucket is retried instead of failing the build", async () => {
+  const root = setupProject();
+  const buffer = Buffer.from("bytes-that-arrive-on-the-second-try");
+
+  writeManifest(root, {
+    "images/uploads/flaky.webp": {
+      sourcePath: "blog/assets/images/uploads/flaky.webp",
+      sha256: hash(buffer)
+    }
+  });
+
+  let attempts = 0;
+  const server = http.createServer((req, res) => {
+    attempts += 1;
+    if (attempts === 1) {
+      // Kein Status, keine Antwort: die Verbindung bricht ab, genau wie bei einem Reset.
+      req.socket.destroy();
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/octet-stream" });
+    res.end(buffer);
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+
+  try {
+    await runPrepare(root, {
+      ...bucketCredentials,
+      R2_S3_ENDPOINT: `http://127.0.0.1:${port}`,
+      MEDIA_DELIVERY_BASE_URL: "http://127.0.0.1:1"
+    });
+
+    assert.deepEqual(fs.readFileSync(path.join(root, "blog/assets/images/uploads/flaky.webp")), buffer);
+    assert.equal(attempts, 2, "the first attempt must be retried, not surfaced as a failure");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+// Die Gegenprobe, damit der Fix nicht in zu weites Wiederholen umschlägt: Ein abgelehnter
+// Zugriff wird von keiner Wiederholung besser, und aws4fetch hat 5xx/429 zu diesem Zeitpunkt
+// bereits abgearbeitet.
+test("an unauthorized bucket read fails at once instead of being retried", async () => {
+  const root = setupProject();
+
+  writeManifest(root, {
+    "images/uploads/denied.webp": {
+      sourcePath: "blog/assets/images/uploads/denied.webp",
+      sha256: hash(Buffer.from("egal"))
+    }
+  });
+
+  let attempts = 0;
+  const server = http.createServer((req, res) => {
+    attempts += 1;
+    res.writeHead(403);
+    res.end("nope");
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+
+  try {
+    await assert.rejects(
+      runPrepare(root, {
+        ...bucketCredentials,
+        R2_S3_ENDPOINT: `http://127.0.0.1:${port}`,
+        MEDIA_DELIVERY_BASE_URL: "http://127.0.0.1:1"
+      }),
+      /R2 download failed/
+    );
+    assert.equal(attempts, 1, "a rejected read must surface at once");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { loadManifest, downloadMediaFile, optionalCredentialsFromEnv } = require("./lib/r2-media");
-const { objectKeyFor } = require("../lib/media-manifest");
+const { storedObjectKey } = require("../lib/media-manifest");
 
 const root = process.cwd();
 const ephemeralSourcePrefix = "_site/";
@@ -44,7 +44,7 @@ async function main() {
     .filter(([, entry]) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix))
     .map(([key, entry]) => ({
       key,
-      objectKey: objectKeyFor(entry, key),
+      objectKey: storedObjectKey(entry, key),
       destinationPath: path.join(root, entry.sourcePath),
       sha256: entry.sha256
     }))

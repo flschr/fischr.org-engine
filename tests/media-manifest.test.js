@@ -6,7 +6,7 @@ const { test } = require("node:test");
 
 const {
   contentAddressedKey,
-  objectKeyFor,
+  storedObjectKey,
   objectKeysForEntry,
   pendingUploadFileName,
   pendingUploadsRelativeDir,
@@ -165,14 +165,14 @@ test("an entry without an objectKey is served from its manifest key, for good", 
   // Every upload from before the scheme changed. Their addresses are baked into published feed
   // items, syndicated posts and roughly 1,400 absolute URLs across the archive, so the fallback
   // is not a transition state — it is the permanent answer for those entries.
-  assert.equal(objectKeyFor({ sha256: "abc" }, "images/uploads/old.webp"), "images/uploads/old.webp");
-  assert.equal(objectKeyFor(undefined, "images/uploads/old.webp"), "images/uploads/old.webp");
-  assert.equal(objectKeyFor({ objectKey: "" }, "images/uploads/old.webp"), "images/uploads/old.webp");
+  assert.equal(storedObjectKey({ sha256: "abc" }, "images/uploads/old.webp"), "images/uploads/old.webp");
+  assert.equal(storedObjectKey(undefined, "images/uploads/old.webp"), "images/uploads/old.webp");
+  assert.equal(storedObjectKey({ objectKey: "" }, "images/uploads/old.webp"), "images/uploads/old.webp");
 });
 
 test("an entry with an objectKey is served from it, not from its manifest key", () => {
   const entry = { objectKey: "cas/ab/abc.webp" };
-  assert.equal(objectKeyFor(entry, "images/uploads/new.webp"), "cas/ab/abc.webp");
+  assert.equal(storedObjectKey(entry, "images/uploads/new.webp"), "cas/ab/abc.webp");
 });
 
 test("a content address is derived from the content, keeping the extension and sharding by prefix", () => {

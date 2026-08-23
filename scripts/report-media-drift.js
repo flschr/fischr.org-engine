@@ -29,7 +29,7 @@ const path = require("path");
 const { AwsClient } = require("aws4fetch");
 
 const { bucketName, credentialsFromEnv, s3Endpoint } = require("./lib/r2-media");
-const { manifestRelativePath, objectKeyFor, objectKeysForEntry, pendingUploadsRelativeDir } = require("../lib/media-manifest");
+const { manifestRelativePath, objectKeysForEntry, pendingUploadsRelativeDir, storedObjectKey } = require("../lib/media-manifest");
 
 const root = process.cwd();
 const reportPath = path.join(root, "automation/media-drift-report.json");
@@ -135,7 +135,7 @@ function knownKeys() {
   };
   const add = (key, entry, origin) => {
     if (typeof key !== "string" || !key) return;
-    addObjectKey(objectKeyFor(entry, key), entry, origin);
+    addObjectKey(storedObjectKey(entry, key), entry, origin);
     for (const superseded of objectKeysForEntry(entry, key).slice(1)) {
       addObjectKey(superseded, null, `${origin} (superseded)`);
     }
