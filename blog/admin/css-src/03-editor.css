@@ -95,14 +95,14 @@
 
 /* Colored, filled action buttons (Bear style) */
 .editor-bar #previewModeButton[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent-weak-2); color: var(--accent-ink); }
-.editor-bar .tb-publish.is-publish { background: var(--accent); border-color: transparent; color: #fff; }
-.editor-bar .tb-publish.is-publish:hover { background: var(--accent-hover); border-color: transparent; color: #fff; }
+.editor-bar .tb-publish.is-publish { background: var(--accent); border-color: transparent; color: var(--accent-contrast); }
+.editor-bar .tb-publish.is-publish:hover { background: var(--accent-hover); border-color: transparent; color: var(--accent-contrast); }
 .editor-bar .tb-save { background: var(--green); border-color: transparent; color: #fff; }
 .editor-bar .tb-save:hover { background: #11652f; border-color: transparent; color: #fff; }
 .editor-actions .danger svg { width: 1.05rem; height: 1.05rem; }
-/* New = indigo + */
-.lib-new { border-color: transparent; background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgb(79 70 229 / 0.35); }
-.lib-new:hover { background: var(--accent-hover); color: #fff; }
+/* New = filled accent + */
+.lib-new { border-color: transparent; background: var(--accent); color: var(--accent-contrast); box-shadow: 0 1px 2px rgb(var(--accent-rgb) / 0.35); }
+.lib-new:hover { background: var(--accent-hover); color: var(--accent-contrast); }
 .lib-new svg { width: 1.15rem; height: 1.15rem; }
 
 .editor-article { width: 100%; max-width: var(--editor-content-w); margin: 0 auto 0 0; }

@@ -93,4 +93,4 @@
 .media-pick-bar .ghost { color: var(--accent-ink); }
 .media-item.is-picking { cursor: pointer; }
 .media-item.is-picking:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-weak-2), var(--shadow-sm); }
-.media-item.is-picking:focus-visible { outline: 3px solid rgb(79 70 229 / 0.25); outline-offset: 2px; }
+.media-item.is-picking:focus-visible { outline: 3px solid rgb(var(--accent-rgb) / 0.25); outline-offset: 2px; }

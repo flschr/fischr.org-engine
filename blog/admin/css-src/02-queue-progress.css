@@ -35,7 +35,7 @@
   cursor: pointer;
   user-select: none;
 }
-.queue-select input { cursor: pointer; }
+.queue-select input { cursor: pointer; accent-color: var(--accent); }
 .queue-select:has(input:disabled) { cursor: default; opacity: 0.55; }
 
 /* Ein Medium, das ein gewählter Artikel braucht, wird benannt statt zur Wahl gestellt — ohne

@@ -40,7 +40,7 @@
   font-weight: 700;
   line-height: 1;
 }
-.sync-button.has-changes .sync-count { background: var(--accent); color: #fff; }
+.sync-button.has-changes .sync-count { background: var(--accent); color: var(--accent-contrast); }
 
 /* ---- Layout + sidebar -------------------------------------------------- */
 

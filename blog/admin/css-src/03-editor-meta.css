@@ -128,7 +128,7 @@
   background: var(--panel);
   overflow: hidden;
 }
-.social-text-field:focus-within { border-color: var(--accent); outline: 3px solid rgb(79 70 229 / 0.16); }
+.social-text-field:focus-within { border-color: var(--accent); outline: 3px solid rgb(var(--accent-rgb) / 0.16); }
 .social-text-field textarea { width: 100%; min-width: 0; border: 0; border-radius: 0; background: transparent; padding-bottom: 0.2rem; }
 .social-text-field textarea:focus { outline: none; }
 .social-text-link {

@@ -30,8 +30,8 @@
   min-height: 1.3rem;
   padding: 0 0.4rem;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--accent-contrast-weak);
+  color: var(--accent-contrast);
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;

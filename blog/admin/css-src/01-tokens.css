@@ -9,12 +9,32 @@
   --ink-faint: #9a9ea4;
   --line: #ededec;
   --line-2: #e3e3e1;
-  --accent: #4f46e5;
-  --accent-ink: #4338ca;
-  /* Filled-button hover. Same as --accent-ink in light, but split out so dark mode can keep --accent-ink readable as TEXT (light indigo) while button hovers stay a deep white-on-indigo fill. */
-  --accent-hover: #4338ca;
-  --accent-weak: #eef0fe;
-  --accent-weak-2: #e4e7fd;
+  /* Black/yellow, from the favicon — not purple. Text is already near-black
+     (--ink), so the accent can't just BE black too or it vanishes into body
+     copy; it works here because it's the one thing on the page that's a
+     *filled* black surface (a button, a badge), not black text sitting among
+     other text. In dark mode --ink turns light, so black would vanish for a
+     different reason — there, yellow takes over as the surface that pops. */
+  --accent: #111111;
+  --accent-ink: #171717;
+  /* Filled-button hover: darkens to pure black in light mode. Dark mode still
+     needs its own value (see below) — deepening yellow means less light, not
+     more black. */
+  --accent-hover: #000000;
+  --accent-weak: #fef9c3;
+  --accent-weak-2: #fde047;
+  /* Same as --accent, as a triplet: for `rgb(var(--accent-rgb) / alpha)`
+     where a fixed hex can't carry a variable alpha (shadows, focus rings). */
+  --accent-rgb: 17 17 17;
+  /* Text/icon color to put ON a filled --accent surface. White reads on the
+     black light-mode fill; white text on the yellow dark-mode fill would fail
+     contrast, so dark mode overrides this to a near-black instead. */
+  --accent-contrast: #ffffff;
+  /* A translucent version of --accent-contrast, for a badge that sits on top
+     of an --accent fill (a white wash in light mode, over black; a dark wash
+     in dark mode, over yellow — never a fixed white that would vanish on the
+     yellow fill). */
+  --accent-contrast-weak: rgb(255 255 255 / 0.25);
   --green: #15803d;
   --green-weak: #ecfdf3;
   /* Red carries two jobs that pull in opposite directions, so it is two tokens.
@@ -58,7 +78,7 @@
      measure below, but still left-aligns to the same left edge. */
   --content-w: 60rem;
   --editor-content-w: 46rem;
-  --cm-selection: #dfe3fd;
+  --cm-selection: #fdedb0;
 
   /* Aliases consumed by the bundled CodeMirror editor (editor.js). */
   --text: var(--ink);
@@ -87,11 +107,18 @@
     --ink-faint: #8b919c;
     --line: #3d414b;
     --line-2: #4d525d;
-    --accent: #8b84f5;
-    --accent-ink: #c3c8fe;
-    --accent-hover: #6a61e4;
-    --accent-weak: #30324c;
-    --accent-weak-2: #41446b;
+    /* Roles swap here, not just shades: black would vanish against the now-light
+       --ink, so yellow — the favicon's other half — becomes the surface that
+       pops, and the contrast/rgb helpers flip to match. */
+    --accent: #fde047;
+    --accent-ink: #fde047;
+    --accent-hover: #eab308;
+    --accent-weak: #3a3216;
+    --accent-weak-2: #4a4020;
+    --accent-rgb: 253 224 71;
+    --accent-contrast: #14120c;
+    --accent-contrast-weak: rgb(20 18 12 / 0.28);
+    --cm-selection: #443c1c;
     --green: #41c059;
     --green-weak: #1c3024;
     --red: #cf3229;
