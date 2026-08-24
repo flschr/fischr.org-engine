@@ -60,6 +60,14 @@ const downloadTimeoutMs = positiveIntEnv("R2_REQUEST_TIMEOUT_MS", 60000);
 // them — and for a 20 MB video on a slow link.
 const uploadTimeoutMs = positiveIntEnv("R2_UPLOAD_TIMEOUT_MS", 120000);
 const uploadRetries = positiveIntEnv("R2_UPLOAD_RETRIES", 4);
+// Die Wartezeit zwischen zwei Versuchen, als Grundwert für den exponentiellen Backoff.
+//
+// Einstellbar aus demselben Grund wie die Versuchszahl darüber — nur zieht dieser Wert an einer
+// anderen Stelle: Tests, die belegen, *dass* wiederholt wird, warten sonst die echten Pausen ab.
+// Zwei davon kosteten je gut 6 s, und weil der Engine-Export dieselbe Testdatei im Snapshot
+// nochmal fährt, zahlte das Gate sie doppelt — rund ein Viertel des gesamten Testlaufs für
+// reines Schlafen. Am Verhalten in Produktion ändert der Vorgabewert nichts.
+const retryBaseDelayMs = positiveIntEnv("R2_RETRY_BASE_DELAY_MS", 250);
 
 function isRetryableStatus(status) {
   return status === 408 || status === 425 || status === 429 || status >= 500;
@@ -76,7 +84,10 @@ async function withRetry(label, attempt) {
   let lastError;
 
   for (let tryNumber = 1; tryNumber <= downloadAttempts; tryNumber += 1) {
-    if (tryNumber > 1) await sleep(Math.min(2000, 250 * 2 ** (tryNumber - 2)) + Math.random() * 250);
+    if (tryNumber > 1) {
+      const gedeckelt = Math.min(8 * retryBaseDelayMs, retryBaseDelayMs * 2 ** (tryNumber - 2));
+      await sleep(gedeckelt + Math.random() * retryBaseDelayMs);
+    }
 
     let outcome;
     try {

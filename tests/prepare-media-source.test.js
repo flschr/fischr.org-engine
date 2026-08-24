@@ -84,7 +84,14 @@ const credentialVariables = [
 async function runPrepare(root, env) {
   const scrubbed = { ...process.env };
   for (const name of credentialVariables) delete scrubbed[name];
-  return execFileAsync("node", ["scripts/prepare-media-source.js"], { cwd: root, env: { ...scrubbed, ...env } });
+  return execFileAsync("node", ["scripts/prepare-media-source.js"], {
+    cwd: root,
+    // Der Backoff auf 1 ms. Was diese Tests belegen, ist *dass* wiederholt wird und mit welchem
+    // Ergebnis — nicht, wie lange dazwischen gewartet wird. Mit den echten Pausen kosteten zwei
+    // von ihnen je gut 6 s, und der Engine-Export fährt dieselbe Datei im Snapshot nochmal.
+    // Ein Test, der die Wartezeit selbst prüfen will, überschreibt den Wert wieder.
+    env: { R2_RETRY_BASE_DELAY_MS: "1", ...scrubbed, ...env }
+  });
 }
 
 // A minimal stand-in for R2's S3 endpoint. Answers GET /<bucket>/<key> with whatever the test
