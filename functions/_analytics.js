@@ -40,7 +40,12 @@ const COUNTED_CLASSES = new Set(["human", "feed", "feed_bot"]);
 // gezählt würden sie die Abonnentenschätzung verfälschen. Als Quelle tauchen
 // sie ohnehin dort auf, wo sie hingehören: in der Quellenliste, wenn sie
 // jemanden herbringen.
-const BOT_PATTERN = /bot\b|bots\b|crawler|spider|crawling|slurp|bingpreview|facebookexternalhit|ia_archiver|semrush|ahrefs|mj12|dotbot|petalbot|yandex|duckduck|baidu|sogou|exabot|gptbot|ccbot|claudebot|perplexity|applebot|headlesschrome|phantomjs|python-requests|curl\/|wget\/|libwww|okhttp|go-http-client|java\/|rivva|uberblogr|rss-parser/i;
+//
+// Drei weitere aus derselben Arbeitsliste: marginalia betreibt eine
+// Suchmaschine und holt den Feed zum Indexieren, nicht zum Lesen. hypefactors
+// steht hinter der Kennung "Buck" — ein Media-Monitoring-Dienst, der Erwähnungen
+// sammelt. blogme ist ein Aggregator wie Rivva, nur kleiner.
+const BOT_PATTERN = /bot\b|bots\b|crawler|spider|crawling|slurp|bingpreview|facebookexternalhit|ia_archiver|semrush|ahrefs|mj12|dotbot|petalbot|yandex|duckduck|baidu|sogou|exabot|gptbot|ccbot|claudebot|perplexity|applebot|headlesschrome|phantomjs|python-requests|curl\/|wget\/|libwww|okhttp|go-http-client|java\/|rivva|uberblogr|rss-parser|marginalia|hypefactors|blogme/i;
 
 // Rechenzentren beherbergen fast keine Leser, aber fast alle Scraper. Der
 // Organisationsname kommt aus request.cf und ist auf jedem Cloudflare-Plan da —
@@ -217,6 +222,25 @@ export function feedReader(userAgent = "") {
   };
 }
 
+// Dieselbe Quelle kommt unter mehreren Rohformen an: eine Landes-TLD von
+// Google, die Kennung ihrer Android-App als Referrer-Host
+// (android-app://com.google.android.googlequicksearchbox/…) und, aus dem
+// GoatCounter-Import, ein bloßes Label ohne Adresse ("Google"). Ohne diese
+// Zusammenführung zählt "google.com", die App-Kennung und das Label als drei
+// Quellen in der Liste, wo es eine ist.
+const APP_REFERRER_HOSTS = {
+  "com.google.android.googlequicksearchbox": "google.com"
+};
+
+export function normalizeRefHost(host) {
+  const value = String(host || "").trim();
+  if (!value) return value;
+  const lower = value.toLowerCase();
+  if (APP_REFERRER_HOSTS[lower]) return APP_REFERRER_HOSTS[lower];
+  if (lower === "google" || /^google\.[a-z.]+$/.test(lower)) return "google.com";
+  return value;
+}
+
 // Eigene Adressen sind kein Referrer, sondern Navigation. Sie fallen auf den
 // leeren Host zurück, damit die Quellenliste zeigt, woher Leser wirklich kommen.
 export function referrer(value, selfHost) {
@@ -229,7 +253,7 @@ export function referrer(value, selfHost) {
   }
   const host = url.hostname.replace(/^www\./, "");
   if (host === String(selfHost || "").replace(/^www\./, "")) return { host: "", path: null };
-  return { host, path: url.pathname === "/" ? null : url.pathname };
+  return { host: normalizeRefHost(host), path: url.pathname === "/" ? null : url.pathname };
 }
 
 // Pfade werden auf das reduziert, was eine Seite ausmacht: kein Query, kein

@@ -73,11 +73,28 @@ function normalizePath(value) {
   return pathname.slice(0, 512);
 }
 
+// Dieselbe Zusammenführung wie in der Live-Zählung (functions/_analytics.js,
+// normalizeRefHost): Eine Landes-TLD von Google und das GoatCounter-Label
+// "Google" ohne Adresse sind dieselbe Quelle wie "google.com".
+const APP_REFERRER_HOSTS = {
+  "com.google.android.googlequicksearchbox": "google.com"
+};
+
+function normalizeRefHost(host) {
+  const value = String(host || "").trim();
+  if (!value) return value;
+  const lower = value.toLowerCase();
+  if (APP_REFERRER_HOSTS[lower]) return APP_REFERRER_HOSTS[lower];
+  if (lower === "google" || /^google\.[a-z.]+$/.test(lower)) return "google.com";
+  return value;
+}
+
 // Referrer stehen als "host/pfad" oder als Label ("Google") im Export. Für die
 // Tagesaggregate zählt der Host; ein leerer Wert heißt Direktzugriff.
 function referrerHost(value) {
   if (!value) return "";
-  return String(value).split("/")[0].replace(/^www\./, "");
+  const host = String(value).split("/")[0].replace(/^www\./, "");
+  return normalizeRefHost(host);
 }
 
 const quote = (value) =>
@@ -227,4 +244,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { build, toSql, classifyPath, referrerHost, normalizePath, berlinDay };
+module.exports = { build, toSql, classifyPath, referrerHost, normalizeRefHost, normalizePath, berlinDay };

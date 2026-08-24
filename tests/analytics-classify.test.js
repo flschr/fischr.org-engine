@@ -74,6 +74,23 @@ test("fremde Referrer behalten Host und Pfad, ohne www", () => {
   });
 });
 
+test("Google-Varianten werden zu einer Quelle zusammengeführt", () => {
+  assert.deepEqual(analytics.referrer("https://www.google.de/search?q=x", "mysite.example"), {
+    host: "google.com",
+    path: "/search"
+  });
+  assert.deepEqual(analytics.referrer("android-app://com.google.android.googlequicksearchbox/https/www.google.com", "mysite.example"), {
+    host: "google.com",
+    path: "/https/www.google.com"
+  });
+  assert.equal(analytics.normalizeRefHost("Google"), "google.com");
+  assert.equal(analytics.normalizeRefHost("google.com"), "google.com");
+  // Andere Quellen bleiben unangetastet, auch wenn sie wie eine Reverse-Domain
+  // aussehen — nur bekannte App-Kennungen werden aufgelöst.
+  assert.equal(analytics.normalizeRefHost("org.joinmastodon.android"), "org.joinmastodon.android");
+  assert.equal(analytics.normalizeRefHost(""), "");
+});
+
 test("Pfade werden vereinheitlicht, damit eine Seite eine Zeile bleibt", () => {
   assert.equal(analytics.normalizePath("/beyond-blogging-platforms"), "/beyond-blogging-platforms/");
   assert.equal(analytics.normalizePath("/beyond-blogging-platforms/"), "/beyond-blogging-platforms/");
@@ -119,6 +136,17 @@ test("Importer und Live-Zählung normalisieren Pfade gleich", () => {
       importer.normalizePath(pfad),
       analytics.normalizePath(pfad),
       `Pfad "${pfad}" wird unterschiedlich behandelt — derselbe Beitrag stünde zweimal in der Auswertung`
+    );
+  }
+});
+
+test("Importer und Live-Zählung führen Google-Varianten gleich zusammen", () => {
+  const importer = require("../scripts/import-goatcounter-export.js");
+  for (const host of ["Google", "google.com", "google.de", "com.google.android.googlequicksearchbox", "github.com", ""]) {
+    assert.equal(
+      importer.normalizeRefHost(host),
+      analytics.normalizeRefHost(host),
+      `Host "${host}" wird unterschiedlich zusammengeführt — dieselbe Quelle stünde zweimal in der Liste`
     );
   }
 });
@@ -214,6 +242,21 @@ test("gesammelte Kennungen sind zugeordnet: Leser, Aggregator, Werkzeug", () => 
     "Mozilla/5.0 (compatible; Rivva; http://rivva.de)",
     "UberBlogr Boti/2.0; https://uberblogr.de",
     "rss-parser"
+  ]) {
+    assert.equal(analytics.classifyFeed(ua).kind, "feedbot", ua);
+  }
+});
+
+test("die Bot-Liste wächst ebenfalls aus den unerkannten Kennungen", () => {
+  // Dritte Runde: marginalia betreibt eine Suchmaschine und holt den Feed zum
+  // Indexieren, "Buck" ist die Kennung des Media-Monitoring-Diensts
+  // Hypefactors, blogme ein Aggregator wie Rivva. Alle drei holen den Feed für
+  // sich selbst, nicht für Abonnenten — keiner davon darf in die
+  // Reichweitenzahl.
+  for (const ua of [
+    "search.marginalia.nu",
+    "Buck/2.6.0; (+https://app.hypefactors.com/)",
+    "blogme/0.1 (+https://github.com/example/blogme)"
   ]) {
     assert.equal(analytics.classifyFeed(ua).kind, "feedbot", ua);
   }
