@@ -67,6 +67,14 @@
   /* The keyboard already covers the home indicator, so the safe-area padding
      would only add dead height while it is open. */
   html.is-keyboard-open .admin-body.is-editor-view .writing-bar { padding-bottom: 0.4rem; }
+  /* Riding just --keyboard-inset lands this bar exactly where iOS 26's own
+     detached keyboard accessory bar renders (see --ios-keyboard-accessory-h
+     in 06-responsive.css) — native UI always wins compositing, so ours
+     disappeared behind it entirely instead of merely crowding it. Add the
+     same estimated clearance here too. */
+  html.is-keyboard-open .admin-body.is-editor-view .writing-bar {
+    transform: translateY(calc(-1 * (var(--keyboard-inset, 0px) + var(--ios-keyboard-accessory-h, 0px))));
+  }
   .admin-body.is-editor-view .writing-bar .format-toolbar { gap: 0.35rem; }
   .admin-body.is-editor-view .editor-article {
     min-height: 0;

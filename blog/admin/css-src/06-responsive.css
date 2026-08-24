@@ -25,6 +25,17 @@
        plus its border comes to 3.16rem on a 16px root. */
     --writingbar-h: 3.2rem;
     --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+    /* iOS 26's keyboard accessory bar (Previous/Next/checkmark) floats
+       detached above the keyboard now instead of merging into its top edge,
+       but visualViewport.height — what --keyboard-inset (02d-keyboard-inset.js)
+       is measured from — doesn't shrink for it (a reported iOS 26
+       regression; nothing on the web platform exposes that bar's real
+       height). An ESTIMATE, not a measurement: ~44pt row plus the ~8px gap
+       Apple's redesign added. Only ever added while html.is-keyboard-open,
+       so it costs nothing once the keyboard (and with it, the native bar)
+       is gone. Revisit against a real device; drop it entirely if a future
+       WebKit release folds the bar back into visualViewport. */
+    --ios-keyboard-accessory-h: 52px;
   }
   /* The editor hides the tab bar, but it is not empty down there: the writing
      bar sits on the bottom edge and rides up with the keyboard. Anything else
@@ -35,9 +46,13 @@
     --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px) + env(safe-area-inset-bottom));
   }
   /* An open keyboard already covers the home indicator, so the bar drops its
-     safe-area padding and the chrome above it must drop the same amount. */
+     safe-area padding and the chrome above it must drop the same amount.
+     It also rides up an extra --ios-keyboard-accessory-h to clear iOS 26's
+     native bar — see the token's own comment above — so anything using
+     --bottom-chrome to stay above the writing bar (status toast, publish
+     overlay) has to clear that too, not just the keyboard itself. */
   html.is-keyboard-open .admin-body.is-editor-view {
-    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px));
+    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px) + var(--ios-keyboard-accessory-h));
   }
 
   .admin-layout { display: block; }
