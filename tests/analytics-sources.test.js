@@ -131,7 +131,7 @@ function statsSeriesAusQuelle() {
   // reichen, sonst fehlen der Funktion ihre Nachbarn.
   const anfang = quelle.indexOf("const STATS_MAX_PUNKTE");
   assert.notEqual(anfang, -1, "STATS_MAX_PUNKTE nicht gefunden");
-  const seriesAnfang = quelle.indexOf("function statsSeries(rows, range)", anfang);
+  const seriesAnfang = quelle.indexOf("function statsSeries(rows, range, granularity", anfang);
   assert.notEqual(seriesAnfang, -1, "statsSeries nicht gefunden");
 
   let tiefe = 0;
@@ -198,6 +198,135 @@ test("die Bündelung erhält die Form", () => {
   assert.ok(reihe.length <= 200);
 });
 
+// --- Der 1-Tag-Blick: stündliche Reihen --------------------------------------
+//
+// "Heute" zeigt eine Kurve mit vierundzwanzig statt einem einzigen Punkt.
+// Website-Aufrufe lassen sich dafür aus der Rohtabelle "hits" berechnen, Feed-
+// Abrufe aus der eigens dafür geführten hourly_feed-Tabelle — beide Abfragen
+// stehen hier direkt gegen das echte Schema, wie der Rest dieser Datei.
+test("die stündliche Website-Reihe zählt nur menschliche Seitenaufrufe", () => {
+  const db = datenbank();
+  const roh = db.prepare("INSERT INTO hits (ts, day, kind, path, class) VALUES (?, ?, ?, '/x/', ?)");
+  // 2026-08-24T09:00:00+02:00 und T09:30:00+02:00 → dieselbe Berliner Stunde.
+  roh.run(1787554800, "2026-08-24", "page", "human");
+  roh.run(1787556600, "2026-08-24", "page", "human");
+  // Ein Bot zählt nicht mit — dieselbe Regel wie bei den Tagesaggregaten.
+  roh.run(1787556600, "2026-08-24", "page", "bot_ua");
+  // Ein Feed-Abruf gehört nicht in die Website-Kurve.
+  roh.run(1787556600, "2026-08-24", "feed", "feed");
+  // Ein anderer Tag bleibt draußen.
+  roh.run(1787556600, "2026-08-23", "page", "human");
+
+  const zeilen = db.prepare(
+    `SELECT ts FROM hits WHERE kind = 'page' AND class = 'human' AND day = ?1`
+  ).all("2026-08-24");
+  assert.equal(zeilen.length, 2, "nur die beiden menschlichen Seitenaufrufe des Tages");
+
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /kind = 'page' AND class = 'human' AND day = \?1/,
+    "der Endpunkt muss dieselbe Abfrage stellen");
+});
+
+// Die stündliche Website-Reihe zählt in SQL statt jede Rohzeile einzeln nach
+// JavaScript zu holen — an einem stark besuchten Tag läse ein Zeile-für-Zeile-
+// Zählen tausende Rohzeilen aus der Datenbank heraus, nur um am Ende
+// vierundzwanzig Zahlen zu behalten. SQLite kennt keine Zeitzonen-Datenbank
+// und bucketet deshalb nach der UTC-Stunde, nicht der Berliner — das genügt,
+// weil jeder UTC-Eimer anschließend anhand seines frühesten Zeitstempels
+// einer Berliner Stunde zugeordnet wird.
+test("die stündliche Website-Reihe zählt in SQL, nicht Zeile für Zeile in JavaScript", () => {
+  const db = datenbank();
+  const roh = db.prepare("INSERT INTO hits (ts, day, kind, path, class) VALUES (?, ?, 'page', '/x/', 'human')");
+  // Drei Treffer in derselben UTC-Stunde (07 UTC = 09 Uhr Berlin im August).
+  roh.run(1787554800, "2026-08-24");
+  roh.run(1787556600, "2026-08-24");
+  roh.run(1787556700, "2026-08-24");
+
+  const zeilen = db.prepare(
+    `SELECT COUNT(*) AS hits, MIN(ts) AS ts FROM hits
+     WHERE kind = 'page' AND class = 'human' AND day = ?1
+     GROUP BY strftime('%Y-%m-%dT%H', ts, 'unixepoch')`
+  ).all("2026-08-24");
+  assert.equal(zeilen.length, 1, "ein Eimer für die eine besetzte Stunde, nicht drei Rohzeilen");
+  assert.equal(zeilen[0].hits, 3);
+
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /GROUP BY strftime\('%Y-%m-%dT%H', ts, 'unixepoch'\)/,
+    "der Endpunkt muss in SQL gruppieren, nicht jede Rohzeile einzeln lesen");
+});
+
+test("die stündliche Feed-Reihe kommt aus hourly_feed, nicht aus den Tagesaggregaten", () => {
+  const db = datenbank();
+  const stunde = db.prepare("INSERT INTO hourly_feed (hour, hits) VALUES (?, ?)");
+  stunde.run("2026-08-24T00", 3);
+  stunde.run("2026-08-24T14", 9);
+  stunde.run("2026-08-24T23", 1);
+  // Der Vortag darf nicht mit hineinrutschen.
+  stunde.run("2026-08-23T23", 40);
+
+  const reihe = db.prepare(
+    `SELECT hour AS day, hits FROM hourly_feed WHERE hour BETWEEN ?1 AND ?2 ORDER BY hour`
+  ).all("2026-08-24T00", "2026-08-24T23").map((z) => ({ day: z.day, hits: z.hits }));
+  assert.deepEqual(reihe, [
+    { day: "2026-08-24T00", hits: 3 },
+    { day: "2026-08-24T14", hits: 9 },
+    { day: "2026-08-24T23", hits: 1 }
+  ]);
+
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /FROM hourly_feed WHERE hour BETWEEN/, "der Endpunkt muss dieselbe Tabelle lesen");
+  assert.match(quelle, /const einzelnerTag = /, "die Auflösung muss über die Spanne entschieden werden, nicht über einen Tage-String-Vergleich");
+  assert.match(quelle, /granularity: hourly \? "hour" : "day"/, "die Antwort muss die Auflösung benennen");
+});
+
+// Ein reiner Tage-String-Vergleich verglich zwei Werte, die aus zwei
+// verschiedenen Zeitzonen stammen können: "start" und "end" kommen als
+// Zeitstempel aus der Ortszeit des Browsers, werden aber beide erst auf einen
+// Berliner Kalendertag umgerechnet, bevor sie verglichen werden. Ein Browser
+// westlich von Berlin kann damit einen echten Mehrtageszeitraum auf denselben
+// Berliner Tag fallen lassen. Die Spanne der tatsächlichen Zeitstempel kennt
+// dieses Problem nicht.
+test("die stündliche Auflösung hängt an der Spanne, nicht am Vergleich zweier Zeitzonen-Tage", () => {
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.doesNotMatch(quelle, /=\s*start\s*===\s*end\b/,
+    "ein Tage-String-Vergleich ist zeitzonenabhängig und darf nicht wiederkehren");
+  assert.match(quelle, /new Date\(endParam\) - new Date\(startParam\)/,
+    "die Spanne muss aus den echten Zeitstempeln kommen, nicht aus den umgerechneten Tagen");
+});
+
+// hourly_feed reicht nur STUNDEN_TAGE zurück. Ein einzelner Tag davor hat
+// oben eine echte Tageszahl aus den für immer aufbewahrten Aggregaten, aber
+// keine stündliche Zeile mehr — die Kurve darf dafür keine Nulllinie
+// erfinden, die diese Zahl widerspricht.
+test("ein einzelner Tag außerhalb der Stundenaufbewahrung bekommt keine erfundene Nulllinie", () => {
+  const quelle = fs.readFileSync(path.join(__dirname, "../functions/api/admin/analytics.js"), "utf8");
+  assert.match(quelle, /start >= tagMinus\(berlinDay\(\), STUNDEN_TAGE\)/,
+    "die stündliche Auflösung muss auf das Fenster von hourly_feed begrenzt sein");
+});
+
+test("ein Feed-Abruf trägt sich stundengenau ein, ein Feed-Bot nicht", async () => {
+  const db = datenbank();
+  const treffer = (kind) => analyticsModul.recordHit(d1(db), {
+    day: "2026-08-24", kind, path: "/feed.xml", refHost: "",
+    verdict: { class: kind === "feed" ? "feed" : "feed_bot" }, visitor: null, raw: false
+  });
+  await treffer("feed");
+  await treffer("feed");
+  await treffer("feedbot");
+
+  const stunden = db.prepare("SELECT hour, hits FROM hourly_feed").all();
+  assert.equal(stunden.length, 1, "Leser und Crawler landen in derselben Stunde");
+  assert.equal(stunden[0].hits, 2, "nur die beiden Leser-Abrufe zählen, der Crawler nicht");
+});
+
+test("berlinHour bildet dieselbe Stunde wie berlinDay, nur genauer", () => {
+  // 22:30 UTC im August liegt wegen der Sommerzeit schon im nächsten Berliner
+  // Tag — dieselbe Umrechnung, die berlinDay schon für den Tag braucht.
+  const datum = new Date("2026-08-24T22:30:00Z");
+  assert.equal(analyticsModul.berlinHour(datum), "2026-08-25T00");
+  assert.equal(analyticsModul.berlinDay(datum), "2026-08-25");
+});
+
 // --- Aufräumen ---------------------------------------------------------------
 //
 // Das Salz eines Tages macht dessen Hashes nachrechenbar. Bleibt es liegen,
@@ -251,6 +380,19 @@ test("alte Rohzeilen verschwinden, die Tagesaggregate bleiben", async () => {
   assert.deepEqual(tage, ["2026-08-23"], "nur die alte Rohzeile darf weg sein");
   // Die Auswertung liest ausschließlich Aggregate — sie darf nichts verlieren.
   assert.equal(aufrufe(db, "page", "2025-01-01"), 40);
+});
+
+test("alte stündliche Feed-Zeilen verschwinden, frische bleiben", async () => {
+  const db = datenbank();
+  const stunde = db.prepare("INSERT INTO hourly_feed (hour, hits) VALUES (?, 1)");
+  stunde.run("2026-08-01T23"); // älter als acht Tage vor dem 23.
+  stunde.run("2026-08-15T00"); // genau die Grenze, bleibt stehen — die Löschung ist "<", nicht "<="
+  stunde.run("2026-08-23T14");
+
+  await analyticsModul.raeumeAuf(d1(db), "2026-08-23");
+
+  const uebrig = db.prepare("SELECT hour FROM hourly_feed ORDER BY hour").all().map((r) => r.hour);
+  assert.deepEqual(uebrig, ["2026-08-15T00", "2026-08-23T14"]);
 });
 
 // --- Kürzung langer Listen ---------------------------------------------------

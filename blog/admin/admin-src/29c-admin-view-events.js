@@ -6,7 +6,15 @@ import { confirmLeaveEditor } from "./19-recovery.js";
 import { loadStats, openStats, setStatsRangeButtons } from "./21-stats.js";
 import { toggleStatsRowDrill } from "./21a-stats-details.js";
 import { statsIsPreset } from "./21b-stats-period.js";
-import { applyStatsPicker, closeStatsPicker, toggleStatsPicker } from "./21f-stats-picker.js";
+import {
+  applyStatsPicker,
+  closeStatsPicker,
+  statsCalendarClick,
+  statsCalendarHover,
+  statsCalendarLeave,
+  statsCalendarMonth,
+  toggleStatsPicker
+} from "./21f-stats-picker.js";
 import { refreshAfterTabResume } from "./27a-publish-state.js";
 
 export function wireAdminViewEvents() {
@@ -37,14 +45,23 @@ export function wireAdminViewEvents() {
     loadStats();
   });
   els.statsCustomApply?.addEventListener("click", applyStatsPicker);
-  // Zwei Felder, ein Zeitraum: Die Eingabetaste im Feld meint dasselbe wie der
-  // Knopf darunter — ein Datumsfeld, das auf Enter nichts tut, fühlt sich
-  // kaputt an.
-  [els.statsFrom, els.statsTo].forEach((input) => {
-    input?.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") applyStatsPicker();
-    });
+  els.statsCalPrev?.addEventListener("click", () => statsCalendarMonth(-1));
+  els.statsCalNext?.addEventListener("click", () => statsCalendarMonth(1));
+  // Delegiert: Die Tageszellen entstehen bei jeder Auswahl neu (innerHTML),
+  // ein Horchposten je Zelle würde bei jedem Klick wieder verschwinden.
+  els.statsCalGrid?.addEventListener("click", (event) => {
+    const tag = event.target.closest(".stats-cal-day")?.dataset.tag;
+    if (tag) statsCalendarClick(tag);
   });
+  // Der Zeiger zeichnet die Spanne vor, solange erst ein Tag feststeht — wie
+  // auf den Datumswählern der Reiseportale, nach denen dieser Kalender gebaut
+  // ist. "pointerover" statt "pointermove": Es reicht, beim Wechsel der
+  // Zelle einmal neu zu zeichnen, nicht bei jeder Pixelbewegung darüber.
+  els.statsCalGrid?.addEventListener("pointerover", (event) => {
+    const tag = event.target.closest(".stats-cal-day")?.dataset.tag;
+    if (tag) statsCalendarHover(tag);
+  });
+  els.statsCalGrid?.addEventListener("pointerleave", statsCalendarLeave);
   // Ein Blatt, das über der Ansicht liegt, muss auf zwei Wege verschwinden:
   // Escape und ein Klick daneben. Sonst steht es noch da, wenn man längst
   // etwas anderes tut.

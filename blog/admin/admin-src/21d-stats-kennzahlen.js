@@ -42,6 +42,15 @@ export function statsTagKurz(day) {
   return Number.isNaN(datum.getTime()) ? day : statsShortDayFormat.format(datum);
 }
 
+// Ein Punkt der stündlichen Kurve trägt seine Stunde im Schlüssel selbst
+// ("2026-08-24T14") — sie steht schon in Berliner Ortszeit (siehe
+// berlinHour in _analytics.js), ein erneutes Parsen als Datum würde sie durch
+// die Zeitzone des Browsers noch einmal verschieben.
+export function statsStundeKurz(hour) {
+  const stunde = hour.slice(11, 13);
+  return /^\d{2}$/.test(stunde) ? `${stunde}:00` : hour;
+}
+
 // Zwei Zahlen, nicht drei. Eine dritte stand hier: die Summe aller Anzeigen
 // im Leseprogramm, aus dem Zählpixel des Feeds. Als absolute Zahl sagt sie
 // nichts — sie zählt geladene Bilder, also ebenso das Programm, das beim

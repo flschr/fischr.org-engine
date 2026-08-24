@@ -98,6 +98,34 @@ test("der Verlauf gibt jedem Punkt seine Beschriftung mit, nicht nur der Spitze"
   assert.ok(daten.every((punkt) => typeof punkt.l === "string" && punkt.l), "jeder Punkt ist benannt");
 });
 
+// --- Der stündliche Verlauf ("Heute") ----------------------------------------
+
+test("ein Tag füllt sich zu vierundzwanzig Stunden auf", () => {
+  const { statsSeries } = statsAnsicht(["statsSeries"]);
+  const reihe = statsSeries(
+    [{ day: "2026-08-24T09", hits: 4 }, { day: "2026-08-24T14", hits: 9 }],
+    { start: "2026-08-24", end: "2026-08-24" },
+    "hour"
+  );
+  assert.equal(reihe.length, 24, "vierundzwanzig Stunden, vierundzwanzig Punkte");
+  assert.equal(reihe[9].daily, 4);
+  assert.equal(reihe[14].daily, 9);
+  assert.equal(reihe[0].daily, 0, "Stunden ohne Treffer füllen sich mit null");
+  assert.equal(reihe[0].tag, "2026-08-24T00");
+});
+
+test("die stündliche Kurve beschriftet ihre Punkte mit der Uhrzeit", () => {
+  const { statsChart, statsSeries } = statsAnsicht(["statsChart", "statsSeries"]);
+  const markup = statsChart(
+    statsSeries([{ day: "2026-08-24T14", hits: 141 }], { start: "2026-08-24", end: "2026-08-24" }, "hour"),
+    "Aufrufe",
+    "hour"
+  );
+  assert.match(markup, /141 Aufrufe/);
+  assert.match(markup, /14:00/, "die Spitze zeigt eine Uhrzeit, kein Datum");
+  assert.match(markup, /stats-chart-axis"><span>00:00<\/span><span>23:00/, "die Achse zeigt die erste und letzte Stunde");
+});
+
 test("der Feed-Verlauf zählt Abrufe, nicht Aufrufe", () => {
   // Zwei Kurven, zwei Einheiten: Die Website zählt Menschen beim Aufrufen, der
   // Feed Programme beim Abholen. Eine mit "Aufrufe" beschriftete Feed-Kurve
@@ -184,51 +212,108 @@ test("die Listen heißen nach dem, was in ihnen steht — ohne Erklärzeile", ()
   assert.doesNotMatch(markup, /stats-panel-hint/);
 });
 
-// --- Der freie Zeitraum ------------------------------------------------------
+// --- Der freie Zeitraum: ein Kalender ----------------------------------------
+//
+// Zwei Tippfelder wurden durch einen Kalender mit zwei Klicks ersetzt, wie
+// auf den Datumswählern der Reiseportale — der erste Klick setzt den ersten
+// Tag, der zweite den letzten. Ein verdrehter Zeitraum kann dabei gar nicht
+// erst entstehen (siehe statsRangeKlick), die Fehlermeldung dafür ist damit
+// weg; was bleibt, ist eine unvollständige Auswahl, wenn "Anzeigen" trotz
+// deaktiviertem Knopf aufgerufen wird.
 
-function wähler(von, bis) {
+test("statsRangeKlick setzt zwei Klicks in eine Spanne um, nie verdreht", () => {
+  const { statsRangeKlick } = statsAnsicht(["statsRangeKlick"]);
+  assert.deepEqual(statsRangeKlick({ von: "", bis: "" }, "2026-08-10"), { von: "2026-08-10", bis: "" });
+  assert.deepEqual(statsRangeKlick({ von: "2026-08-10", bis: "" }, "2026-08-20"), { von: "2026-08-10", bis: "2026-08-20" });
+  // Ein Klick vor dem ersten Tag tauscht die Rollen, statt eine verdrehte
+  // Spanne zuzulassen — genau der Fall, der früher "liegt nach" meldete.
+  assert.deepEqual(statsRangeKlick({ von: "2026-08-10", bis: "" }, "2026-08-01"), { von: "2026-08-01", bis: "2026-08-10" });
+  // Eine bereits geschlossene Spanne beginnt bei einem weiteren Klick neu,
+  // statt eine ihrer beiden Grenzen zu verschieben.
+  assert.deepEqual(statsRangeKlick({ von: "2026-08-01", bis: "2026-08-10" }, "2026-08-15"), { von: "2026-08-15", bis: "" });
+  // Derselbe Tag zweimal ist ein gültiger Ein-Tag-Zeitraum.
+  assert.deepEqual(statsRangeKlick({ von: "2026-08-10", bis: "" }, "2026-08-10"), { von: "2026-08-10", bis: "2026-08-10" });
+});
+
+test("statsKalenderTage füllt das Blatt auf volle Wochen auf, Montag zuerst", () => {
+  const { statsKalenderTage } = statsAnsicht(["statsKalenderTage"]);
+  // Der 1. August 2026 ist ein Samstag — das Blatt beginnt schon am Montag davor.
+  const tage = statsKalenderTage(new Date(2026, 7, 1));
+  assert.equal(tage.length, 42, "sechs volle Wochen");
+  assert.equal(tage[0].getDay(), 1, "die erste Zelle ist ein Montag");
+  assert.deepEqual([tage[0].getFullYear(), tage[0].getMonth() + 1, tage[0].getDate()], [2026, 7, 27]);
+  assert.deepEqual([tage.at(-1).getFullYear(), tage.at(-1).getMonth() + 1, tage.at(-1).getDate()], [2026, 9, 6]);
+});
+
+function kalenderWähler() {
   const els = {
-    statsFrom: { value: von, focus() {} }, statsTo: { value: bis },
     statsCustom: { hidden: false },
     statsCustomToggle: { setAttribute() {}, focus() {} },
     statsCustomHint: { hidden: true, textContent: "" },
+    statsCalGrid: { innerHTML: "", querySelector: () => null },
+    statsCalMonth: { textContent: "" },
+    statsCalRange: { textContent: "" },
+    statsCustomApply: { disabled: false, focus() {} },
     statsRange: null, statsRangeLabel: null
   };
-  return statsAnsicht(["applyStatsPicker", "openStatsPicker", "closeStatsPicker"], els);
+  return statsAnsicht(["applyStatsPicker", "statsCalendarClick", "openStatsPicker", "closeStatsPicker"], els);
 }
 
-test("ein unvollständiger Zeitraum bleibt im Wähler stehen und sagt, was fehlt", () => {
-  const { applyStatsPicker, kontext } = wähler("2026-08-01", "");
+test("eine unvollständige Auswahl lässt sich nicht anzeigen", () => {
+  // Über die Bedienung unerreichbar — der Anzeigen-Knopf ist deaktiviert,
+  // solange kein voller Zeitraum feststeht. Die Funktion bleibt trotzdem
+  // defensiv, falls sie doch aufgerufen wird.
+  const { applyStatsPicker, statsCalendarClick, kontext } = kalenderWähler();
+  statsCalendarClick("2026-08-01");
   applyStatsPicker();
   assert.equal(kontext.state.statsPeriod.preset, "7d", "die Ansicht dahinter bleibt, wie sie war");
-  assert.equal(kontext.els.statsCustom.hidden, false, "der Wähler bleibt offen");
-  assert.match(kontext.els.statsCustomHint.textContent, /Beide Tage/);
+  assert.equal(kontext.els.statsCustom.hidden, false, "der Kalender bleibt offen");
+  assert.match(kontext.els.statsCustomHint.textContent, /ersten und den letzten Tag/);
 });
 
-test("ein verdrehter Zeitraum wird abgefangen, nicht geladen", () => {
-  const { applyStatsPicker, kontext } = wähler("2026-08-20", "2026-08-01");
-  applyStatsPicker();
-  assert.equal(kontext.state.statsPeriod.preset, "7d");
-  assert.match(kontext.els.statsCustomHint.textContent, /liegt nach/);
-});
-
-test("zwei gültige Tage schließen den Wähler und setzen den Zeitraum", () => {
-  const { applyStatsPicker, kontext } = wähler("2026-08-01", "2026-08-20");
+test("zwei Klicks im Kalender schließen ihn und setzen den Zeitraum", () => {
+  const { applyStatsPicker, statsCalendarClick, kontext } = kalenderWähler();
+  statsCalendarClick("2026-08-01");
+  statsCalendarClick("2026-08-20");
   applyStatsPicker();
   assert.deepEqual(kontext.state.statsPeriod, { preset: "custom", from: "2026-08-01", to: "2026-08-20" });
   assert.equal(kontext.els.statsCustom.hidden, true);
 });
 
-test("der Wähler öffnet mit dem Zeitraum, der gerade zu sehen ist", () => {
-  const { openStatsPicker, kontext } = wähler("", "");
-  // Ein Wähler, der bei "TT.MM.JJJJ" beginnt, verlangt zwei vollständige Daten,
-  // obwohl meist nur eine Grenze verschoben werden soll.
+// Vorher erledigte die Eingabetaste im zweiten Datumsfeld beides in einem
+// Tastendruck: Feld verlassen und anzeigen. Der Klick, der die Spanne
+// schließt, muss deshalb selbst schon zum Anzeigen-Knopf springen — sonst
+// braucht dieselbe Auswahl jetzt einen Tabschritt mehr als vorher.
+test("der schließende Klick springt zum Anzeigen-Knopf, nicht zurück auf die Tageszelle", () => {
+  const { statsCalendarClick, kontext } = kalenderWähler();
+  let angeklickteZelle = false;
+  let apply = false;
+  kontext.els.statsCalGrid.querySelector = () => ({ focus: () => { angeklickteZelle = true; } });
+  kontext.els.statsCustomApply.focus = () => { apply = true; };
+  statsCalendarClick("2026-08-01"); // erster Klick: Auswahl bleibt offen
+  assert.equal(angeklickteZelle, true, "der erste Klick bleibt im Kalender");
+  assert.equal(apply, false);
+  angeklickteZelle = false;
+  statsCalendarClick("2026-08-20"); // zweiter Klick: Spanne ist vollständig
+  assert.equal(apply, true, "der schließende Klick geht direkt zum Anzeigen-Knopf");
+  assert.equal(angeklickteZelle, false);
+});
+
+test("ein Klick vor dem ersten Tag tauscht die Rollen, statt einen verdrehten Zeitraum zu setzen", () => {
+  const { applyStatsPicker, statsCalendarClick, kontext } = kalenderWähler();
+  statsCalendarClick("2026-08-20");
+  statsCalendarClick("2026-08-01");
+  applyStatsPicker();
+  assert.deepEqual(kontext.state.statsPeriod, { preset: "custom", from: "2026-08-01", to: "2026-08-20" });
+});
+
+test("der Kalender öffnet mit dem Zeitraum, der gerade zu sehen ist", () => {
+  // Ein Kalender, der bei einer leeren Auswahl beginnt, verlangt zwei neue
+  // Klicks, obwohl meist nur eine Grenze verschoben werden soll.
+  const { openStatsPicker, kontext } = kalenderWähler();
   kontext.state.statsPeriod = { preset: "30d", from: "", to: "" };
   openStatsPicker();
-  const erwartet = new Date();
-  erwartet.setHours(12, 0, 0, 0);
-  erwartet.setDate(erwartet.getDate() - 29);
-  const tagWert = (datum) => `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
-  assert.equal(kontext.els.statsFrom.value, tagWert(erwartet), "der erste Tag des Fensters steht schon im Feld");
-  assert.equal(kontext.els.statsTo.value, tagWert(new Date()), "der letzte Tag ist heute");
+  assert.doesNotMatch(kontext.els.statsCalRange.textContent, /wählen/, "beide Grenzen des Fensters stehen schon da");
+  assert.match(kontext.els.statsCalRange.textContent, / – /, "von und bis stehen nebeneinander");
+  assert.equal(kontext.els.statsCustomApply.disabled, false, "eine vollständige Auswahl darf sofort angezeigt werden");
 });

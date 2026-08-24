@@ -16,6 +16,12 @@
 // 3. Eingestuft wird, nicht verworfen. class trägt das Urteil, class_reason
 //    seinen Grund. Wer den Filter später anders zieht, kann die Vergangenheit
 //    neu bewerten, statt sie verloren zu haben.
+//
+// 4. Datei bewusst über 350 Zeilen (STANDARD.md §8): Einstufung, Schreibpfad
+//    und die Berliner Tages-/Stundenrechnung hängen eng aneinander — jede
+//    Schreibfunktion braucht dieselbe Tagesgrenze wie die Einstufung darüber,
+//    und ein Split entlang dieser Nähte würde die meisten Funktionen ihre
+//    Nachbarn importieren lassen, statt Kopplung zu verringern.
 
 const encoder = new TextEncoder();
 
@@ -75,6 +81,24 @@ export function berlinDay(date = new Date()) {
   return dayFormatter.format(date);
 }
 
+const hourFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  hourCycle: "h23"
+});
+
+// Dieselbe Berliner Stunde, als 'YYYY-MM-DDTHH'. Der Admin bildet daraus
+// dieselben Schlüssel client-seitig nach (21b-stats-period.js), um die
+// stündlichen Reihen ohne eigene Zeitzonenrechnung im Browser zu füllen —
+// beide Formatierungen müssen deshalb in Sync bleiben.
+export function berlinHour(date = new Date()) {
+  const teile = Object.fromEntries(hourFormatter.formatToParts(date).map((teil) => [teil.type, teil.value]));
+  return `${teile.year}-${teile.month}-${teile.day}T${teile.hour}`;
+}
+
 // Ein Salz pro Tag, in der Datenbank abgelegt und im Isolate gemerkt. Ohne Salz
 // ließe sich aus dem Hash die IP zurückrechnen — der Adressraum ist klein genug.
 //
@@ -91,9 +115,20 @@ const SALZ_TAGE = 3;
 // eingehaltene Zusage. Die Tagesaggregate bleiben unberührt und für immer.
 const ROHDATEN_TAGE = 180;
 
+// hourly_feed lebt nur für den 1-Tag-Blick des Dashboards. Acht Tage lassen
+// auch einen freien Zeitraum zu, der auf einen einzelnen zurückliegenden Tag
+// fällt, ohne die Tabelle über eine Handvoll Zeilen pro Stunde hinauswachsen
+// zu lassen.
+//
+// Exportiert, weil der Statistik-Endpunkt dieselbe Grenze kennen muss: Ein
+// einzelner Tag außerhalb dieses Fensters hat keine stündliche Feed-Zeile
+// mehr, und die Kurve darf dafür keine erfundene Nulllinie zeichnen (siehe
+// functions/api/admin/analytics.js).
+export const STUNDEN_TAGE = 8;
+
 const saltCache = new Map();
 
-function tagMinus(day, tage) {
+export function tagMinus(day, tage) {
   const zeitpunkt = new Date(`${day}T12:00:00Z`);
   zeitpunkt.setUTCDate(zeitpunkt.getUTCDate() - tage);
   return zeitpunkt.toISOString().slice(0, 10);
@@ -110,7 +145,8 @@ export async function raeumeAuf(db, day) {
     // Sie ist zum Zuordnen da, nicht zum Aufbewahren: Was ein halbes Jahr lang
     // niemand zugeordnet hat, wird es auch nicht mehr — und es sind fremde
     // Kennungen, kein eigener Bestand.
-    db.prepare("DELETE FROM feed_agents WHERE day < ?").bind(tagMinus(day, ROHDATEN_TAGE))
+    db.prepare("DELETE FROM feed_agents WHERE day < ?").bind(tagMinus(day, ROHDATEN_TAGE)),
+    db.prepare("DELETE FROM hourly_feed WHERE hour < ?").bind(`${tagMinus(day, STUNDEN_TAGE)}T00`)
   ]);
 }
 
@@ -299,6 +335,18 @@ export async function recordHit(db, hit) {
          VALUES (?, ?, 1)
          ON CONFLICT (day, country) DO UPDATE SET hits = hits + 1`
       ).bind(day, country || "")
+    );
+  }
+
+  // Der stündliche Verlauf des Feeds, für den 1-Tag-Blick des Dashboards — die
+  // einzige Stelle, die eine Feed-Zeitauflösung unter einem Tag kennt, weil ein
+  // Feed-Abruf sonst keine Rohzeile bekommt (siehe oben).
+  if (kind === "feed") {
+    aggregates.push(
+      db.prepare(
+        `INSERT INTO hourly_feed (hour, hits) VALUES (?, 1)
+         ON CONFLICT (hour) DO UPDATE SET hits = hits + 1`
+      ).bind(berlinHour(new Date(timestamp * 1000)))
     );
   }
 

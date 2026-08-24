@@ -24,7 +24,7 @@ export function renderStats(data) {
 
   els.statsBody.innerHTML = [
     statsSection("Website", statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
-      statsChart(statsSeries(data.series, data.range))
+      statsChart(statsSeries(data.series, data.range, data.granularity), "Aufrufe", data.granularity)
     ], statsWebsitePanels(data)),
     // Der Feed bekommt denselben Verlauf, weil er dieselbe Frage hat: Die
     // Zahl darüber sagt, wie viel — nicht, wann. Beschriftet mit "Abrufe",
@@ -34,7 +34,7 @@ export function renderStats(data) {
     // bleibt die Stelle leer. Eine Kurve aus lauter Nullen behauptete einen
     // Feed, den niemand geholt hat.
     statsSection("Feed", statsFeedKennzahlen(total), Array.isArray(data.feedSeries)
-      ? [statsChart(statsSeries(data.feedSeries, data.range), "Abrufe")]
+      ? [statsChart(statsSeries(data.feedSeries, data.range, data.granularity), "Abrufe", data.granularity)]
       : [], statsFeedPanels(data))
   ].join("");
   // The page rows carry chevron icons rendered after innerHTML — inject them.

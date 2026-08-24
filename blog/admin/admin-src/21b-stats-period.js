@@ -21,7 +21,7 @@
 // Map und nicht Objektliteral: Ein Nachschlagen mit "constructor" oder
 // "toString" fände dort die geerbte Funktion, aus days - 1 würde NaN und
 // daraus ein Invalid Date, das erst im toISOString auffliegt.
-const STATS_WINDOWS = new Map([["7d", 7], ["30d", 30], ["90d", 90], ["365d", 365]]);
+const STATS_WINDOWS = new Map([["1d", 1], ["7d", 7], ["30d", 30], ["90d", 90], ["365d", 365]]);
 const STATS_PRESETS = [...STATS_WINDOWS.keys(), "custom"];
 const statsDayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 export const statsShortDayFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" });
@@ -31,6 +31,13 @@ const statsShortYearFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", 
 
 export function statsIsPreset(value) {
   return STATS_PRESETS.includes(value);
+}
+
+// Ein Kalendertag als "YYYY-MM-DD", in der Ortszeit des Browsers gelesen —
+// dieselbe Umrechnung, die die Kurve (21e) und der Kalender (21f) sonst je für
+// sich noch einmal hinschrieben.
+export function statsTagString(datum) {
+  return `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
 }
 
 // Der erste Tag des rollenden Fensters, ab 0 Uhr.
@@ -87,6 +94,9 @@ export function statsPeriodLabel(period) {
   if (days) {
     const from = statsWindowStart(now, days);
     const format = from.getFullYear() === now.getFullYear() ? statsShortDayFormat : statsShortYearFormat;
+    // "Letzte 1 Tage" zählt nicht als Satz. Ein Fenster von einem Tag ist
+    // ohnehin immer heute, eine Spanne daneben sagte das noch einmal.
+    if (days === 1) return `Heute · ${format.format(now)}`;
     return `Letzte ${days} Tage · ${format.format(from)} – ${format.format(now)}`;
   }
   if (period.preset === "custom") {

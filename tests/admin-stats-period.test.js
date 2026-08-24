@@ -46,6 +46,7 @@ const preset = (name) => ({ preset: name, from: "", to: "" });
 
 test("jedes Fenster zählt den heutigen Tag mit", () => {
   const module = moduleAt("2026-08-24T09:15:00+02:00");
+  assert.deepEqual(local(module.statsPeriodBounds(preset("1d")).start), [2026, 8, 24, 0]);
   assert.deepEqual(local(module.statsPeriodBounds(preset("7d")).start), [2026, 8, 18, 0]);
   assert.deepEqual(local(module.statsPeriodBounds(preset("30d")).start), [2026, 7, 26, 0]);
   assert.deepEqual(local(module.statsPeriodBounds(preset("90d")).start), [2026, 5, 27, 0]);
@@ -111,12 +112,17 @@ test("der Cache-Schlüssel trennt zwei verschiedene freie Zeiträume", () => {
 // lieferte statsPeriodBounds dafür null und die Ansicht bliebe leer.
 test("nur bekannte Presets werden akzeptiert", () => {
   const module = moduleAt("2026-08-22T14:30:00+02:00");
-  for (const name of ["7d", "30d", "90d", "365d", "custom"]) {
+  for (const name of ["1d", "7d", "30d", "90d", "365d", "custom"]) {
     assert.equal(module.statsIsPreset(name), true, name);
   }
   for (const name of ["week", "month", "quarter", "year", "7", ""]) {
     assert.equal(module.statsIsPreset(name), false, name);
   }
+});
+
+test("ein Tag heißt in der Beschriftung Heute, nicht Letzte 1 Tage", () => {
+  const module = moduleAt("2026-08-24T09:15:00+02:00");
+  assert.equal(module.statsPeriodLabel(preset("1d")), "Heute · 24. Aug.");
 });
 
 test("die Beschriftung nennt Fensterlänge und Grenzen", () => {

@@ -13,25 +13,82 @@
   z-index: 30;
   display: grid;
   gap: 0.55rem;
-  min-width: 15rem;
+  width: 17.5rem;
   padding: 0.85rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow);
 }
-.stats-picker-field { display: grid; gap: 0.25rem; color: var(--ink-soft); font-size: 0.78rem; font-weight: 620; }
-.stats-picker-field input {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 0.4rem 0.5rem;
-  background: var(--panel);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.85rem;
-}
 .stats-picker-hint { margin: 0; color: var(--red-ink); font-size: 0.78rem; }
 .stats-picker-apply { justify-self: stretch; }
+
+/* Der Kalender: ein Blatt, zwei Klicks. Der erste Klick setzt den ersten Tag,
+   der zweite den letzten — wie auf den Datumswählern der Reiseportale, und
+   ohne die Möglichkeit, Von und Bis zu vertauschen: Ein Klick vor dem ersten
+   Tag tauscht die Rollen, statt einen ungültigen Zeitraum zuzulassen. Zwei
+   Tippfelder konnten das; ein Kalender kann es nicht mehr, und die Meldung
+   "Der erste Tag liegt nach dem letzten" braucht es deshalb nicht mehr. */
+.stats-calendar-range {
+  margin: 0;
+  min-height: 1.1rem;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 620;
+}
+.stats-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.stats-calendar-month { flex: 1; margin: 0; text-align: center; color: var(--ink-soft); font-size: 0.82rem; font-weight: 620; text-transform: capitalize; }
+.stats-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.stats-calendar-nav:hover { background: var(--panel-2); color: var(--ink); }
+.stats-calendar-weekdays, .stats-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.stats-calendar-weekdays {
+  gap: 0.1rem;
+  padding: 0 0.1rem;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  font-weight: 620;
+  text-align: center;
+}
+.stats-calendar-grid { gap: 0.1rem; }
+.stats-cal-day {
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.stats-cal-day:hover { background: var(--panel-2); }
+.stats-cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Tage aus dem Vor- oder Folgemonat füllen die Woche, sollen aber nicht wie
+   echte Auswahlmöglichkeiten dieses Monats wirken. */
+.stats-cal-day.is-muted { color: var(--ink-faint); }
+.stats-cal-day.is-today { box-shadow: inset 0 0 0 1px var(--line); }
+/* Die Spanne zwischen Von und Bis (oder, solange nur Von feststeht, bis zum
+   Zeiger) verbindet sich zu einem durchgehenden Band — eckig zur Nachbarzelle
+   hin, gerundet nur an den beiden Enden, wie ein einzelner Zeitraum und nicht
+   wie zwei separat markierte Tage. */
+.stats-cal-day.is-in-range { border-radius: 0; background: var(--accent-weak); }
+.stats-cal-day.is-range-start { border-top-left-radius: var(--radius-sm); border-bottom-left-radius: var(--radius-sm); }
+.stats-cal-day.is-range-end { border-top-right-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); }
+.stats-cal-day.is-endpoint { background: var(--accent); color: var(--accent-contrast); font-weight: 660; }
 
 /* Der Verlauf: Kurve, benannte Spitze, Zeitachse. Die Beschriftung steht über
    der Kurve und nicht in ihr — eine Zahl im Diagramm wandert mit der Kurve und

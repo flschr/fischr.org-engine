@@ -384,6 +384,7 @@ eleventyExcludeFromCollections: true
                        to read the row as days — repeating it on every pill
                        was most of why the row scrolled instead of fitting. -->
                   <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
+                    <button type="button" class="stats-range-btn" data-period="1d" aria-label="Heute">1</button>
                     <button type="button" class="stats-range-btn is-active" data-period="7d" aria-label="7 Tage">7</button>
                     <button type="button" class="stats-range-btn" data-period="30d" aria-label="30 Tage">30</button>
                     <button type="button" class="stats-range-btn" data-period="90d" aria-label="90 Tage">90</button>
@@ -391,10 +392,16 @@ eleventyExcludeFromCollections: true
                     <button id="statsCustomToggle" type="button" class="stats-range-btn" data-period="custom" aria-expanded="false" aria-controls="statsCustom">Zeitraum</button>
                   </div>
                   <div id="statsCustom" class="stats-picker" role="group" aria-label="Freier Zeitraum" hidden>
-                    <label class="stats-picker-field"><span>Von</span><input id="statsFrom" type="date"></label>
-                    <label class="stats-picker-field"><span>Bis</span><input id="statsTo" type="date"></label>
+                    <p id="statsCalRange" class="stats-calendar-range" aria-live="polite"></p>
+                    <div class="stats-calendar-head">
+                      <button id="statsCalPrev" type="button" class="stats-calendar-nav" aria-label="Vorheriger Monat"><span data-icon="chevron-left" aria-hidden="true"></span></button>
+                      <p id="statsCalMonth" class="stats-calendar-month"></p>
+                      <button id="statsCalNext" type="button" class="stats-calendar-nav" aria-label="Nächster Monat"><span data-icon="chevron-right" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="stats-calendar-weekdays" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+                    <div id="statsCalGrid" class="stats-calendar-grid" role="grid" aria-label="Tage"></div>
                     <p id="statsCustomHint" class="stats-picker-hint" hidden></p>
-                    <button id="statsCustomApply" type="button" class="primary-action stats-picker-apply">Anzeigen</button>
+                    <button id="statsCustomApply" type="button" class="primary-action stats-picker-apply" disabled>Anzeigen</button>
                   </div>
                 </div>
                 <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren">

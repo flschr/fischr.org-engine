@@ -21,6 +21,7 @@
 /* Die Tages-Zahlen (7/30/90) sind kurz genug, um als Kreis statt als Pille zu
    stehen — mit der Standardpolsterung war die Fläche breiter als hoch und die
    aktive Auswahl wirkte oval statt rund. */
+.stats-range-btn[data-period="1d"],
 .stats-range-btn[data-period="7d"],
 .stats-range-btn[data-period="30d"],
 .stats-range-btn[data-period="90d"] {

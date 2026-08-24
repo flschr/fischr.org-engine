@@ -110,6 +110,19 @@ CREATE TABLE IF NOT EXISTS daily_country (
   PRIMARY KEY (day, country)
 );
 
+-- Stündliche Feed-Abrufe, kurzlebig — nur für den 1-Tag-Blick des Dashboards.
+-- Seitenaufrufe lassen sich für diesen Blick stundengenau aus der Rohtabelle
+-- "hits" berechnen (180 Tage Aufbewahrung), Feed-Abrufe aber nicht: Sie haben
+-- bewusst keine Rohzeile (siehe recordHit), sonst würde die Tabelle durch
+-- stündliche Leser-Abrufe um ein Vielfaches schneller wachsen als alle
+-- Seitenaufrufe zusammen. Diese Tabelle schließt genau diese Lücke, nur für
+-- den Feed und nur für wenige Tage.
+CREATE TABLE IF NOT EXISTS hourly_feed (
+  hour TEXT    NOT NULL,   -- 'YYYY-MM-DDTHH', Europe/Berlin
+  hits INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (hour)
+);
+
 -- Feed-Leser melden ihre Abonnentenzahl im User-Agent
 -- ("Feedly/1.0 (+http://feedly.com/; 42 subscribers)"). Das ist die einzige
 -- Zahl, die ein RSS-Feed über seine Reichweite überhaupt hergibt.

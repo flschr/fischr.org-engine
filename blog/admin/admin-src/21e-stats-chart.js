@@ -1,6 +1,6 @@
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat } from "./21-stats.js";
-import { statsTagKurz } from "./21d-stats-kennzahlen.js";
+import { statsStundeKurz, statsTagKurz } from "./21d-stats-kennzahlen.js";
 
 // --- Der Verlauf ------------------------------------------------------------
 //
@@ -48,11 +48,28 @@ function statsTage(range) {
   return tage;
 }
 
+// Die 24 Stunden des einzelnen Kalendertags, den ein stündlicher Verlauf
+// zeigt (start und end sind dann derselbe Tag). Stunden nach "jetzt" bleiben
+// dabei mit drin und stehen auf null — genau wie der heutige Tag in einem
+// täglichen Verlauf schon vor Mitternacht als teilweiser Wert erscheint, ohne
+// als "unvollständig" markiert zu sein.
+function statsStunden(range) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(range?.start || "")) return null;
+  return Array.from({ length: 24 }, (_, stunde) => `${range.start}T${String(stunde).padStart(2, "0")}`);
+}
+
 // Jeder Punkt trägt seinen Tag mit. Ein gebündelter Punkt trägt zwei: Er
 // steht für eine Woche, und eine Woche mit dem Datum ihres ersten Tages zu
 // beschriften, behauptete einen Tageswert.
-export function statsSeries(rows, range) {
+export function statsSeries(rows, range, granularity = "day") {
   const werte = new Map((rows || []).map((row) => [row.day, Number(row.hits) || 0]));
+
+  if (granularity === "hour") {
+    const stunden = statsStunden(range);
+    if (!stunden) return (rows || []).map((row) => ({ tag: row.day, daily: Number(row.hits) || 0 }));
+    return stunden.map((stunde) => ({ tag: stunde, daily: werte.get(stunde) || 0 }));
+  }
+
   const tage = range?.start && range?.end ? statsTage(range) : null;
   if (!tage) return (rows || []).map((row) => ({ tag: row.day, daily: Number(row.hits) || 0 }));
 
@@ -73,7 +90,10 @@ export function statsSeries(rows, range) {
   return gebuendelt;
 }
 
-function statsPunktLabel(punkt) {
+// Stündliche Punkte bündeln nie (die 24 Stunden eines Tages bleiben immer
+// unter STATS_MAX_PUNKTE) und tragen deshalb nie ein "bis".
+function statsPunktLabel(punkt, granularity) {
+  if (granularity === "hour") return statsStundeKurz(punkt.tag);
   const von = statsTagKurz(punkt.tag);
   return punkt.bis && punkt.bis !== punkt.tag ? `${von} – ${statsTagKurz(punkt.bis)}` : von;
 }
@@ -88,9 +108,9 @@ export function statsPunktWert(wert, einheit) {
 
 const STATS_CHART_HOEHE = 40;
 
-export function statsChart(series, einheit = "Aufrufe") {
+export function statsChart(series, einheit = "Aufrufe", granularity = "day") {
   const punkte = (series || []).map((punkt) => ({
-    label: statsPunktLabel(punkt),
+    label: statsPunktLabel(punkt, granularity),
     wert: Number(punkt.daily) || 0
   }));
   if (punkte.length < 2) return "";

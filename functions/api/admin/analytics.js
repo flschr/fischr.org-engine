@@ -9,7 +9,7 @@
 // wird ein Tag trotzdem nur aus einer Quelle gelesen, sonst zählten die Tage des
 // damaligen Parallelbetriebs doppelt.
 
-import { berlinDay, classifyFeed, feedReader } from "../../_analytics.js";
+import { berlinDay, berlinHour, classifyFeed, feedReader, STUNDEN_TAGE, tagMinus } from "../../_analytics.js";
 import { jsonResponse, readSession } from "../../_admin-auth.js";
 import { readStatsConfig } from "../../_admin-settings.js";
 
@@ -96,13 +96,69 @@ export async function onRequest(context) {
   }
 
   const url = new URL(request.url);
-  const start = toDay(url.searchParams.get("start"));
-  const end = toDay(url.searchParams.get("end"));
+  const startParam = url.searchParams.get("start");
+  const endParam = url.searchParams.get("end");
+  const start = toDay(startParam);
+  const end = toDay(endParam);
   if (!start || !end) return jsonResponse({ error: "Zeitraum fehlt oder ist ungültig." }, { status: 400 });
 
   const db = env.ANALYTICS;
   const all = async (sql, ...params) => (await db.prepare(sql).bind(...params).all()).results || [];
   const one = async (sql, ...params) => await db.prepare(sql).bind(...params).first();
+
+  // Ein einzelner Kalendertag bekommt einen stündlichen statt einen täglichen
+  // Verlauf — sonst zeichnete die Kurve für "Heute" einen einzigen Punkt.
+  // Betrifft nur die beiden Verläufe unten, keine der übrigen Listen: Die
+  // Tagesaggregate bleiben deren Grundlage, unabhängig von der Auflösung der
+  // Kurve.
+  //
+  // Über die tatsächliche Spanne entschieden, nicht über den Vergleich der
+  // beiden Tage-Strings: "start" und "end" kommen als Zeitstempel aus der
+  // Ortszeit des Browsers, "start === end" verglich sie aber erst, nachdem
+  // beide auf einen Berliner Kalendertag umgerechnet waren. Ein Browser in
+  // einer anderen Zeitzone konnte damit einen echten Mehrtageszeitraum auf
+  // denselben Berliner Tag fallen lassen (und umgekehrt einen einzelnen Tag
+  // auf zwei) — die Kurve hätte dann lautlos zu wenige oder die falsche
+  // Auflösung gezeigt. Eine Spanne bis zu dreißig Stunden lässt "Heute" und
+  // jeden einzelnen Kalendertag zu, auch über die Zeitumstellung hinweg, und
+  // bleibt für jeden echten Mehrtageszeitraum sicher darüber.
+  const spanneMs = new Date(endParam) - new Date(startParam);
+  const einzelnerTag = Number.isFinite(spanneMs) && spanneMs <= 30 * 60 * 60 * 1000;
+
+  // Nur innerhalb der Stundenauflösung ehrlich: hourly_feed reicht bloß
+  // STUNDEN_TAGE zurück. Ein einzelner Tag davor bekäme sonst eine Kurve aus
+  // lauter erfundenen Nullen, obwohl darüber eine echte, von Null
+  // verschiedene Tageszahl aus den für immer aufbewahrten Aggregaten steht —
+  // ein sichtbarer Widerspruch zwischen Kopfzahl und Kurve. Der Rückfall auf
+  // den Tagespfad zeichnet für einen einzelnen Tag ohnehin keine Kurve
+  // (statsChart verlangt mindestens zwei Punkte) und behauptet damit nichts,
+  // was nicht gemessen wurde.
+  const hourly = einzelnerTag && start >= tagMinus(berlinDay(), STUNDEN_TAGE);
+
+  const hourlyPageSeries = async (day) => {
+    // SQLite kennt keine Zeitzonen-Datenbank, bucketet also nur nach der
+    // UTC-Stunde — nicht nach der Berliner. Das genügt: Jeder UTC-Eimer wird
+    // anschließend anhand seines ersten Zeitstempels einer Berliner Stunde
+    // zugeordnet, aber die Zählung selbst bleibt SQL überlassen. Ohne diesen
+    // Umweg läse der Endpunkt an einem stark besuchten Tag jede einzelne
+    // Rohzeile aus der Datenbank heraus, nur um am Ende vierundzwanzig Zahlen
+    // zu behalten.
+    const rows = await all(
+      `SELECT COUNT(*) AS hits, MIN(ts) AS ts FROM hits
+       WHERE kind = 'page' AND class = 'human' AND day = ?1
+       GROUP BY strftime('%Y-%m-%dT%H', ts, 'unixepoch')`,
+      day
+    );
+    const stunden = new Map();
+    for (const row of rows) {
+      const stunde = berlinHour(new Date(Number(row.ts) * 1000));
+      stunden.set(stunde, (stunden.get(stunde) || 0) + Number(row.hits));
+    }
+    return [...stunden.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([hour, hits]) => ({ day: hour, hits }));
+  };
+
+  const hourlyFeedSeries = async (day) =>
+    all(`SELECT hour AS day, hits FROM hourly_feed WHERE hour BETWEEN ?1 AND ?2 ORDER BY hour`, `${day}T00`, `${day}T23`);
 
   // Aufklappbare Zeile im Dashboard: Welche Quellen führten auf diese Seite,
   // und wie viele Menschen waren es?
@@ -186,12 +242,14 @@ export async function onRequest(context) {
   }
 
   const [series, totals, visitors, besucherAb, pages, refs, countries, feed, feedSeries, readers, abosJeLeser, feedBots, abos, feedPages, feedCountries] = await Promise.all([
-    all(
-      `SELECT day, SUM(hits) AS hits FROM daily_page
-       WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
-       GROUP BY day ORDER BY day`,
-      start, end
-    ),
+    hourly
+      ? hourlyPageSeries(start)
+      : all(
+          `SELECT day, SUM(hits) AS hits FROM daily_page
+           WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}
+           GROUP BY day ORDER BY day`,
+          start, end
+        ),
     one(
       `SELECT COALESCE(SUM(hits), 0) AS hits FROM daily_page
        WHERE kind = 'page' AND day BETWEEN ?1 AND ?2 ${eineQuelle("page")}`,
@@ -238,12 +296,14 @@ export async function onRequest(context) {
     // getrennt geführt, weil er etwas anderes zählt: Abrufe durch Programme,
     // nicht Aufrufe durch Menschen. Eine gemeinsame Kurve läge um den Faktor
     // zehn auseinander und behauptete damit einen Vergleich, den es nicht gibt.
-    all(
-      `SELECT day, SUM(hits) AS hits FROM daily_page
-       WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}
-       GROUP BY day ORDER BY day`,
-      start, end
-    ),
+    hourly
+      ? hourlyFeedSeries(start)
+      : all(
+          `SELECT day, SUM(hits) AS hits FROM daily_page
+           WHERE kind = 'feed' AND day BETWEEN ?1 AND ?2 ${eineQuelle("feed")}
+           GROUP BY day ORDER BY day`,
+          start, end
+        ),
     all(
       `SELECT reader, MAX(subscribers) AS subscribers, SUM(hits) AS hits FROM feed_readers
        WHERE day BETWEEN ?1 AND ?2 GROUP BY reader ORDER BY hits DESC LIMIT ${LIMIT}`,
@@ -316,6 +376,9 @@ export async function onRequest(context) {
 
   return jsonResponse({
     range: { start, end },
+    // Sagt der Kurve, ob ihre Punkte Tage oder Stunden sind — sie liest sonst
+    // nichts anderes über die Auflösung der beiden Reihen unten.
+    granularity: hourly ? "hour" : "day",
     total: {
       hits: Number(totals?.hits) || 0,
       visitors: Number(visitors?.besucher) || 0,
