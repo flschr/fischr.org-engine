@@ -346,14 +346,14 @@ eleventyExcludeFromCollections: true
                   <span id="pushButtonLabel">Veröffentlichen</span>
                   <span id="pushButtonCount" class="queue-count" hidden>0</span>
                 </button>
-                <button id="cleanupOrphansButton" type="button" class="ghost danger" hidden>
+                <button id="cleanupOrphansButton" type="button" class="ghost danger" hidden aria-label="Unbenutzte verwerfen" title="Unbenutzte verwerfen">
                   <span data-icon="trash-2" aria-hidden="true"></span>
-                  <span>Unbenutzte verwerfen</span>
+                  <span class="queue-action-label">Unbenutzte verwerfen</span>
                   <span id="cleanupOrphansCount" class="queue-count">0</span>
                 </button>
-                <button id="discardAllButton" type="button" class="ghost danger" disabled>
+                <button id="discardAllButton" type="button" class="ghost danger" disabled aria-label="Alles verwerfen" title="Alles verwerfen">
                   <span data-icon="trash-2" aria-hidden="true"></span>
-                  <span>Alles verwerfen</span>
+                  <span class="queue-action-label">Alles verwerfen</span>
                 </button>
                 <!-- Einstellungen war ein eigener Nav-Punkt; jetzt Knopf hier,
                      einen Tab weniger in Sidebar/Tab-Leiste. Icon-only wie

@@ -195,17 +195,19 @@
   .library-tools { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; width: 100%; }
   /* Queue's toolbar is buttons with full text labels, not a search field and a
      select that can shrink to fit — nowrap here would just push them off the
-     right edge instead of fitting them. flex-start too: with flex-end, the one
-     button that wraps to its own line strands on the right, alone, instead of
-     reading as a continuation of the row above it. Wrap stays as the fallback
-     for the rare fourth button (Unbenutzte verwerfen); the tighter gap and
-     padding below are what keep the common three-button row on one line
-     instead of relying on wrap for it. */
-  .queue-view .library-tools { flex-wrap: wrap; justify-content: flex-start; gap: 0.35rem; }
-  .queue-view .library-tools .primary-action,
-  .queue-view .library-tools .ghost {
-    padding-inline: 0.5rem;
-  }
+     right edge instead of fitting them. Stays flex-end like every other
+     view's toolbar (.library-tools' own base rule) rather than falling back
+     to flex-start; wrap stays only as a fallback (very large accessibility
+     text sizes, a future fifth button), not something the common row still
+     relies on now that only Veröffentlichen still carries a text label —
+     trying to fit two more full labels next to it measured fine in testing,
+     but not on every real device's actual font metrics. */
+  .queue-view .library-tools { flex-wrap: wrap; gap: 0.35rem; }
+  /* Icon + count only, same reasoning as Einstellungen going icon-only above:
+     the label is redundant with the aria-label/title already on the button,
+     and dropping it is what actually makes the width margin robust instead
+     of just barely fitting. */
+  .queue-view .library-tools .queue-action-label { display: none; }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }

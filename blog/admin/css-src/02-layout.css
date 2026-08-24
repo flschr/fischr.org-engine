@@ -6,7 +6,7 @@
   grid-column: 2;
   min-width: 0;
   min-height: calc(100vh - var(--topbar-h));
-  padding: clamp(1.1rem, 2.6vw, 2.4rem) clamp(1rem, 3vw, 2.75rem);
+  padding: var(--workspace-pad-top) clamp(1rem, 3vw, 2.75rem);
 }
 /* Queue, Media, Statistics and Settings each repeated this same cap-and-left-
    align on their own top-level section; Library and the editor already reach

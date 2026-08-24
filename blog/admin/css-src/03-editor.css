@@ -17,14 +17,21 @@
    relies on for the same reason. */
 .editor-bars {
   position: sticky;
-  top: var(--topbar-h);
+  /* Matches .admin-workspace's own top padding (02-layout.css), not
+     --topbar-h (0, unrelated to this): resting position and stuck position
+     are then the same height, and the bar never visibly jumps the moment
+     scrolling starts. */
+  top: var(--workspace-pad-top);
   z-index: 12;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   width: 100%;
   max-width: var(--editor-content-w);
-  margin: 0.3rem auto 0 0;
+  /* No top margin of its own: it would add to the resting position without
+     adding to the sticky `top` above, reopening the same jump by a smaller
+     amount. --workspace-pad-top is the only offset now. */
+  margin: 0 auto 0 0;
   padding: 0.5rem 0;
   background: var(--bg);
 }

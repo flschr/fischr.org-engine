@@ -75,6 +75,13 @@
   /* No top bar anymore — the sidebar/workspace fill the full height. Kept as a
      0 token so the layout offsets that referenced it collapse cleanly. */
   --topbar-h: 0px;
+  /* .admin-workspace's own top padding — shared with the editor's sticky
+     toolbar (03-editor.css) so its resting position (inside that padding)
+     and its stuck position (pinned at `top`) are the same height. Two
+     independent copies of this clamp() would only stay equal by accident;
+     one drifting without the other is exactly what made the toolbar visibly
+     jump the moment scrolling started. */
+  --workspace-pad-top: clamp(1.1rem, 2.6vw, 2.4rem);
   /* One shared content column for every view (Articles, Library, Stats, Settings,
      Queue). All views left-align to this width so the leading edge never jumps
      when you switch between them. The editor keeps its own narrower reading
