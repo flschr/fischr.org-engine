@@ -69,7 +69,9 @@ function main() {
     if (!expectedDraftSha) throw new Error("DRAFT_SHA is required.");
     reconcileDrafts({
       finalCommit,
+      expectedMainSha,
       expectedDraftSha,
+      auswahl,
       publishBranch,
       draftsBranch,
       managedPaths,

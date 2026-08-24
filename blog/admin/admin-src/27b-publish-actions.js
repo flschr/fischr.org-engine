@@ -93,13 +93,25 @@ export async function syncOutbox() {
     //
     // Übernommen aus #96, das den Fehler auf main behoben hat: Bis dahin las diese Stelle ein
     // publishPlan, das es hier nie gab — sichtbar geworden erst durch die Modul-Umstellung.
+    // Ohne Abwahl geht keine Pfadliste raus. Das ist nicht dasselbe wie eine Liste, die zufällig
+    // alles enthält: Der Bau behandelt „keine Liste" als „alles" und verhält sich damit exakt
+    // wie vorher — eine Auswahl, die niemand getroffen hat, kann so auch nichts verändern.
+    const paths = state.queueAbgewaehlt.size
+      ? pfadeZumSenden(changes, state.queueAbgewaehlt, medienJeAenderung(changes))
+      : null;
+    // Gezählt wird, was mitgeht — nicht, was anliegt. Die Zahl steht in der Commit-Nachricht
+    // („Publish 3 changes") und auf der Fortschrittskarte; bei einer Abwahl hätte sie sonst mehr
+    // behauptet, als tatsächlich veröffentlicht wurde.
+    const gesendeteAnzahl = paths
+      ? wirksame.filter((change) => !state.queueAbgewaehlt.has(change.path)).length
+      : changes.length;
     const publishPlan = window.RWPublishPlan.plan(changes);
     const requestId = window.RWPublishStatus.createRequestId();
     const request = {
       requestId,
       mainSha: mainHead,
       draftSha: draftsHead,
-      changeCount: changes.length,
+      changeCount: gesendeteAnzahl,
       validationMode: publishPlan.mode,
       signatures: changes.map(changeSignature),
       startedAt: new Date().toISOString()
@@ -111,14 +123,8 @@ export async function syncOutbox() {
     // das fiel erst im Bau auf.
     // Die Kennung der Instanz gehört in die Anfrage: Sie ist der einzige Faden zurück zu dem
     // Vorgang, falls nie ein Actions-Lauf erscheint — und sie überlebt so auch ein Neuladen.
-    // Ohne Abwahl geht keine Pfadliste raus. Das ist nicht dasselbe wie eine Liste, die zufällig
-    // alles enthält: Der Bau behandelt „keine Liste" als „alles" und verhält sich damit exakt
-    // wie vorher — eine Auswahl, die niemand getroffen hat, kann so auch nichts verändern.
-    const paths = state.queueAbgewaehlt.size
-      ? pfadeZumSenden(changes, state.queueAbgewaehlt, medienJeAenderung(changes))
-      : null;
     const gestartet = await starteVeroeffentlichung({
-      requestId, mainHead, draftsHead, changeCount: changes.length, paths
+      requestId, mainHead, draftsHead, changeCount: gesendeteAnzahl, paths
     });
     request.workflowId = gestartet?.id || "";
     state.publishInFlight = true;

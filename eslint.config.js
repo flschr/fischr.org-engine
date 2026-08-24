@@ -52,6 +52,11 @@ module.exports = [
     },
     rules: {
       "no-undef": "error",
+      // Eine `const`, die vor ihrer Zeile benutzt wird, ist kein ReferenceError beim Laden,
+      // sondern einer beim Ausführen — und trifft damit erst den Benutzer. `no-undef` sieht das
+      // nicht, weil der Name ja deklariert ist. Kostet hier nichts: null Verstösse im Bestand.
+      // Funktionen sind ausgenommen, sie werden hochgezogen und stehen absichtlich unten.
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       "no-unused-vars": ["warn", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
     }
   },
@@ -67,6 +72,11 @@ module.exports = [
     },
     rules: {
       "no-undef": "error",
+      // Eine `const`, die vor ihrer Zeile benutzt wird, ist kein ReferenceError beim Laden,
+      // sondern einer beim Ausführen — und trifft damit erst den Benutzer. `no-undef` sieht das
+      // nicht, weil der Name ja deklariert ist. Kostet hier nichts: null Verstösse im Bestand.
+      // Funktionen sind ausgenommen, sie werden hochgezogen und stehen absichtlich unten.
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       "no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
     }
   },
@@ -90,6 +100,11 @@ module.exports = [
     },
     rules: {
       "no-undef": "error",
+      // Eine `const`, die vor ihrer Zeile benutzt wird, ist kein ReferenceError beim Laden,
+      // sondern einer beim Ausführen — und trifft damit erst den Benutzer. `no-undef` sieht das
+      // nicht, weil der Name ja deklariert ist. Kostet hier nichts: null Verstösse im Bestand.
+      // Funktionen sind ausgenommen, sie werden hochgezogen und stehen absichtlich unten.
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       "no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
     }
   },
@@ -105,6 +120,11 @@ module.exports = [
     },
     rules: {
       "no-undef": "error",
+      // Eine `const`, die vor ihrer Zeile benutzt wird, ist kein ReferenceError beim Laden,
+      // sondern einer beim Ausführen — und trifft damit erst den Benutzer. `no-undef` sieht das
+      // nicht, weil der Name ja deklariert ist. Kostet hier nichts: null Verstösse im Bestand.
+      // Funktionen sind ausgenommen, sie werden hochgezogen und stehen absichtlich unten.
+      "no-use-before-define": ["error", { functions: false, classes: true, variables: true }],
       "no-unused-vars": ["warn", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
     }
   }

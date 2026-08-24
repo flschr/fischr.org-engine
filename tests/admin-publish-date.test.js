@@ -177,7 +177,10 @@ test("immediate admin sync sends the exact reviewed commits, not whatever is cur
 
   assert.match(syncOutbox, /const draftsHead = state\.tree && state\.treeHeadSha\s*\? state\.treeHeadSha/);
   assert.match(syncOutbox, /const mainHead = state\.mainTree && state\.mainTreeHeadSha\s*\? state\.mainTreeHeadSha/);
-  assert.match(syncOutbox, /starteVeroeffentlichung\(\{\s*requestId, mainHead, draftsHead, changeCount: changes\.length, paths\s*\}\)/);
+  assert.match(syncOutbox, /starteVeroeffentlichung\(\{\s*requestId, mainHead, draftsHead, changeCount: gesendeteAnzahl, paths\s*\}\)/);
+  // Gezählt wird, was mitgeht — nicht, was anliegt. Sonst behauptete die Commit-Nachricht bei
+  // einer Abwahl mehr, als veröffentlicht wurde.
+  assert.match(syncOutbox, /const gesendeteAnzahl = paths/);
   // Ohne Abwahl geht keine Pfadliste raus — der Bau behandelt „keine Liste" als „alles" und
   // verhält sich damit exakt wie vorher.
   assert.match(syncOutbox, /const paths = state\.queueAbgewaehlt\.size/);

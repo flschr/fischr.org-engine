@@ -81,6 +81,20 @@ export async function handlePublishStart(context, { readSession: sitzungLesen, f
     return jsonResponse({ message: `Fehlende Angaben: ${fehlend.join(", ")}` }, { status: 400 });
   }
 
+  // Eine leere Auswahl ist etwas anderes als keine Auswahl.
+  //
+  // „Keine" heisst alles — so verhält sich eine Veröffentlichung ohne Abwahl wie vor der
+  // Auswahl. Eine leere Liste hiesse „nichts", und weiter unten in der Kette wird daraus
+  // wieder „alles": Der Workflow schickt eine leere Liste als leere Eingabe weiter, und der
+  // Bau liest eine leere Eingabe als „alles". Genau derselbe Wert, zwei gegenteilige
+  // Bedeutungen — das wird hier abgefangen, wo es noch eine Antwort geben kann.
+  if (Array.isArray(anfrage.paths) && !anfrage.paths.length) {
+    return jsonResponse(
+      { message: "Die Auswahl ist leer — es gäbe nichts zu veröffentlichen.", code: "AUSWAHL_LEER" },
+      { status: 400 }
+    );
+  }
+
   // Die Standprüfung gehört hierher und nicht erst in den Workflow: Hier kann sie sofort
   // antworten. Im Workflow wäre "veraltet" ein Ergebnis, auf das der Admin erst warten müsste —
   // und bis dahin sähe eine nicht angestossene Veröffentlichung aus wie eine hängende.
