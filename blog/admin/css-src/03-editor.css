@@ -28,8 +28,12 @@
      existing layer, and on a fast trackpad scroll that repaint can lag a
      frame behind the content scrolling underneath — background: var(--bg)
      below is solid, but a lagging repaint can still show a frame of that
-     content through it before catching up. */
+     content through it before catching up. will-change alone did not clear
+     it (confirmed still visible in Chrome); contain: paint goes further and
+     makes the box a hard paint boundary — nothing outside it can be
+     composited into it, independent of any layer-promotion/repaint timing. */
   will-change: transform;
+  contain: paint;
   display: flex;
   align-items: center;
   gap: 0.5rem;
