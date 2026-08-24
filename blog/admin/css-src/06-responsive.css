@@ -152,8 +152,7 @@
      keyboard anyway, so it steps aside. Getting back out is the platform's
      job — browser back, or the edge-swipe in a home-screen app. */
   .admin-body.is-editor-view .admin-sidebar { display: none; }
-  .library-head,
-  .queue-head {
+  .library-head {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -162,8 +161,7 @@
   }
   .meta-panel { grid-template-columns: 1fr; }
   /* Six buttons now instead of eighteen, so the article bar fits without the
-     sideways scroll it used to need. The send button hides itself when there is
-     nothing to send, which usually makes it five. */
+     sideways scroll it used to need. */
   .editor-bar {
     flex-wrap: nowrap;
     gap: 0.35rem;
@@ -195,6 +193,12 @@
      — the row's own upload button was rendered but partly off-screen).
      width: 100% sidesteps stretch entirely and reliably wins. */
   .library-tools { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; width: 100%; }
+  /* Queue's toolbar is buttons with full text labels, not a search field and a
+     select that can shrink to fit — nowrap here would just push them off the
+     right edge instead of fitting them. flex-start too: with flex-end, the one
+     button that wraps to its own line strands on the right, alone, instead of
+     reading as a continuation of the row above it. */
+  .queue-view .library-tools { flex-wrap: wrap; justify-content: flex-start; }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }

@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { useAdminRouteDefaults } = require("./admin-test-support");
+const { mockAuthenticatedGithub, useAdminRouteDefaults } = require("./admin-test-support");
 
 useAdminRouteDefaults(test);
 
@@ -342,6 +342,38 @@ test("the media library toolbar fits one row and never pushes the page sideways"
   await expect(page.locator("#mediaFilterInput")).toBeVisible();
 });
 
+test("the queue toolbar wraps its buttons instead of overflowing on a phone", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
+  // Regression: Queue's action row used to size and align itself. Once it
+  // switched to the shared .library-head/.library-tools row every other view
+  // uses, the shared mobile rule that forces that row onto one line (right
+  // for a search field that can shrink) pushed these buttons — full text
+  // labels, nothing to shrink — off the left edge instead of fitting them.
+  const path = "blog/posts/2026-01-01-artikel.md";
+  const content = Buffer.from("---\ntitle: Artikel\ndate: 2026-01-01\ndraft: false\n---\n\nText.\n").toString("base64");
+  await mockAuthenticatedGithub(page, [], [{ path, type: "blob", sha: "sha-neu", size: 60 }], {
+    mainTree: [],
+    blobs: { "sha-neu": { encoding: "base64", content } }
+  });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+  await page.locator("#syncButton").evaluate((button) => button.click());
+  await expect(page.locator("#queueView")).toBeVisible();
+  await expect(page.locator(".queue-card")).toHaveCount(1);
+
+  const tools = page.locator(".queue-view .library-tools");
+  const overflows = await tools.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(overflows).toBe(false);
+  // Same reasoning as the media toolbar check above: confirm every button's
+  // own right edge, not just the row's internal scrollWidth.
+  const viewportWidth = page.viewportSize().width;
+  for (const id of ["#pushButton", "#discardAllButton", "#queueSettingsButton"]) {
+    const box = await tools.locator(id).boundingBox();
+    expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+  }
+});
+
 test("the stats range pills fit one row without scrolling", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
   // "7 Tage"/"30 Tage"/"90 Tage" repeated "Tage" on every pill was most of
@@ -397,6 +429,11 @@ test("the library, media, and stats toolbars sit at the right edge on desktop", 
   // after it — so check the row that actually reaches the edge.
   const statsTools = await page.locator(".stats-head .library-tools").boundingBox();
   expect(near({ right: statsTools.x + statsTools.width })).toBe(true);
+
+  await page.locator("#syncButton").click();
+  await expect(page.locator("#queueView")).toBeVisible();
+  const queueTools = await page.locator(".queue-view .library-tools").boundingBox();
+  expect(near({ right: queueTools.x + queueTools.width })).toBe(true);
 });
 
 test("the media upload control shows its plus icon, not an empty pill", async ({ page }) => {

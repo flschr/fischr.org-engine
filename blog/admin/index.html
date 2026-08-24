@@ -333,11 +333,14 @@ eleventyExcludeFromCollections: true
             <div id="mediaGrid" class="media-grid"></div>
           </section>
 
-          <!-- Publish queue: everything saved to drafts, pending publish to main -->
+          <!-- Publish queue: everything saved to drafts, pending publish to main.
+               library-head/library-tools, not a queue-only pair: same row shape
+               as Articles/Media/Statistics (h1 is sr-only, the toolbar flushes
+               right), so this row does not need its own layout rules. -->
           <section id="queueView" class="view queue-view" hidden>
-            <div class="queue-head view-head">
+            <div class="library-head view-head">
               <h1 class="view-title">Publish</h1>
-              <div class="queue-actions">
+              <div class="library-tools">
                 <button id="pushButton" type="button" class="primary-action" disabled>
                   <span data-icon="send" aria-hidden="true"></span>
                   <span id="pushButtonLabel">Veröffentlichen</span>
@@ -353,10 +356,11 @@ eleventyExcludeFromCollections: true
                   <span>Alles verwerfen</span>
                 </button>
                 <!-- Einstellungen war ein eigener Nav-Punkt; jetzt Knopf hier,
-                     einen Tab weniger in Sidebar/Tab-Leiste. -->
-                <button id="queueSettingsButton" type="button" class="ghost queue-settings">
-                  <span data-icon="sliders-horizontal" aria-hidden="true"></span>
-                  <span>Einstellungen</span>
+                     einen Tab weniger in Sidebar/Tab-Leiste. Icon-only wie
+                     Aktualisieren/Neuer Artikel in den anderen Werkzeugleisten,
+                     nicht als einziger Knopf hier mit Textlabel. -->
+                <button id="queueSettingsButton" type="button" class="icon-button" aria-label="Einstellungen" title="Einstellungen">
+                  <span data-icon="settings" aria-hidden="true"></span>
                 </button>
               </div>
             </div>
