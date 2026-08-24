@@ -38,6 +38,14 @@ async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, change
   throw fehler;
 }
 
+// Die Pfade, die mitreisen — oder null, wenn nichts abgewählt ist. Einmal benannt, weil zwei
+// Stellen dieselbe Menge brauchen: der Medien-Wächter und die Anfrage selbst. Liefen sie
+// auseinander, prüfte der eine etwas anderes, als der andere veröffentlicht.
+function auswahlPfade(changes) {
+  if (!state.queueAbgewaehlt.size) return null;
+  return pfadeZumSenden(changes, state.queueAbgewaehlt, medienJeAenderung(changes));
+}
+
 export async function syncOutbox() {
   if (state.publishInFlight) {
     showStatus("Die Veröffentlichung läuft bereits auf GitHub.");
@@ -45,7 +53,21 @@ export async function syncOutbox() {
   }
   await waitForMediaCommits();
   const changes = await getAllChanges();
-  if (!await guardMediaReadyForPublish(changes)) {
+
+  // Der Medien-Wächter sieht nur, was mitreist.
+  //
+  // Er hält die Veröffentlichung an, solange ein Bild noch verarbeitet wird — sonst stünde der
+  // Artikel auf main mit einer Adresse, hinter der nichts liegt. Gehört das Bild aber
+  // ausschliesslich zu einem abgewählten Artikel, reist es gar nicht mit und kann nichts kaputt
+  // machen. Ohne diese Einschränkung blockierte es trotzdem alles andere — die Auswahl hälfe
+  // dann genau dort nicht, wo sie gedacht ist.
+  //
+  // Enger, nicht schwächer: Ohne Abwahl ist die Menge unverändert die vollständige.
+  const reisendePfade = auswahlPfade(changes);
+  const reisendeAenderungen = reisendePfade
+    ? changes.filter((change) => reisendePfade.includes(change.path))
+    : changes;
+  if (!await guardMediaReadyForPublish(reisendeAenderungen)) {
     if (!state.mediaProcessing) {
       recoverPendingMediaOperations().catch((error) => showStatus(`Medienverarbeitung fehlgeschlagen: ${error.message}`, "error"));
     }
@@ -96,9 +118,7 @@ export async function syncOutbox() {
     // Ohne Abwahl geht keine Pfadliste raus. Das ist nicht dasselbe wie eine Liste, die zufällig
     // alles enthält: Der Bau behandelt „keine Liste" als „alles" und verhält sich damit exakt
     // wie vorher — eine Auswahl, die niemand getroffen hat, kann so auch nichts verändern.
-    const paths = state.queueAbgewaehlt.size
-      ? pfadeZumSenden(changes, state.queueAbgewaehlt, medienJeAenderung(changes))
-      : null;
+    const paths = reisendePfade;
     // Gezählt wird, was mitgeht — nicht, was anliegt. Die Zahl steht in der Commit-Nachricht
     // („Publish 3 changes") und auf der Fortschrittskarte; bei einer Abwahl hätte sie sonst mehr
     // behauptet, als tatsächlich veröffentlicht wurde.

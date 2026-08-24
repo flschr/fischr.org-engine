@@ -46,7 +46,7 @@ function runSyncOutbox(changes) {
     "guardMediaReadyForPublish", "recoverPendingMediaOperations", "renderQueue", "hasGithubAccess",
     "requireGithubAccess", "openQueue", "focusGithubConnection", "ensureDraftsBranch", "github",
     "repo", "window", "changeSignature", "persistPublishRequest", "renderSyncState",
-    "pollPublishCompletion", "starteVeroeffentlichung", "istWirksam", "pfadeZumSenden", "medienJeAenderung",
+    "pollPublishCompletion", "starteVeroeffentlichung", "istWirksam", "pfadeZumSenden", "medienJeAenderung", "auswahlPfade",
     `return (${source});`
   )(
     state,
@@ -74,7 +74,9 @@ function runSyncOutbox(changes) {
     async (anfrage) => { dispatches.push({ endpoint: "/api/admin/publish", options: { body: anfrage } }); return { id: "wf-1" }; },
     () => true,
     () => [],
-    () => new Map()
+    () => new Map(),
+    // Nichts abgewählt: keine Pfadliste, also reist alles mit — der Regelfall.
+    () => null
   );
   return syncOutbox().then(() => ({ dispatches, statuses, persisted, polled, state }));
 }

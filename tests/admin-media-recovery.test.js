@@ -133,7 +133,7 @@ test("unfinished media blocks publishing and destructive queue actions", () => {
   assert.match(source, /if \(await videoNeedsPreparation\(change\)\) return true/);
   assert.match(source, /function guardMediaIdle\(action = "Diese Aktion"\) \{\s*if \(!hasActiveMediaWork\(\)\) return true/);
   assert.match(source, /async function guardMediaReadyForPublish\(changes\)/);
-  assert.match(source, /if \(!await guardMediaReadyForPublish\(changes\)\)/);
+  assert.match(source, /if \(!await guardMediaReadyForPublish\(reisendeAenderungen\)\)/);
   assert.match(source, /if \(!guardMediaIdle\("Alle Änderungen verwerfen"\)\) return/);
   assert.match(source, /async function loadFreshChanges\(\)[\s\S]*fetchTree\(true\)[\s\S]*fetchMainTree\(true\)/);
   assert.match(source, /state\.treeHeadSha !== confirmedDraftHead \|\| changeSetSignature\(confirmedChanges\) !== confirmedChangeSet/);

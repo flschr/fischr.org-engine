@@ -200,3 +200,22 @@ test("erzwungene Medien nennt genau die, die ein gewählter Artikel braucht", ()
   const erzwungen = aktionen.erzwungeneMedien(changes, new Set(["blog/posts/b.md"]), new Map(Object.entries(medien)));
   assert.deepEqual([...erzwungen], ["/bild-a.webp"]);
 });
+
+// Der Medien-Wächter sieht nur, was mitreist.
+//
+// Er hält die Veröffentlichung an, solange ein Bild noch verarbeitet wird — sonst stünde der
+// Artikel auf main mit einer Adresse, hinter der nichts liegt. Gehört das Bild aber
+// ausschliesslich zu einem abgewählten Artikel, reist es nicht mit und kann nichts kaputt
+// machen. Ohne diese Einschränkung blockierte es trotzdem alles andere: Die Auswahl hälfe genau
+// dort nicht, wo sie gedacht ist.
+test("ein Bild eines abgewählten Artikels steht nicht mehr im Weg", () => {
+  const changes = [
+    artikel("blog/posts/fertig.md"),
+    artikel("blog/posts/halb.md"),
+    medium("blog/assets/images/uploads/halb.webp", "/assets/images/uploads/halb.webp")
+  ];
+  const medien = { "blog/posts/halb.md": ["/assets/images/uploads/halb.webp"] };
+
+  const gesendet = senden(changes, ["blog/posts/halb.md"], medien);
+  assert.deepEqual(gesendet, ["blog/posts/fertig.md"], "weder der Artikel noch sein Bild reisen mit");
+});

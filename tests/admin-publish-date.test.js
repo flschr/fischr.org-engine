@@ -183,7 +183,7 @@ test("immediate admin sync sends the exact reviewed commits, not whatever is cur
   assert.match(syncOutbox, /const gesendeteAnzahl = paths/);
   // Ohne Abwahl geht keine Pfadliste raus — der Bau behandelt „keine Liste" als „alles" und
   // verhält sich damit exakt wie vorher.
-  assert.match(syncOutbox, /const paths = state\.queueAbgewaehlt\.size/);
+  assert.match(syncOutbox, /const paths = reisendePfade;/);
 
   // Und der Start geht an den eigenen Endpunkt, nicht mehr per Dispatch aus dem Browser.
   const starter = extractBlock(source, "async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount, paths })");
