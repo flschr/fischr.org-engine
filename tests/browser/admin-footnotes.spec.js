@@ -70,10 +70,30 @@ test("footnotes use normal editor selection, formatting, deletion and undo", asy
   await page.keyboard.press("Backspace");
   await expect(footnoteLine).not.toContainText("Formatierbar");
   await expect(page.locator(".cm-footnote-empty")).toBeVisible();
+  // CodeMirror's default history groups transactions that land within 500ms
+  // of each other into one undo step, regardless of what kind of edit each
+  // one is — a Backspace immediately followed by typed text is exactly such a
+  // pair. Locally the round-trip through Playwright's own dispatch usually
+  // takes longer than that on its own; on a CI runner it does not, so the two
+  // silently merged into a single undo step there. The two clicks below then
+  // stopped meaning "undo the insert, then undo the backspace" — the first
+  // undid both at once, and the second reached one edit further back than
+  // intended, resurrecting the already-removed <mark>. Reproduced on GitHub's
+  // runner (twice, deterministically) with the exact corrupted state proven
+  // via the editor's own document string, not inferred from a timeout.
+  //
+  // The wait forces the two edits into separate groups on every engine, so
+  // "press Undo, then Undo again" keeps meaning what it says regardless of
+  // how fast the environment happens to be.
+  await page.waitForTimeout(600);
   await page.locator(".cm-footnote-empty").click();
   await page.keyboard.insertText("Neu geschrieben");
   await expect(footnoteLine).toContainText("Neu geschrieben");
   await page.getByRole("navigation", { name: "Schreiben" }).getByRole("button", { name: "Rückgängig" }).click();
+  // Undo #1 must land exactly on "insertText undone", not one step further —
+  // this is what would have caught the grouping bug immediately instead of
+  // two assertions and one button click later.
+  await expect(page.locator(".cm-footnote-empty")).toBeVisible();
   await page.getByRole("navigation", { name: "Schreiben" }).getByRole("button", { name: "Rückgängig" }).click();
   await expect(footnoteLine).toContainText('"Formatierbar" & mehr');
 
