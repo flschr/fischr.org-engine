@@ -1,7 +1,5 @@
 /* ---- Sync queue -------------------------------------------------------- */
 
-.queue-view { max-width: var(--content-w); margin: 0 auto 0 0; }
-
 /* Settings stays the standard .icon-button size (01-controls.css) — only the
    text buttons next to it need their icon brought down to match the text. */
 .queue-view .library-tools .primary-action svg,

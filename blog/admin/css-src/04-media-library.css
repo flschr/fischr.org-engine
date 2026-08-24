@@ -1,6 +1,5 @@
 /* ---- Media ------------------------------------------------------------- */
 
-.media-view { max-width: var(--content-w); margin: 0 auto 0 0; }
 .media-view .library-head { max-width: none; }
 .media-view .library-tools select { flex: 0 0 8.5rem; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: 0.8rem; }

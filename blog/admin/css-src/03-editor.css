@@ -71,9 +71,7 @@
 
 /* Bear-style discrete bordered buttons */
 .editor-bar .tb-btn,
-.editor-bar .tb-button,
-.writing-bar .tb-btn,
-.writing-bar .tb-button {
+.writing-bar .tb-btn {
   min-width: 2.3rem;
   min-height: 2.3rem;
   padding: 0 0.45rem;
@@ -83,13 +81,9 @@
   color: var(--ink-soft);
 }
 .editor-bar .tb-btn:hover,
-.editor-bar .tb-button:hover,
-.writing-bar .tb-btn:hover,
-.writing-bar .tb-button:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
+.writing-bar .tb-btn:hover { background: var(--panel-2); border-color: var(--line-2); color: var(--ink); }
 .editor-bar .tb-btn svg,
-.editor-bar .tb-button svg,
-.writing-bar .tb-btn svg,
-.writing-bar .tb-button svg { width: 1.05rem; height: 1.05rem; }
+.writing-bar .tb-btn svg { width: 1.05rem; height: 1.05rem; }
 
 /* Colored, filled action buttons (Bear style) */
 .editor-bar #previewModeButton[aria-pressed="true"] { background: var(--accent-weak); border-color: var(--accent-weak-2); color: var(--accent-ink); }

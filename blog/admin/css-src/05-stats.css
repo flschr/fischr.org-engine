@@ -1,5 +1,4 @@
 /* ---- Stats (eigene Auswertung) ----------------------------------------- */
-.stats-view { max-width: var(--content-w); margin: 0 auto 0 0; }
 /* Die Pille darf schmaler werden als ihre fünf Knöpfe und scrollt dann
    seitwärts, statt über den rechten Rand hinauszustehen. */
 .stats-range { display: inline-flex; min-width: 0; gap: 0.2rem; padding: 0.2rem; border: 1px solid var(--line); border-radius: var(--radius-pill); background: var(--panel-2); overflow-x: auto; scrollbar-width: none; }
@@ -57,8 +56,8 @@
   background: var(--panel);
   box-shadow: var(--shadow-sm);
 }
-.stats-total-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-.stats-total-label { color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
+.stats-total-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1.5rem 2.5rem; }
+.stats-total-label { display: inline-flex; flex-direction: column; gap: 0.05rem; color: var(--ink-soft); font-size: 0.85rem; font-weight: 600; }
 .stats-total-value { color: var(--ink); font-size: clamp(1.8rem, 4vw, 2.4rem); font-weight: 720; letter-spacing: -0.03em; }
 .stats-grid {
   display: grid;
@@ -133,9 +132,7 @@
 .stats-substate { margin: 0.3rem 0 0.4rem 1.45rem; color: var(--ink-faint); font-size: 0.8rem; }
 
 /* Drei Kennzahlen statt einer: Aufrufe, Besucher, Feed-Abrufe. */
-.stats-total-head { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; align-items: baseline; }
 .stats-total-cell { display: inline-flex; flex-direction: column; gap: 0.15rem; }
-.stats-total-label { display: inline-flex; flex-direction: column; gap: 0.05rem; }
 .stats-total-hint { color: var(--ink-faint); font-size: 0.72rem; font-weight: 500; }
 
 /* Website und Feed als zwei Abschnitte statt zweier Tabs: Der Feed ist hier

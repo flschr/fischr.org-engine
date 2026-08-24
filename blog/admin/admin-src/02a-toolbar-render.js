@@ -51,14 +51,14 @@ function openMoreCommands() {
 export function renderFormatToolbar() {
   els.formatToolbar.innerHTML = "";
   PRIMARY_COMMANDS.forEach((command) => {
-    const button = commandButton(command, { className: "tb-button" });
+    const button = commandButton(command, { className: "tb-btn" });
     button.addEventListener("click", () => runCommand(command));
     els.formatToolbar.append(button);
   });
 
   const more = document.createElement("button");
   more.type = "button";
-  more.className = "tb-button tb-more";
+  more.className = "tb-btn tb-more";
   more.dataset.command = "more";
   more.title = "Weitere Einfügungen";
   more.setAttribute("aria-label", "Weitere Einfügungen");

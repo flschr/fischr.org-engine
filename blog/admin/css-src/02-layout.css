@@ -8,7 +8,12 @@
   min-height: calc(100vh - var(--topbar-h));
   padding: clamp(1.1rem, 2.6vw, 2.4rem) clamp(1rem, 3vw, 2.75rem);
 }
-.view { min-width: 0; }
+/* Queue, Media, Statistics and Settings each repeated this same cap-and-left-
+   align on their own top-level section; Library and the editor already reach
+   the same width through their own narrower children, so this is a no-op for
+   them, not a change. One declaration, on the class every view already
+   carries, instead of one per view. */
+.view { min-width: 0; max-width: var(--content-w); margin: 0 auto 0 0; }
 
 .library-head {
   display: flex;

@@ -1,6 +1,4 @@
 /* Central settings view (GitHub connection + social configuration) */
-.social-config-view { max-width: var(--content-w); margin: 0 auto 0 0; }
-.social-config-view.settings-view { max-width: var(--content-w); }
 /* The connection card is now an inline section here, not a floating popover. */
 .settings-view #connectionPanel { width: auto; margin: 0 0 0.4rem; box-shadow: none; }
 .settings-view .setup-head .connection-dot { flex: 0 0 auto; }
@@ -120,14 +118,16 @@
   gap: 0.6rem;
 }
 .social-category-name { flex: 1 1 auto; font-weight: 600; }
-.social-category-head .icon-button {
-  flex: 0 0 auto;
+.social-category-head .icon-button,
+.social-category-moves .icon-button {
   width: 2.1rem;
   height: 2.1rem;
   border-color: var(--line-2);
   background: var(--panel-2);
 }
-.social-category-head .icon-button.danger { color: var(--danger, #c0392b); }
+.social-category-head .icon-button { flex: 0 0 auto; }
+.social-category-head .icon-button.danger,
+.social-category-moves .icon-button.danger { color: var(--danger, #c0392b); }
 .social-category-order {
   font-size: 0.8rem;
   font-weight: 700;
@@ -135,13 +135,6 @@
   font-variant-numeric: tabular-nums;
 }
 .social-category-moves { display: flex; gap: 0.35rem; }
-.social-category-moves .icon-button {
-  width: 2.1rem;
-  height: 2.1rem;
-  border-color: var(--line-2);
-  background: var(--panel-2);
-}
-.social-category-moves .icon-button.danger { color: var(--danger, #c0392b); }
 .social-category-moves .icon-button:disabled { opacity: 0.4; }
 .social-category-grid {
   display: grid;
