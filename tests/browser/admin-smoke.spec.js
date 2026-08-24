@@ -150,7 +150,7 @@ test("source pages open as raw templates and save without Markdown controls", as
   }));
 
   await page.goto("/admin/");
-  await page.locator('[data-collection="pages"]').evaluate((button) => button.click());
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#entryList")).toContainText("Über mich");
   await page.getByText("blog/about.njk", { exact: true }).click();
 

@@ -14,6 +14,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Its own h1 is screen-reader-only (see .view-title below) and out of flow,
+     so .library-tools is the only thing actually in this row — flex-end
+     pushes it to the right edge of the content column instead of leaving it
+     stuck at the left where nothing is balancing it. Stats already achieved
+     this locally by growing .library-tools to fill the row; this covers
+     Library and Media too, the same way, from one place. */
+  justify-content: flex-end;
   gap: 0.7rem 1rem;
   max-width: var(--content-w);
   margin: 0 auto 1.1rem 0;
@@ -34,6 +41,10 @@
 }
 .library-tools { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.45rem; }
 .library-tools .search { flex: 0 0 15rem; width: 15rem; min-width: 8rem; }
+/* Matches .media-view .library-tools select (04-media-library.css) — same
+   width, same specificity shape — so the posts/pages type switcher reads as
+   the same kind of control as the media filter, not a one-off. */
+.library-view .library-tools select { flex: 0 0 8.5rem; }
 .search { background: var(--panel-2); border-radius: var(--radius-pill); padding-inline: 0.95rem; }
 
 /* List */

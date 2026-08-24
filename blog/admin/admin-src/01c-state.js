@@ -15,6 +15,10 @@ export const state = {
   tokenAuthorizationError: "",
   session: { authenticated: false, authorized: false, configured: false },
   collection: "posts",
+  // Separate from `collection`, which "media" also passes through: this is
+  // only ever "posts" or "pages", so the merged "Artikel" tab can return to
+  // whichever of the two was open last even after a detour to Media.
+  libraryCollection: "posts",
   view: "library",
   tree: null,
   treeHeadSha: "",

@@ -16,11 +16,11 @@ test("mobile sections are reachable without opening anything", async ({ page }, 
   await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Einstellungen", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
-  // The marked tab is what tells the reader where they are now that no heading does.
-  await expect(page.locator('[data-collection="pages"]')).toHaveAttribute("aria-current", "page");
-  await expect(page.locator('[data-collection="posts"]')).not.toHaveAttribute("aria-current", "page");
+  // The "Artikel" tab covers both posts and pages, so it stays marked current
+  // for either — the type switcher inside the view is what tells them apart.
+  await expect(page.locator('[data-collection="posts"]')).toHaveAttribute("aria-current", "page");
 });
 
 test("tabs are siblings in history, the editor is depth", async ({ page }) => {
@@ -30,11 +30,12 @@ test("tabs are siblings in history, the editor is depth", async ({ page }) => {
 
   // Switching tabs replaces the entry — otherwise a back swipe would walk the
   // tab chain backwards instead of doing nothing.
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
   await page.getByRole("button", { name: "Mediathek", exact: true }).click();
   await expect(page.locator("#mediaView")).toBeVisible();
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  // The merged "Artikel" tab returns to Pages, the collection it left off on.
+  await page.getByRole("button", { name: "Artikel", exact: true }).click();
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
   expect(await depth()).toBe(start);
 
@@ -60,7 +61,8 @@ test("a reload stays on the view it was on", async ({ page }) => {
   await expect(page.locator("#mediaView")).toBeVisible();
   await expect(page.locator('[data-collection="media"]')).toHaveAttribute("aria-current", "page");
 
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  await page.getByRole("button", { name: "Artikel", exact: true }).click();
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
   await page.reload();
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
@@ -69,7 +71,7 @@ test("a reload stays on the view it was on", async ({ page }) => {
 test("a reloaded new draft keeps the collection it was started in", async ({ page }) => {
   await page.goto("/admin/");
 
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
   await page.locator("#newEntryButtonLib").click();
   await expect(page.locator("#editorForm")).toBeVisible();
@@ -204,7 +206,7 @@ test("desktop keeps the sidebar and needs no back button", async ({ page }, test
   await page.goto("/admin/");
 
   await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Seiten", exact: true }).click();
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
 
   await page.locator("#newEntryButtonLib").click();
@@ -334,4 +336,49 @@ test("the stats range pills fit one row without scrolling", async ({ page }, tes
   // Accessible name survives the shortened label.
   await expect(page.getByRole("button", { name: "7 Tage" })).toBeVisible();
   await expect(page.getByRole("button", { name: "365 Tage" })).toBeVisible();
+});
+
+test("the library, media, and stats toolbars sit at the right edge on desktop", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name.startsWith("mobile"), "Desktop-only alignment");
+  // .library-head's own h1 is screen-reader-only and out of flow, so
+  // .library-tools was the row's only visible participant — it needs the
+  // parent's justify-content, not its own, to actually reach the right edge.
+  await page.route("**/api/admin/analytics*", (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ website: { views: [], visitors: 0 }, feed: { fetches: [] } })
+  }));
+  await page.goto("/admin/");
+
+  const contentRight = await page.locator(".admin-workspace").evaluate((el) => el.getBoundingClientRect().right);
+  const near = (rect) => Math.abs(rect.right - contentRight) < 40;
+
+  const libraryTools = await page.locator(".library-view .library-tools").boundingBox();
+  expect(near({ right: libraryTools.x + libraryTools.width })).toBe(true);
+
+  await page.getByRole("button", { name: "Mediathek", exact: true }).click();
+  const mediaTools = await page.locator(".media-view .library-tools").boundingBox();
+  expect(near({ right: mediaTools.x + mediaTools.width })).toBe(true);
+
+  await page.locator("#statsNav").click();
+  await expect(page.locator("#statsView")).toBeVisible();
+  // .stats-range-wrap itself isn't the rightmost child — #statsRefresh sits
+  // after it — so check the row that actually reaches the edge.
+  const statsTools = await page.locator(".stats-head .library-tools").boundingBox();
+  expect(near({ right: statsTools.x + statsTools.width })).toBe(true);
+});
+
+test("the media upload control shows its plus icon, not an empty pill", async ({ page }) => {
+  // Regression: going icon-only (matching Neuer Artikel / Neue Seite) dropped
+  // the button's visible text without picking up any of the per-container
+  // `<selector> svg { width; height }` rules every other icon button in this
+  // admin relies on — the svg rendered at its unstyled intrinsic size, which
+  // collapsed to invisible inside the icon wrapper's `line-height: 0`.
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Mediathek", exact: true }).click();
+  await expect(page.locator("#mediaView")).toBeVisible();
+
+  const upload = page.getByLabel("Medien hochladen");
+  const svgBox = await upload.locator("svg").boundingBox();
+  expect(svgBox.width).toBeGreaterThan(8);
+  expect(svgBox.height).toBeGreaterThan(8);
 });

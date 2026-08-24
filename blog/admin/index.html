@@ -45,10 +45,6 @@ eleventyExcludeFromCollections: true
               <span class="nav-icon" data-icon="file-text" aria-hidden="true"></span>
               <span class="nav-label">Artikel</span>
             </button>
-            <button class="nav-link" type="button" data-collection="pages">
-              <span class="nav-icon" data-icon="file" aria-hidden="true"></span>
-              <span class="nav-label">Seiten</span>
-            </button>
             <button class="nav-link" type="button" data-collection="media">
               <span class="nav-icon" data-icon="image" aria-hidden="true"></span>
               <span class="nav-label">Mediathek</span>
@@ -81,6 +77,10 @@ eleventyExcludeFromCollections: true
               <h1 id="libraryTitle" class="view-title">Articles</h1>
               <div class="library-tools">
                 <input id="searchInput" class="search" type="search" autocomplete="off" placeholder="Suchen">
+                <select id="entryTypeSelect" aria-label="Inhaltstyp">
+                  <option value="posts">Artikel</option>
+                  <option value="pages">Seiten</option>
+                </select>
                 <button id="refreshButton" type="button" class="icon-button" aria-label="Aktualisieren">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>
                 </button>

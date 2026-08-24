@@ -26,7 +26,11 @@ export function showView(name) {
 
 export function updateNav() {
   els.navButtons.forEach((button) => {
-    const active = button.dataset.collection === state.collection;
+    // The "posts" tab also covers "pages" — the type switcher inside the
+    // library view picks between them, so the sidebar/tab bar only needs one
+    // entry point for both.
+    const collection = button.dataset.collection;
+    const active = collection === state.collection || (collection === "posts" && state.collection === "pages");
     button.classList.toggle("is-active", active);
     if (active) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
@@ -59,8 +63,10 @@ export function setCollection(collection) {
     return;
   }
 
+  state.libraryCollection = collection;
   els.libraryTitle.textContent = collections[collection].title;
   els.searchInput.placeholder = collection === "pages" ? "Search pages" : "Search articles";
+  if (els.entryTypeSelect) els.entryTypeSelect.value = collection;
   if (els.newEntryButtonLib) {
     els.newEntryButtonLib.setAttribute("aria-label", newLabel);
     els.newEntryButtonLib.title = newLabel;

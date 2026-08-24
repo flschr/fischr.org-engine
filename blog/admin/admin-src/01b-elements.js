@@ -14,6 +14,7 @@ export const els = {
   libraryView: document.getElementById("libraryView"),
   libraryTitle: document.getElementById("libraryTitle"),
   searchInput: document.getElementById("searchInput"),
+  entryTypeSelect: document.getElementById("entryTypeSelect"),
   refreshButton: document.getElementById("refreshButton"),
   newButtons: Array.from(document.querySelectorAll(".js-new")),
   newEntryButtonLib: document.getElementById("newEntryButtonLib"),

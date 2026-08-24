@@ -72,6 +72,13 @@ a.ghost { text-decoration: none; }
 }
 .icon-button:hover { background: var(--panel-2); color: var(--ink); }
 .icon-button svg { width: 1.15rem; height: 1.15rem; }
+/* Every icon-bearing control sizes its own svg — nothing sizes one generically.
+   .file-button never carried an icon before the media library's upload button
+   went icon-only, so nothing here caught it: the plus rendered at the SVG's
+   unstyled intrinsic size, which collapsed to invisible inside line-height: 0.
+   Matches .lib-new svg (Neuer Artikel / Neue Seite) so the three "+" buttons
+   read as one control, not three sizes of it. */
+.file-button svg { width: 1.15rem; height: 1.15rem; }
 
 input,
 select,

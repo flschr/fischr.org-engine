@@ -115,7 +115,7 @@ test("the article menu names the kind of entry it is about", async ({ page }) =>
     body: JSON.stringify({ sha: "s", content: Buffer.from(source).toString("base64") }) }));
 
   await page.goto("/admin/");
-  await page.locator('[data-collection="pages"]').evaluate((b) => b.click());
+  await page.locator("#entryTypeSelect").selectOption("pages");
   await page.getByText("blog/pages/about.md", { exact: true }).click();
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
 

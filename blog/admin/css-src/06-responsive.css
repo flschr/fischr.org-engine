@@ -7,12 +7,12 @@
   input, select, textarea,
   .setup-card input { font-size: 16px; }
   /* ---- Bottom tab bar ---------------------------------------------------
-   * Five destinations do not need a full-screen drawer. The sidebar becomes a
+   * Four destinations do not need a full-screen drawer. The sidebar becomes a
    * tab bar instead: nothing to open or close, no overlay, no history entry,
    * and the targets sit where the thumb already is rather than diagonally
    * across the screen from the button that revealed them.
    *
-   * `display: contents` on .sidebar-nav lifts the four collection buttons out
+   * `display: contents` on .sidebar-nav lifts the three collection buttons out
    * of their wrapper so they share one row with Einstellungen. That drops the
    * wrapper from the accessibility tree, which is why the landmark lives on
    * the <aside role="navigation"> around it and the wrapper is a plain div. */
@@ -165,11 +165,13 @@
   .stats-head { flex-wrap: nowrap; }
   .stats-head .library-tools { min-width: 0; }
   .library-tools .search { flex: 1 1 auto; width: auto; min-width: 3.5rem; }
-  /* Matches .media-view .library-tools select's specificity (04-media-library.css)
-     rather than beating it on source order alone — a plain `.library-tools select`
-     here lost that fight silently and the 8.5rem desktop width kept forcing this
-     row 38px past a 390px screen into a horizontal scrollbar. */
-  .media-view .library-tools select { flex: 0 1 5.5rem; width: auto; min-width: 0; }
+  /* Matches .media-view/.library-view .library-tools select's specificity
+     (04-media-library.css, 02-layout.css) rather than beating it on source
+     order alone — a plain `.library-tools select` here lost that fight
+     silently and the 8.5rem desktop width kept forcing this row 38px past a
+     390px screen into a horizontal scrollbar. */
+  .media-view .library-tools select,
+  .library-view .library-tools select { flex: 0 1 5.5rem; width: auto; min-width: 0; }
   .library-tools .file-button,
   .library-tools .primary-action { flex: 0 0 auto; padding-inline: 0.6rem; }
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }

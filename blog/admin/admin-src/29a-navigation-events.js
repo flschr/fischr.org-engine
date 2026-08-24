@@ -15,7 +15,11 @@ import { updateConnectionState } from "./28-connection.js";
 export function wireNavigationEvents() {
   els.navButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      const next = button.dataset.collection;
+      const base = button.dataset.collection;
+      // The "posts" tab covers both posts and pages: returning to it goes
+      // back to whichever of the two was open last, instead of resetting to
+      // posts every time (e.g. after a detour to Media).
+      const next = base === "posts" ? state.libraryCollection : base;
       // Only a no-op when that collection's list is already on screen — not
       // when we are on another view (e.g. the Sync queue) with the same
       // collection still selected.
@@ -24,6 +28,15 @@ export function wireNavigationEvents() {
       if (await confirmLeaveEditor()) setCollection(next);
     });
   });
+
+  if (els.entryTypeSelect) {
+    els.entryTypeSelect.addEventListener("change", async () => {
+      const next = els.entryTypeSelect.value;
+      if (next === state.collection) return;
+      if (await confirmLeaveEditor()) setCollection(next);
+      else els.entryTypeSelect.value = state.collection;
+    });
+  }
 
   if (els.saveTokenButton) {
     els.saveTokenButton.addEventListener("click", async () => {
