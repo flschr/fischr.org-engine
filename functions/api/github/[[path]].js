@@ -47,10 +47,21 @@ export async function onRequest(context) {
   });
 }
 
-function isAllowedEndpoint(endpoint = "") {
+// Exportiert, damit der Browser-Mock in tests/browser/admin-test-support.js dieselbe Liste
+// benutzt. Ein Mock, der mehr durchlässt als der Proxy, macht genau die Fehler unsichtbar, für
+// die es ihn gibt: Der Admin rief `actions/runs/<id>` auf, der Mock beantwortete es, die Tests
+// waren grün — und im Betrieb kam ein 403, das jede Veröffentlichung als gescheitert meldete.
+export function isAllowedEndpoint(endpoint = "") {
   if (!endpoint || endpoint.includes("..")) return false;
   const workflow = endpoint.match(/^actions\/workflows\/([^/]+)\/(?:dispatches|runs)$/);
   if (workflow && ALLOWED_WORKFLOWS.has(workflow[1])) return true;
-  if (/^actions\/runs\/\d+\/jobs(?:\?.*)?$/.test(endpoint)) return true;
+  // Ein Lauf und seine Schritte. Beides gehört zusammen: Seit das Buch der Veröffentlichungen
+  // die Lauf-Nummer kennt, holt der Admin den Lauf direkt, statt ihn in einer Liste zu suchen.
+  //
+  // Die Nummer allein fehlte hier, die Schritte waren erlaubt — und weil die Statusabfrage mit
+  // dem Lauf beginnt, scheiterte sie mit 403, bevor sie zu den Schritten kam. Die Veröffentlichung
+  // lief dabei durch; nur ihr Fortschritt war nicht mehr lesbar, und der Admin meldete
+  // „fehlgeschlagen" für etwas, das gerade erfolgreich war.
+  if (/^actions\/runs\/\d+(?:\/jobs)?(?:\?.*)?$/.test(endpoint)) return true;
   return endpoint.startsWith("contents/") || endpoint.startsWith("git/");
 }

@@ -383,3 +383,24 @@ test("eine bereits durchgelaufene Anfrage sagt das auch", async () => {
   assert.equal(koerper.code, "ANFRAGE_ABGESCHLOSSEN");
   assert.equal(koerper.ausgang, "fertig");
 });
+
+// Der Proxy vor der GitHub-API führt eine Positivliste. Sie ist die Stelle, an der eine
+// Statusabfrage scheitern kann, ohne dass die Veröffentlichung selbst etwas merkt: Der Workflow
+// läuft serverseitig weiter, nur der Admin sieht nichts mehr — und meldete „fehlgeschlagen" für
+// etwas, das gerade erfolgreich war.
+test("der Proxy lässt genau die Endpunkte durch, die der Admin für den Status braucht", async () => {
+  const { isAllowedEndpoint } = await import("../functions/api/github/[[path]].js");
+
+  // Seit dem Buch der Veröffentlichungen wird der Lauf über seine Nummer geholt. Diese Zeile
+  // fehlte, und weil die Abfrage mit dem Lauf beginnt, kam sie nie bis zu den Schritten.
+  assert.equal(isAllowedEndpoint("actions/runs/4711"), true);
+  assert.equal(isAllowedEndpoint("actions/runs/4711/jobs"), true);
+  assert.equal(isAllowedEndpoint("actions/workflows/admin-publish.yml/runs"), true);
+  assert.equal(isAllowedEndpoint("actions/workflows/admin-publish.yml/dispatches"), true);
+
+  // Und weiterhin nicht mehr als das.
+  assert.equal(isAllowedEndpoint("actions/runs/4711/rerun"), false);
+  assert.equal(isAllowedEndpoint("actions/workflows/build.yml/dispatches"), false);
+  assert.equal(isAllowedEndpoint("actions/runs"), false);
+  assert.equal(isAllowedEndpoint("../secrets"), false);
+});

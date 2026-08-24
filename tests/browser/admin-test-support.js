@@ -94,9 +94,26 @@ function mockAuthenticatedGithub(page, requests = [], initialTree = [], options 
       contentType: "application/json",
       body: JSON.stringify({ id: "workflow-instance-1", status: "running", output: null, error: null })
     })),
-    page.route("**/api/github/**", (route) => {
+    page.route("**/api/github/**", async (route) => {
       const url = route.request().url();
       const method = route.request().method();
+
+      // Erst die echte Positivliste, dann die Antwort. Ein Mock, der mehr durchlässt als der
+      // Proxy, verbirgt genau die Fehler, für die es ihn gibt — hier hat er einen Endpunkt
+      // beantwortet, den der Betrieb mit 403 ablehnte, und alle Tests blieben grün.
+      const { isAllowedEndpoint } = await import("../../functions/api/github/[[path]].js");
+      // Genau wie der Proxy: nur der Pfad, ohne Abfrageparameter. Er reicht die Parameter
+      // separat weiter (`upstreamUrl.search`), prüft sie aber nicht — ein Mock, der sie
+      // mitprüfte, wäre strenger als der Betrieb und meldete Fehler, die es nicht gibt.
+      const endpunkt = new URL(url).pathname.replace(/^\/api\/github\/?/, "");
+      if (!isAllowedEndpoint(endpunkt)) {
+        return route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "GitHub endpoint is not allowed." })
+        });
+      }
+
       const requestBody = route.request().postDataJSON?.() || {};
       requests.push({ url, method, body: requestBody });
       let response = {};
