@@ -7,7 +7,6 @@ import { onCategoryChange } from "./10a-social-editor-ui.js";
 import { addGalleryImage } from "./11-social-images.js";
 import { onContentTypeChange } from "./12-content-type.js";
 import { closePublishDialog, confirmPublishDialog, restoreDialogBackup, updateSocialPanel } from "./13-publish-dialog.js";
-import { generateMissingAltTexts } from "./16a-alt-text-actions.js";
 import { cancelSocialImagePick, startSocialImagePick } from "./15-media-references.js";
 import { EDITOR_CHANGED, ensureEditor, renderEditorBody, setEditorMode, syncEditorFromVisible } from "./17-editor.js";
 import { handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, resetEditorDrop } from "./17a-editor-drop.js";
@@ -53,8 +52,6 @@ export function wireEditorEvents() {
   els.previewModeButton.addEventListener("click", () => {
     setEditorMode(state.editorMode === "preview" ? "markdown" : "preview");
   });
-
-  els.altTextButton?.addEventListener("click", () => generateMissingAltTexts());
 
   // Typing into a published article is what brings its send button back. Both
   // listeners hand in the keystroke flag, which is what keeps a per-character
@@ -116,7 +113,13 @@ export function wireEditorEvents() {
     syncEditorFromVisible();
   });
 
-  els.editorForm.addEventListener("submit", (event) => {
+  // The single-line metadata fields (slug, permalink, image path) used to
+  // submit the form on Enter for free. #editorForm is a <div> now, not a
+  // <form> — see the comment on it in index.html — so this is wired
+  // explicitly instead. The title's own Enter handling lives with the title.
+  els.editorForm.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    if (event.target?.tagName !== "INPUT" || event.target.type !== "text") return;
     event.preventDefault();
     saveWithProgress("save");
   });
@@ -149,6 +152,16 @@ export function wireEditorEvents() {
     }
     resizeTitleInput();
     updateSocialPanel();
+  });
+
+  // A title is one line. <textarea> inserts a newline on Enter by default;
+  // here Enter means "done with the title, on to the text" instead, matching
+  // what every single-line field in this form already does on submit.
+  els.titleInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (state.editorMode === "preview") setEditorMode("markdown");
+    ensureEditor()?.focus();
   });
 
   els.slugInput.addEventListener("input", () => {

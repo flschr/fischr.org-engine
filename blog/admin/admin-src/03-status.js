@@ -25,7 +25,6 @@ export function setBusy(isBusy) {
     els.saveButton,
     els.publishButton,
     els.docMenuButton,
-    els.altTextButton,
     els.previewModeButton,
     els.toggleMetaButton,
     els.undoButton,

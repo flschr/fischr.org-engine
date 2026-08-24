@@ -20,9 +20,10 @@ export function setSourceModeUi(enabled) {
   els.titleInput.hidden = sourceMode;
   els.publishButton.hidden = sourceMode;
   els.docMenuButton.hidden = sourceMode;
-  els.altTextButton.hidden = sourceMode;
   els.previewModeButton.hidden = sourceMode;
   els.toggleMetaButton.hidden = sourceMode;
+  // altTextButton now lives inside the writing bar (next to inserting an
+  // image), so hiding that bar already takes it with it.
   if (els.writingBar) els.writingBar.hidden = sourceMode;
   if (sourceMode) els.metaPanel.hidden = true;
 }

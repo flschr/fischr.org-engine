@@ -126,3 +126,64 @@ test("the article menu names the kind of entry it is about", async ({ page }) =>
   // Unpublishing is a post-only idea; it must not be offered for a page.
   await expect(menu.getByRole("button", { name: "Veröffentlichung zurückziehen" })).toBeHidden();
 });
+
+test("alt-text generation sits next to inserting an image, not among the document actions", async ({ page }) => {
+  // Moved on request: it gets used right after inserting an image, so it
+  // belongs where that happens — the writing bar, not the article bar's
+  // document-level actions (unpublish, delete, alt-text used to sit there).
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page);
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+
+  const writingBar = page.getByRole("navigation", { name: "Schreiben" });
+  await expect(writingBar.getByRole("button", { name: "Alt-Texte erzeugen" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Alt-Texte erzeugen" })).toHaveCount(0);
+
+  // Immediately after "Bild oder Video einfügen" in DOM order — adjacency is
+  // the actual point, not just "somewhere in the writing bar".
+  const order = await writingBar.getByRole("button").evaluateAll((buttons) =>
+    buttons.map((button) => button.getAttribute("aria-label")));
+  const imageIndex = order.indexOf("Bild oder Video einfügen");
+  expect(imageIndex).toBeGreaterThanOrEqual(0);
+  expect(order[imageIndex + 1]).toBe("Alt-Texte erzeugen");
+
+  // And the click reaches the real handler, not just a relocated dead button.
+  await page.getByPlaceholder("Titel").fill("Ohne fehlende Alt-Texte");
+  await writingBar.getByRole("button", { name: "Alt-Texte erzeugen" }).click();
+  await expect(page.locator("#statusBar")).toContainText("Alle Bilder haben bereits einen Alt-Text");
+});
+
+test("Enter in the title moves into the article text instead of starting a new line", async ({ page }) => {
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page);
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+
+  const title = page.getByPlaceholder("Titel");
+  await title.click();
+  await page.keyboard.insertText("Ein Titel");
+  await page.keyboard.press("Enter");
+  await page.keyboard.insertText("Erster Satz.");
+
+  await expect(title).toHaveValue("Ein Titel");
+  await expect(page.locator(".cm-content")).toContainText("Erster Satz.");
+  const focused = await page.evaluate(() => document.activeElement?.className || "");
+  expect(focused).toContain("cm-content");
+});
+
+test("metadata fields still save on Enter now that the editor is not a <form>", async ({ page }) => {
+  const requests = [];
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests);
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+  await page.getByPlaceholder("Titel").fill("Speichern per Enter");
+  await page.getByRole("button", { name: "Artikeloptionen" }).click();
+  await page.locator("#slugInput").fill("speichern-per-enter");
+  await page.locator("#slugInput").press("Enter");
+  await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
+  await expect.poll(() => requests.some((request) =>
+    request.method === "POST" && request.url.endsWith("/git/blobs") && /speichern-per-enter/.test(request.body.content || "")
+  )).toBe(true);
+});

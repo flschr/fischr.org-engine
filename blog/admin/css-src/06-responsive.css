@@ -154,12 +154,24 @@
   /* Pull-to-refresh replaces the refresh buttons here; on desktop they stay,
      because there is no gesture to pull with a mouse. */
   #refreshButton, #refreshMediaButton, #statsRefresh { display: none; }
-  .library-tools { flex: 1 1 100%; }
+  /* One row, not a wrap: search, filter, and the add/upload control used to
+     spill onto a second line the moment their combined intrinsic width beat
+     the screen — search alone kept a 8rem floor from its desktop rule. Forcing
+     nowrap and giving every child room to actually shrink is what makes them
+     fit instead of overflow. */
+  .library-tools { flex: 1 1 100%; flex-wrap: nowrap; }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }
   .stats-head .library-tools { min-width: 0; }
-  .library-tools .search { flex: 1 1 auto; width: auto; }
+  .library-tools .search { flex: 1 1 auto; width: auto; min-width: 3.5rem; }
+  /* Matches .media-view .library-tools select's specificity (04-media-library.css)
+     rather than beating it on source order alone — a plain `.library-tools select`
+     here lost that fight silently and the 8.5rem desktop width kept forcing this
+     row 38px past a 390px screen into a horizontal scrollbar. */
+  .media-view .library-tools select { flex: 0 1 5.5rem; width: auto; min-width: 0; }
+  .library-tools .file-button,
+  .library-tools .primary-action { flex: 0 0 auto; padding-inline: 0.6rem; }
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); }
 }
 

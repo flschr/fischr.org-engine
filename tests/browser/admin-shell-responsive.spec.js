@@ -289,3 +289,49 @@ test("nothing pinned to the bottom edge lands on top of the writing bar", async 
   // The toast must end above where the bar begins.
   expect(Math.round(toast.y + toast.height)).toBeLessThanOrEqual(Math.round(writing.y));
 });
+
+test("the media library toolbar fits one row and never pushes the page sideways", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
+  // Regression: forcing this row onto a single line without also shrinking
+  // every child correctly made the row itself fit while its total width still
+  // exceeded the screen — a horizontal scrollbar on the whole document, which
+  // on this device emulation reads back as a taller viewport and pushed the
+  // fixed tab bar down far enough to miss under it.
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Mediathek", exact: true }).click();
+  await expect(page.locator("#mediaView")).toBeVisible();
+
+  const tools = page.locator(".media-view .library-tools");
+  const overflows = await tools.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(overflows).toBe(false);
+  const docOverflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+  expect(docOverflows).toBe(false);
+
+  // And each visible control is still actually usable at that width, not
+  // just technically present.
+  await expect(page.locator("#mediaSearchInput")).toBeVisible();
+  await expect(page.locator("#mediaFilterInput")).toBeVisible();
+});
+
+test("the stats range pills fit one row without scrolling", async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
+  // "7 Tage"/"30 Tage"/"90 Tage" repeated "Tage" on every pill was most of
+  // what forced this row to scroll instead of fit — only the last preset
+  // spells it out now.
+  await page.route("**/api/admin/analytics*", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ website: { views: [], visitors: 0 }, feed: { fetches: [] } })
+  }));
+  await page.goto("/admin/");
+  await page.locator("#statsNav").click();
+  await expect(page.locator("#statsView")).toBeVisible();
+
+  const range = page.locator("#statsRange");
+  const overflows = await range.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(overflows).toBe(false);
+
+  // Accessible name survives the shortened label.
+  await expect(page.getByRole("button", { name: "7 Tage" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "365 Tage" })).toBeVisible();
+});
