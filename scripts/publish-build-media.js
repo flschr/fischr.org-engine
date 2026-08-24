@@ -13,7 +13,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { loadManifest, publishMediaFile, removePendingUploads, saveManifest } = require("./lib/r2-media");
+const { loadManifest, publishMediaFile, rasterDimensions, rasterLqip, vollstaendigBeschrieben, removePendingUploads, saveManifest } = require("./lib/r2-media");
 
 const root = process.cwd();
 const responsiveRoot = path.join(root, "_site/assets/images/responsive");
@@ -68,6 +68,17 @@ async function main() {
     publishMediaFile({ localPath, publicPath, manifest })
   );
 
+  // Fehlende Kennwerte nachtragen, solange die Bytes ohnehin auf der Platte liegen.
+  //
+  // Der Bau braucht von jedem Bild drei Dinge: Abmessungen, den Hash für die Variantennamen und
+  // den unscharfen Platzhalter. Stehen sie im Manifest, muss die Datei nicht heruntergeladen
+  // werden — und genau das spart den grössten Posten im Bau.
+  //
+  // Zwei Wege erzeugen Einträge ohne diese Werte: der Upload aus dem Admin (der Worker hat
+  // keinen Bilddecoder) und alles, was vor dieser Änderung entstanden ist. Beide heilen hier,
+  // beim ersten Bau, der die Datei ohnehin geladen hat. Danach kostet sie keinen Download mehr.
+  const nachgetragen = await ergaenzeKennwerte(manifest);
+
   const uploaded = results.filter((result) => result === "uploaded").length;
   const unchanged = results.length - uploaded;
 
@@ -77,6 +88,7 @@ async function main() {
   // records come back on the next build.
   saveManifest(manifest);
   const foldedRecords = removePendingUploads();
+  if (nachgetragen) console.log(`Media manifest: ${nachgetragen} entr${nachgetragen === 1 ? "y" : "ies"} gained their build metadata.`);
 
   const folded = foldedRecords.length ? `, ${foldedRecords.length} upload record(s) folded into the manifest` : "";
   console.log(`Build media publish: ${candidates.length} candidates, ${uploaded} uploaded, ${unchanged} already up to date${folded}.`);
@@ -86,3 +98,35 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+async function ergaenzeKennwerte(manifest) {
+  let ergaenzt = 0;
+
+  for (const eintrag of Object.values(manifest)) {
+    if (!eintrag?.sourcePath) continue;
+    if (vollstaendigBeschrieben(eintrag)) continue;
+
+    const localPath = path.join(root, eintrag.sourcePath);
+    if (!fs.existsSync(localPath)) continue;
+
+    const dimensions = await rasterDimensions(localPath);
+    if (!dimensions) continue;
+
+    Object.assign(eintrag, {
+      width: dimensions.width,
+      height: dimensions.height,
+      hasAlpha: dimensions.hasAlpha
+    });
+    // Kein Platzhalter für durchsichtige Bilder — siehe rasterLqip in scripts/lib/r2-media.js.
+    // Auch keiner, der schon dasteht: Ein Eintrag, der einen trägt, ist die Zusage, dass er
+    // gezeigt werden darf.
+    if (dimensions.hasAlpha) delete eintrag.lqip;
+    else if (!eintrag.lqip) {
+      const lqip = await rasterLqip(localPath);
+      if (lqip) eintrag.lqip = lqip;
+    }
+    ergaenzt += 1;
+  }
+
+  return ergaenzt;
+}

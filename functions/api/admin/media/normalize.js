@@ -136,9 +136,13 @@ export async function handleNormalizeRequest(context, dependencies = {}) {
     migratedAt: now()
   };
 
-  // Deliberately no width/height: nothing reads them back out of the manifest (the build
-  // measures the real file with sharp), and this runtime has no image decoder to produce
-  // them honestly. An invented value would be worse than an absent one.
+  // Ohne width/height und ohne lqip: Dieser Laufzeit fehlt ein Bilddecoder, und ein erfundener
+  // Wert wäre schlechter als ein fehlender.
+  //
+  // Der Bau liest sie inzwischen sehr wohl aus dem Manifest (lib/eleventy/media-assets.js) und
+  // spart sich damit den Download der Bytes. Für ein hier hochgeladenes Bild geht das beim
+  // ersten Mal nicht: Es wird geladen, gemessen — und scripts/publish-build-media.js trägt die
+  // Werte danach ein. Ab dem nächsten Bau kostet auch dieses Bild keinen Download mehr.
   return jsonResponse({
     status: "normalized",
     objectKey,

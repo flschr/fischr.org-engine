@@ -158,11 +158,47 @@ function hashBuffer(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+// Der unscharfe Platzhalter, einmal beim Hochladen gerechnet statt bei jedem Bau.
+//
+// Er wird als data:-URI in die HTML-Seite eingebettet und zeigt dort etwas an, solange das
+// eigentliche Bild noch lädt. Gerechnet wird er aus den Bytes — und weil die seit der
+// Auslagerung nach R2 nicht mehr im Checkout liegen, zwang genau dieser eine Wert jeden Bau
+// dazu, 294 MB in 1158 Dateien herunterzuladen.
+//
+// Rund 200 Zeichen je Bild, für den ganzen Bestand etwa 222 KB im Manifest. Die Abmessungen
+// stehen aus demselben Grund schon dort.
+async function rasterLqip(localPath) {
+  if (!rasterExtensions.has(path.extname(localPath).toLowerCase())) return null;
+  try {
+    const buffer = await sharp(localPath, { failOn: "none" })
+      .rotate()
+      .resize({ width: 24 })
+      .blur()
+      .webp({ quality: 40 })
+      .toBuffer();
+    return `data:image/webp;base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+// Wann das Manifest alles über ein Bild weiss, was der Bau daraus braucht: Abmessungen,
+// Durchsichtigkeit und — sofern das Bild überhaupt einen bekommt — den Platzhalter. Steht das
+// alles da, müssen die Bytes für den Bau nicht mehr geholt werden. Die Regel steht einmal, weil
+// Erzeuger, Nachtrag und Download sonst auseinanderlaufen können, ohne dass es auffällt.
+function vollstaendigBeschrieben(entry) {
+  if (!entry?.sha256 || !entry?.width || !entry?.height) return false;
+  if (typeof entry.hasAlpha !== "boolean") return false;
+  return entry.hasAlpha ? true : Boolean(entry.lqip);
+}
+
 async function rasterDimensions(localPath) {
   if (!rasterExtensions.has(path.extname(localPath).toLowerCase())) return null;
   try {
     const metadata = await sharp(localPath).metadata();
-    return metadata.width && metadata.height ? { width: metadata.width, height: metadata.height } : null;
+    return metadata.width && metadata.height
+      ? { width: metadata.width, height: metadata.height, hasAlpha: Boolean(metadata.hasAlpha) }
+      : null;
   } catch {
     return null;
   }
@@ -290,6 +326,11 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
   ].filter((value, index, all) => all.indexOf(value) === index);
 
   const dimensions = await rasterDimensions(localPath);
+  // Der Platzhalter wird bei durchsichtigen Bildern nicht angezeigt — er schiene durch die
+  // durchsichtigen Stellen und liesse das Bild aussehen, als habe es seine Transparenz verloren.
+  // Also wird für sie auch keiner erzeugt: was im Manifest steht, ist damit immer einer, der
+  // gezeigt werden darf.
+  const lqip = dimensions && !dimensions.hasAlpha ? await rasterLqip(localPath) : null;
   manifest[key] = {
     // Reihenfolge mit Absicht: ausdrückliche Angabe, dann der bereits eingetragene Wert, dann
     // die Ableitung aus dem lokalen Pfad. Ohne die mittlere Stufe überschreibt ein Aufrufer, der
@@ -302,7 +343,8 @@ async function publishMediaFile({ localPath, publicPath, sourcePath, manifest, e
     sha256: hash,
     size: buffer.length,
     contentType,
-    ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
+    ...(dimensions ? { width: dimensions.width, height: dimensions.height, hasAlpha: dimensions.hasAlpha } : {}),
+    ...(lqip ? { lqip } : {}),
     ...(superseded.length ? { supersededObjectKeys: superseded } : {}),
     migratedAt: new Date().toISOString()
   };
@@ -454,6 +496,9 @@ module.exports = {
   removePendingUploads,
   contentAddressedKey,
   contentTypeFor,
+  rasterDimensions,
+  rasterLqip,
+  vollstaendigBeschrieben,
   deliveryHost,
   deliveryUrlForKey,
   downloadMediaFile,

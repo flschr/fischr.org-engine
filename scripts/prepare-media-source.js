@@ -14,7 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const { loadManifest, downloadMediaFile, optionalCredentialsFromEnv } = require("./lib/r2-media");
+const { loadManifest, downloadMediaFile, optionalCredentialsFromEnv, vollstaendigBeschrieben } = require("./lib/r2-media");
 const { storedObjectKey } = require("../lib/media-manifest");
 
 const root = process.cwd();
@@ -38,17 +38,35 @@ async function runWithConcurrency(items, limit, worker) {
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runNext));
 }
 
+// Ein Bild, über das das Manifest alles weiss, muss nicht heruntergeladen werden.
+//
+// Der Bau liest die Bytes eines Bildes für genau drei Dinge: die Abmessungen, den Hash, aus dem
+// die Dateinamen der responsiven Varianten entstehen, und den unscharfen Platzhalter. Stehen
+// alle drei im Eintrag, gibt es nichts mehr zu lesen — und 294 MB in 1158 Dateien bleiben liegen,
+// wo sie sind.
+//
+// Für Videos gilt das nicht: ffprobe misst sie beim Bau, und dafür braucht es die Datei.
+// Ebenso für alles, dem noch ein Wert fehlt — dessen Bytes kommen einmal, und
+// publish-build-media.js trägt danach nach, was fehlte. Ab dem Bau darauf bleibt auch diese
+// Datei liegen.
 async function main() {
   const manifest = loadManifest();
-  const missing = Object.entries(manifest)
+  const kandidaten = Object.entries(manifest)
     .filter(([, entry]) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix))
     .map(([key, entry]) => ({
       key,
+      entry,
       objectKey: storedObjectKey(entry, key),
       destinationPath: path.join(root, entry.sourcePath),
       sha256: entry.sha256
     }))
     .filter(({ destinationPath }) => !fs.existsSync(destinationPath));
+
+  // Drei Zahlen, nicht zwei: Was schon auf der Platte liegt, was nicht gebraucht wird, und was
+  // wirklich geholt werden muss. Eine gemeinsame Zahl für „liegt da" und „wird nicht gebraucht"
+  // hätte behauptet, 1145 Dateien seien vorhanden, während das Verzeichnis leer war.
+  const nichtGebraucht = kandidaten.filter(({ entry }) => vollstaendigBeschrieben(entry));
+  const missing = kandidaten.filter(({ entry }) => !vollstaendigBeschrieben(entry));
 
   await runWithConcurrency(missing, concurrency, ({ key, objectKey, destinationPath, sha256 }) =>
     downloadMediaFile({ key, objectKey, destinationPath, expectedSha256: sha256 })
@@ -57,6 +75,7 @@ async function main() {
   const total = Object.values(manifest).filter(
     (entry) => entry.sourcePath && !entry.sourcePath.startsWith(ephemeralSourcePrefix)
   ).length;
+  const vorhanden = total - kandidaten.length;
   // Naming the route is what makes a CI run evidence rather than inference: both routes end in
   // the same success line, but only one of them is immune to an edge cache answering for an
   // object that has since been replaced. If this ever reads "public delivery domain" in a
@@ -66,7 +85,8 @@ async function main() {
   // Weg melden als den tatsächlich genommenen.
   const route = optionalCredentialsFromEnv(process.env) ? "R2 bucket (signed S3 API)" : "public delivery domain";
   console.log(
-    `Media source prepare: ${missing.length} file(s) restored from ${route}, ${total - missing.length} already present.`
+    `Media source prepare: ${missing.length} file(s) restored from ${route}, `
+    + `${vorhanden} already present, ${nichtGebraucht.length} not needed (the manifest knows them).`
   );
 }
 
