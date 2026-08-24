@@ -1,0 +1,122 @@
+// Die Wahrheitstabelle der Warteschlange.
+//
+// „Warteschlange" hiess bisher „alles, was zwischen drafts und main abweicht". Das ist etwas
+// anderes als „alles, was sich am Blog ändert" — ein nie veröffentlichter Entwurf steht in der
+// ersten Menge und nicht in der zweiten. Er trägt `draft: true`, wird also weder gerendert
+// (.eleventy.js) noch syndiziert (scripts/lib/publish-utils.js).
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+
+let aktionen;
+test.before(async () => { aktionen = await import("../blog/admin/admin-src/04c-queue-actions.js"); });
+
+function aktion(warOeffentlich, wirdOeffentlich) {
+  return aktionen.queueAktion({ warOeffentlich, wirdOeffentlich });
+}
+
+// null heisst „gibt es dort nicht" — auf main für einen neuen Beitrag, auf drafts für einen
+// gelöschten. Ohne diesen dritten Wert fiele „neu angelegt" mit „war ein Entwurf" zusammen.
+test("ein nie veröffentlichter Entwurf ändert am Blog nichts", () => {
+  assert.equal(aktion(null, false), aktionen.OHNE_WIRKUNG, "neu angelegt und Entwurf geblieben");
+  assert.equal(aktion(false, false), aktionen.OHNE_WIRKUNG, "war schon auf main, aber als Entwurf");
+  assert.equal(aktion(false, null), aktionen.OHNE_WIRKUNG, "ein gelöschter Entwurf ebenso");
+});
+
+test("was den Blog erweitert, heisst veröffentlichen", () => {
+  assert.equal(aktion(null, true), "veroeffentlichen", "neuer öffentlicher Beitrag");
+  assert.equal(aktion(false, true), "veroeffentlichen", "aus einem Entwurf wird ein Beitrag");
+});
+
+test("was einen bestehenden Beitrag ändert, heisst aktualisieren", () => {
+  assert.equal(aktion(true, true), "aktualisieren");
+});
+
+test("was den Blog verkleinert, wird benannt statt zusammengefasst", () => {
+  assert.equal(aktion(true, false), "zurueckziehen", "bleibt liegen, verschwindet aber von der Seite");
+  assert.equal(aktion(true, null), "loeschen", "ist danach ganz weg");
+});
+
+// Vier Wirkungen, vier Namen. Eine gemeinsame Beschriftung („Änderung") war der Grund, warum in
+// der Warteschlange nicht zu sehen war, was das Senden anrichtet.
+test("jede Aktion hat einen eigenen Text", () => {
+  const texte = new Set(aktionen.AKTIONEN.map((name) => aktionen.AKTIONS_TEXTE[name]));
+  assert.equal(texte.size, aktionen.AKTIONEN.length, "keine zwei Aktionen teilen sich einen Text");
+  aktionen.AKTIONEN.forEach((name) => assert.ok(aktionen.AKTIONS_TEXTE[name], `${name} ohne Text`));
+});
+
+test("istWirksam trennt genau das Unwirksame ab", () => {
+  aktionen.AKTIONEN.forEach((name) => assert.equal(aktionen.istWirksam(name), true, name));
+  assert.equal(aktionen.istWirksam(aktionen.OHNE_WIRKUNG), false);
+});
+
+// Und die Beschriftung selbst, gegen die drei Auskünfte, aus denen sie entsteht: der Stand auf
+// main (Baum), der Admin-Index für Beiträge, und das Frontmatter der Entwurfsfassung.
+function beschriften(changes, { main = {}, index = {}, entwuerfe = {} } = {}) {
+  return aktionen.beschrifteAktionen(changes, new Map(Object.entries(main)), {
+    index: new Map(Object.entries(index)),
+    istEntwurf: async (sha) => Boolean(entwuerfe[sha])
+  }).then(() => changes.map((change) => change.aktion));
+}
+
+test("ein neuer öffentlicher Beitrag heisst veröffentlichen, ein neuer Entwurf gar nichts", async () => {
+  const gelesen = await beschriften(
+    [
+      { path: "blog/posts/a.md", kind: "upsert", sha: "sha-a", collection: "posts" },
+      { path: "blog/posts/b.md", kind: "upsert", sha: "sha-b", collection: "posts" }
+    ],
+    { entwuerfe: { "sha-b": true } }
+  );
+  assert.deepEqual(gelesen, ["veroeffentlichen", aktionen.OHNE_WIRKUNG]);
+});
+
+// Der Index kennt den Entwurfszustand von main für Beiträge — eine Abfrage für alle, statt eines
+// Blob-Abrufs je Zeile.
+test("für einen Beitrag beantwortet der Index, ob er öffentlich war", async () => {
+  const gelesen = await beschriften(
+    [
+      { path: "blog/posts/live.md", kind: "upsert", sha: "neu", collection: "posts" },
+      { path: "blog/posts/entwurf.md", kind: "upsert", sha: "neu2", collection: "posts" }
+    ],
+    {
+      main: { "blog/posts/live.md": "alt", "blog/posts/entwurf.md": "alt2" },
+      index: { "blog/posts/live.md": { draft: false }, "blog/posts/entwurf.md": { draft: true } }
+    }
+  );
+  assert.deepEqual(gelesen, ["aktualisieren", "veroeffentlichen"]);
+});
+
+// Seiten führt der Index nicht. Für sie wird der Stand von main gelesen — pro Warteschlange
+// ein bis zwei Dateien, nicht vierhundert.
+test("für eine Seite wird der Stand von main gelesen", async () => {
+  const gelesen = await beschriften(
+    [{ path: "blog/pages/impressum.md", kind: "upsert", sha: "neu", collection: "pages" }],
+    { main: { "blog/pages/impressum.md": "alt" }, entwuerfe: { alt: true } }
+  );
+  assert.deepEqual(gelesen, ["veroeffentlichen"], "war auf main ein Entwurf, wird jetzt öffentlich");
+});
+
+test("Löschen und Zurückziehen werden auseinandergehalten", async () => {
+  const gelesen = await beschriften(
+    [
+      { path: "blog/posts/weg.md", kind: "delete", sha: "alt", collection: "posts" },
+      { path: "blog/posts/zurueck.md", kind: "upsert", sha: "neu", collection: "posts" },
+      { path: "blog/posts/nie.md", kind: "delete", sha: "alt3", collection: "posts" }
+    ],
+    {
+      main: { "blog/posts/weg.md": "alt", "blog/posts/zurueck.md": "alt2", "blog/posts/nie.md": "alt3" },
+      index: {
+        "blog/posts/weg.md": { draft: false },
+        "blog/posts/zurueck.md": { draft: false },
+        "blog/posts/nie.md": { draft: true }
+      },
+      entwuerfe: { neu: true }
+    }
+  );
+  assert.deepEqual(gelesen, ["loeschen", "zurueckziehen", aktionen.OHNE_WIRKUNG]);
+});
+
+test("Medien tragen ihre eigene Aktion und fragen nichts nach", async () => {
+  const gelesen = await beschriften([{ path: "blog/assets/images/uploads/x.webp", kind: "upsert", sha: "m", collection: "media" }]);
+  assert.deepEqual(gelesen, ["medien"]);
+});

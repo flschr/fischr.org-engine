@@ -1,5 +1,6 @@
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
+import { istWirksam } from "./04c-queue-actions.js";
 import { renderPublishOverlay } from "./27f-publish-overlay.js";
 import { showStatus } from "./03-status.js";
 import { fetchMainTree, getBlobText } from "./04-drafts.js";
@@ -17,43 +18,22 @@ import { renderQueue } from "./27c-queue-render.js";
 
 // --- Sync ----------------------------------------------------------------
 
-function publishElapsedLabel() {
-  const startedAt = Date.parse(state.publishRequest?.startedAt || "");
-  if (!Number.isFinite(startedAt)) return "";
-  const totalSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds} min`;
-}
-
-export function publishProgressMeta() {
-  const status = state.publishStatus || {};
-  const phase = status.phaseIndex != null && status.phaseCount
-    ? `Schritt ${status.phaseIndex} von ${status.phaseCount}`
-    : "";
-  return [phase, publishElapsedLabel()].filter(Boolean).join(" · ");
-}
-
-function formatPublishDuration(milliseconds) {
-  if (!Number.isFinite(milliseconds)) return "";
-  const seconds = Math.round(milliseconds / 1000);
-  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} min`;
-}
-
-export function publishTimingLabel() {
-  const timings = state.publishStatus?.timings || {};
-  return [
-    ["Warten", timings.waitingMs],
-    ["Vorbereitung", timings.preparationMs],
-    ["Prüfung", timings.validationMs],
-    ["Deployment", timings.deploymentMs]
-  ].filter(([, value]) => Number.isFinite(value)).map(([label, value]) => `${label} ${formatPublishDuration(value)}`).join(" · ");
-}
-
+// Zeigt, was sich am öffentlichen Blog ändert — nicht jede Abweichung zwischen `drafts` und
+// `main`. Warum das nicht dasselbe ist, steht bei der Ableitung in 04c-queue-actions.js.
 export function visibleQueueChanges(changes) {
   const allChanges = changes || Array.from(state.changes.values());
-  const visibleChanges = allChanges.filter((change) => !isVideoPosterPath(change.path));
+  const ohnePoster = allChanges.filter((change) => !isVideoPosterPath(change.path));
+  const visibleChanges = ohnePoster.filter((change) => istWirksam(change.aktion ?? "medien"));
   if (visibleChanges.length || !allChanges.length) return visibleChanges;
+
+  // Die Ersatzkarte unten meint einen bestimmten Fall: Es liegt etwas an, aber es sind
+  // ausschliesslich Video-Poster — technische Dateien, die niemand als Artikel wiedererkennt.
+  //
+  // Seit die Warteschlange auch wirkungslose Änderungen ausblendet, kann sie aus einem zweiten
+  // Grund leer sein: Es liegt ein Entwurf an, der öffentlich nichts bewirkt. Ohne diese Zeile
+  // bekäme der eine „Technische Video-Reparatur"-Karte — eine Erklärung für etwas, das gar
+  // nicht der Fall ist.
+  if (ohnePoster.length) return visibleChanges;
   return [{
     path: "technical-video-poster-repair",
     kind: "technical-repair",

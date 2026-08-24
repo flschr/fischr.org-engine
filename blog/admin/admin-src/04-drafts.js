@@ -6,6 +6,8 @@ import { fetchTree, hasGithubAccess, sessionHasGithubAccess } from "./05-github-
 import { baseName, isEntryPath, isGpxPath, isMediaPath, isSourcePagePath, isVideoPath, publicMediaPath } from "./06-paths.js";
 import { decodeBase64 } from "./08-encoding.js";
 import { pendingUploadChanges } from "./26a1-media-manifest.js";
+import { loadPublishedPostsIndex } from "./25e-posts-index.js";
+import { beschrifteAktionen } from "./04c-queue-actions.js";
 
 // --- Working branch ("drafts") as the cross-device outbox ----------------
 // Saves commit straight to the `drafts` branch; the queue is the diff against
@@ -38,8 +40,24 @@ export async function getBlobText(sha) {
   }
   const payload = await github(`git/blobs/${sha}`);
   const content = payload?.encoding === "base64" ? decodeBase64(payload.content || "") : String(payload?.content || "");
-  cacheBlobText(sha, { content, title: String(splitDocument(content).fields?.title || "").trim() });
+  cacheBlobText(sha, blobNotiz(content));
   return content;
+}
+
+// Was an einem Blob wiederholt gebraucht wird. Der Entwurfszustand steht hier, weil er so
+// unveränderlich ist wie der Inhalt zu seiner sha — und weil ihn sonst jede Zeile der
+// Warteschlange neu aus dem Frontmatter lesen müsste.
+function blobNotiz(content) {
+  const fields = splitDocument(content).fields || {};
+  return { content, title: String(fields.title || "").trim(), draft: Boolean(fields.draft) };
+}
+
+async function istEntwurf(sha) {
+  if (!sha) return false;
+  const zwischengespeichert = blobTextCache.get(sha);
+  if (zwischengespeichert) return Boolean(zwischengespeichert.draft);
+  await getBlobText(sha);
+  return Boolean(blobTextCache.get(sha)?.draft);
 }
 
 export function ensureDraftsBranch() {
@@ -96,7 +114,7 @@ export async function loadAdminSnapshot() {
   state.mainTreeHeadSha = snapshot.main.headSha || "";
   Object.entries(snapshot.blobs || {}).forEach(([sha, blob]) => {
     const content = blob.encoding === "base64" ? decodeBase64(blob.content || "") : String(blob.content || "");
-    cacheBlobText(sha, { content, title: String(splitDocument(content).fields?.title || "").trim() });
+    cacheBlobText(sha, blobNotiz(content));
   });
   state.changeCache = null;
   state.startupSnapshotActive = true;
@@ -162,6 +180,8 @@ export async function getAllChanges() {
       const title = blobTextCache.get(change.sha)?.title;
       if (title) change.label = title;
     }));
+
+  await beschrifteAktionen(changes, mainMap, { index: await loadPublishedPostsIndex(), istEntwurf });
 
   changes.sort((a, b) => a.path.localeCompare(b.path));
   state.changeCache = { key: cacheKey, changes };

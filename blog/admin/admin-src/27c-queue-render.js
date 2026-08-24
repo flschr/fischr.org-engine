@@ -1,6 +1,7 @@
 import { publishRequestKey } from "./00-konstanten.js";
 
 import { els } from "./01b-elements.js";
+import { AKTIONS_TEXTE } from "./04c-queue-actions.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
 import { deleteChange } from "./04a-draft-writes.js";
@@ -13,7 +14,8 @@ import { showView } from "./23-routing.js";
 import { replaceNav } from "./24-history.js";
 import { commitMediaManifestDelete } from "./26a2-media-manifest-writes.js";
 import { discardTechnicalPosterChanges, queueVideoDelete } from "./26c-video-derivatives.js";
-import { guardMediaIdle, hasActiveMediaWork, loadFreshChanges, publishProgressMeta, publishTimingLabel, refreshQueueFromGitHub, visibleQueueChanges } from "./26d-publish-sync.js";
+import { guardMediaIdle, hasActiveMediaWork, loadFreshChanges, refreshQueueFromGitHub, visibleQueueChanges } from "./26d-publish-sync.js";
+import { publishProgressMeta, publishTimingLabel } from "./26g-publish-progress-text.js";
 import { refreshCurrentSilent } from "./27a-publish-state.js";
 
 export async function openQueue() {
@@ -23,11 +25,16 @@ export async function openQueue() {
   await refreshQueueFromGitHub();
 }
 
+// Was diese Zeile am öffentlichen Blog bewirkt.
+//
+// Vorher stand hier „Neu", „Geändert", „Löschen", „Upload" — eine Beschreibung der Datei, nicht
+// ihrer Wirkung. „Neu" konnte ein Artikel sein, der gleich erscheint, oder ein Entwurf, der
+// unsichtbar bleibt; „Geändert" konnte eine Aktualisierung sein oder ein Zurückziehen. Die
+// Aktion steht seit der Ableitung in 04c-queue-actions.js an der Änderung selbst.
 function queueChangeLabel(change) {
   if (change.kind === "technical-repair") return "Reparatur";
-  if (change.kind === "delete") return "Löschen";
-  if (change.collection === "media") return "Upload";
-  return change.isNew ? "Neu" : "Geändert";
+  if (change.aktion === "medien") return change.kind === "delete" ? "Medium löschen" : "Upload";
+  return AKTIONS_TEXTE[change.aktion] || (change.kind === "delete" ? "Löschen" : "Geändert");
 }
 
 export function changeSignature(change) {
@@ -149,7 +156,7 @@ export function renderQueue() {
     const item = document.createElement("li");
     const card = document.createElement("div");
     card.className = "entry-card queue-card";
-    if (change.kind === "delete") card.classList.add("is-delete");
+    if (change.kind === "delete" || change.aktion === "zurueckziehen") card.classList.add("is-delete");
     const isOrphan = !change.technicalPosterChanges && isOrphanMediaChange(change);
     if (isOrphan) card.classList.add("is-orphan");
 
@@ -160,7 +167,7 @@ export function renderQueue() {
     card.innerHTML = [
       `<span class="entry-title">${escapeHtml(change.label || baseName(change.path))}</span>`,
       `<span class="entry-meta">${escapeHtml(change.technicalPosterChanges ? `${change.technicalPosterChanges.length} technische Dateien` : change.path)}</span>`,
-      `<span class="queue-tags"><span class="entry-pill${change.kind === "delete" ? " is-delete" : ""}">${escapeHtml(label)}</span>${orphanPill}<span class="queue-collection">${escapeHtml(change.collection || "")}</span></span>`
+      `<span class="queue-tags"><span class="entry-pill${change.kind === "delete" || change.aktion === "zurueckziehen" ? " is-delete" : ""}">${escapeHtml(label)}</span>${orphanPill}<span class="queue-collection">${escapeHtml(change.collection || "")}</span></span>`
     ].join("");
 
     const discard = document.createElement("button");
