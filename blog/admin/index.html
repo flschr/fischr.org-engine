@@ -130,7 +130,15 @@ eleventyExcludeFromCollections: true
               </nav>
 
               <nav class="editor-bar" aria-label="Artikel">
-                <span class="editor-bar-spacer"></span>
+                <!-- Starts absent: whether there is anything to send is a
+                     decision about the open article, and no article is open
+                     yet. syncPublishButton() makes it either way before the
+                     editor is ever shown. Leads the row now — it's the
+                     primary action here, not something to go hunting for at
+                     the far end of a right-pushed line. -->
+                <button id="publishButton" class="tb-btn tb-publish is-publish is-absent" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                  <span data-icon="send" aria-hidden="true"></span>
+                </button>
                 <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
                   <span data-icon="eye" aria-hidden="true"></span>
                 </button>
@@ -142,13 +150,6 @@ eleventyExcludeFromCollections: true
                 </button>
                 <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
                   <span data-icon="save" aria-hidden="true"></span>
-                </button>
-                <!-- Starts absent: whether there is anything to send is a
-                     decision about the open article, and no article is open
-                     yet. syncPublishButton() makes it either way before the
-                     editor is ever shown. -->
-                <button id="publishButton" class="tb-btn tb-publish is-publish is-absent" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
-                  <span data-icon="send" aria-hidden="true"></span>
                 </button>
               </nav>
             </div>
@@ -176,7 +177,12 @@ eleventyExcludeFromCollections: true
                    instead of shoving it aside. -->
               <dialog id="metaPanel" class="dialog sheet-dialog" aria-label="Artikeloptionen">
                 <form method="dialog" class="sheet-form">
-                  <h2>Artikeloptionen</h2>
+                  <!-- tabindex so showModal()'s default "focus the first
+                       focusable descendant" lands here instead of on the Slug
+                       input below — a focused text field opens the keyboard
+                       immediately, which is not what opening a menu to look
+                       at/adjust settings should do. -->
+                  <h2 tabindex="-1">Artikeloptionen</h2>
                   <div class="meta-panel">
                     <label data-field="slug">
                       <span>Slug</span>

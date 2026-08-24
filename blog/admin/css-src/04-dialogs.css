@@ -7,7 +7,10 @@
   z-index: 70;
   max-width: min(38rem, calc(100vw - 2rem));
   padding: 0.6rem 1.05rem;
-  border-radius: var(--radius-pill);
+  /* Not the full pill radius: most of these messages are a full German
+     sentence and wrap to 2-3 lines, and a 999px radius on a multi-line block
+     reads as a swollen egg instead of a slim rounded rectangle. */
+  border-radius: var(--radius-lg);
   background: rgb(24 25 27 / 0.96);
   color: #fff;
   font-size: 0.875rem;

@@ -38,7 +38,6 @@
 .editor-bars .writing-bar { flex: 1 1 auto; min-width: 0; }
 /* Undo/redo belong to writing, but on one line they read better next to the
    article actions than pushed against the formatting they would undo. */
-.editor-bar-spacer,
 .writing-bar-spacer { flex: 1 1 auto; }
 /* Keeps its slot while there is nothing to send, so the row does not shift
    sideways on the keystroke that brings the button back. Not `hidden`: this

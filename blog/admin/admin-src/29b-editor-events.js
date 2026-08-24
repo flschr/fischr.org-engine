@@ -63,6 +63,12 @@ export function wireEditorEvents() {
   els.toggleMetaButton.addEventListener("click", () => {
     syncAutoSlug();
     els.metaPanel.showModal();
+    // showModal()'s own "focus the first focusable descendant" step can land
+    // on Slug (a text input) regardless of the heading's tabindex, and a
+    // focused text field opens the keyboard immediately — not wanted for a
+    // menu the user is opening to look at/adjust, not to start typing in.
+    // Move focus explicitly, after the dialog's own focusing steps have run.
+    els.metaPanel.querySelector("h2")?.focus();
   });
 
   // No back button: the platform's own back — the browser's, or the edge-swipe
