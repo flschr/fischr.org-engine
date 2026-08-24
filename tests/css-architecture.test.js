@@ -170,10 +170,10 @@ test("page-shell selectors cannot introduce local maximum widths", () => {
 test("admin viewport breakpoints live in the responsive stylesheets", () => {
   // Breakpoints stay in the responsive files so the cascade order of the
   // overrides is one decision, made in runtime-vendors.js, rather than being
-  // scattered across the component stylesheets. There are two of them since
-  // the single file passed its line budget: 07 loads directly after 06, so
-  // splitting changed the file count and not the order.
-  const responsive = new Set(["06-responsive.css", "07-responsive-editor.css"]);
+  // scattered across the component stylesheets. There are three of them since
+  // 06 passed its line budget twice: 07 and 08 each load directly after the
+  // one before, so splitting changed the file count and not the order.
+  const responsive = new Set(["06-responsive.css", "07-responsive-editor.css", "08-responsive-publish.css"]);
   const directory = path.join(root, "blog/admin/css-src");
   for (const file of fs.readdirSync(directory).filter((entry) => entry.endsWith(".css") && !responsive.has(entry))) {
     assert.doesNotMatch(read(`blog/admin/css-src/${file}`), /@media\s*\([^)]*(?:max|min)-width/, `${file} owns a viewport breakpoint`);

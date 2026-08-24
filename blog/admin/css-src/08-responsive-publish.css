@@ -1,0 +1,60 @@
+/* ---- Responsive: publish dialog + overlay ------------------------------ */
+/* Split out of 06-responsive.css when that file passed its line budget.
+   Loaded after it, so the cascade order is unchanged; everything here is a
+   phone override for the publish dialog and its progress overlay. */
+
+/* ---- Publish dialog on phones ----------------------------------------- */
+/* On a narrow screen the dialog became a cramped box and its footer packed a
+   long toggle plus up to three buttons into one non-wrapping row. Turn it into
+   a full-width bottom sheet: stack the footer, keep the actions pinned so
+   "Veröffentlichen" is always one tap away, and use dvh so the address bar
+   never clips it. */
+@media (max-width: 40rem) {
+  .social-config-global { grid-template-columns: 1fr; }
+  .social-category-grid { grid-template-columns: 1fr; }
+
+  /* Span the viewport exactly via left/right:0 (100vw can be a hair wider than
+     the visual viewport on mobile, which let the whole sheet pan sideways). */
+  .publish-dialog {
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    max-height: 100dvh;
+    margin: auto 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow-x: hidden;
+  }
+  .publish-dialog-inner {
+    gap: 0.9rem;
+    max-height: 92dvh;
+    padding: 1rem 1rem 0;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  .publish-dialog-foot {
+    position: sticky;
+    bottom: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    margin-top: 0.2rem;
+    padding: 0.7rem 0 calc(0.8rem + env(safe-area-inset-bottom));
+    background: var(--panel);
+  }
+  .social-foot-post { flex: 1 1 100%; }
+  .publish-dialog-foot-spacer { display: none; }
+  .publish-dialog-foot button { flex: 1 1 8rem; min-height: 2.75rem; }
+  #publishDialogUnpublish { flex-basis: 100%; }
+}
+
+/* ---- Publish overlay on phones ----------------------------------------- */
+/* Full width above whatever chrome the bottom edge is carrying, so it never
+   lands on top of the tab bar or the writing bar. */
+@media (max-width: 52rem) {
+  .publish-overlay {
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: calc(var(--bottom-chrome) + 0.75rem);
+    width: auto;
+  }
+}

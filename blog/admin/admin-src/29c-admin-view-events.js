@@ -10,7 +10,7 @@ import { applyStatsPicker, closeStatsPicker, toggleStatsPicker } from "./21f-sta
 import { refreshAfterTabResume } from "./27a-publish-state.js";
 
 export function wireAdminViewEvents() {
-  els.settingsNav?.addEventListener("click", async () => {
+  els.queueSettingsButton?.addEventListener("click", async () => {
     if (state.view === "social") return;
     if (await confirmLeaveEditor()) openSocialConfig();
   });

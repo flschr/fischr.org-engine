@@ -17,7 +17,6 @@ export function showView(name) {
   els.queueView.hidden = name !== "queue";
   if (els.statsView) els.statsView.hidden = name !== "stats";
   if (els.socialConfigView) els.socialConfigView.hidden = name !== "social";
-  if (els.settingsNav) els.settingsNav.classList.toggle("is-active", name === "social");
   if (els.statsNav) els.statsNav.classList.toggle("is-active", name === "stats");
   // Social and Stats aren't tied to a content collection.
   if (name === "social" || name === "stats") els.navButtons.forEach((button) => button.classList.remove("is-active"));
@@ -65,7 +64,7 @@ export function setCollection(collection) {
 
   state.libraryCollection = collection;
   els.libraryTitle.textContent = collections[collection].title;
-  els.searchInput.placeholder = collection === "pages" ? "Search pages" : "Search articles";
+  els.searchInput.placeholder = collection === "pages" ? "Seiten durchsuchen" : "Artikel durchsuchen";
   if (els.entryTypeSelect) els.entryTypeSelect.value = collection;
   if (els.newEntryButtonLib) {
     els.newEntryButtonLib.setAttribute("aria-label", newLabel);

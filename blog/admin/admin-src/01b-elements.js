@@ -97,7 +97,7 @@ export const els = {
   statsRangeLabel: document.getElementById("statsRangeLabel"),
   statsRefresh: document.getElementById("statsRefresh"),
   statsBody: document.getElementById("statsBody"),
-  settingsNav: document.getElementById("settingsNav"),
+  queueSettingsButton: document.getElementById("queueSettingsButton"),
   socialConfigView: document.getElementById("socialConfigView"),
   socialConfigStatus: document.getElementById("socialConfigStatus"),
   socialConfigSave: document.getElementById("socialConfigSave"),

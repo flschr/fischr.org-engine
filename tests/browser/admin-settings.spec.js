@@ -28,7 +28,8 @@ test("saving the settings commits the social configuration onto the published br
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto("/admin/");
-  await page.locator("#settingsNav").click();
+  await page.locator("#syncButton").click();
+  await page.locator("#queueSettingsButton").click();
   await expect(page.locator("#cfgGotosocialInstance")).toHaveValue("https://social.example.org");
 
   await page.locator("#cfgGotosocialInstance").fill("https://social.fischr.example");

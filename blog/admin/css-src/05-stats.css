@@ -18,6 +18,18 @@
 }
 .stats-range-btn:hover { color: var(--ink); }
 .stats-range-btn.is-active { background: var(--panel); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+/* Die Tages-Zahlen (7/30/90) sind kurz genug, um als Kreis statt als Pille zu
+   stehen — mit der Standardpolsterung war die Fläche breiter als hoch und die
+   aktive Auswahl wirkte oval statt rund. */
+.stats-range-btn[data-period="7d"],
+.stats-range-btn[data-period="30d"],
+.stats-range-btn[data-period="90d"] {
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+}
 /* Der Zeitraum ist die Überschrift dieser Ansicht — der Titel darüber ist nur
    noch für Screenreader da. Er steht deshalb links in der Kopfzeile, und die
    Auswahl rückt an den rechten Rand; auch dann, wenn sie in einem schmalen

@@ -12,9 +12,15 @@ test("mobile sections are reachable without opening anything", async ({ page }, 
   await page.goto("/admin/");
 
   // No drawer to reveal them: every destination is on screen from the start.
+  // Einstellungen no longer has its own tab — it opens from inside Veröffentlichen.
   await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Einstellungen", exact: true })).toBeVisible();
+  await expect(page.locator("#syncButton")).toBeVisible();
+  await page.locator("#syncButton").click();
+  await expect(page.locator("#queueSettingsButton")).toBeVisible();
+  // Tabs are siblings, not depth (see 23-routing.js) — back to Artikel is
+  // another tap on its tab, not a history pop.
+  await page.getByRole("button", { name: "Artikel", exact: true }).click();
 
   await page.locator("#entryTypeSelect").selectOption("pages");
   await expect(page.locator("#libraryTitle")).toHaveText("Pages");
@@ -133,8 +139,10 @@ test("mobile tab bar sits below the content it must not cover", async ({ page },
   const workspacePadding = await page.locator("#content").evaluate((node) => parseFloat(getComputedStyle(node).paddingBottom));
   expect(workspacePadding).toBeGreaterThanOrEqual(bar.height);
 
-  // Publish is an action with a state: with nothing pending it costs no space.
-  await expect(page.locator("#syncButton")).toBeHidden();
+  // Veröffentlichen is a permanent tab now (it also opens Einstellungen), so it
+  // stays on screen even with nothing pending — only its badge is conditional.
+  await expect(page.locator("#syncButton")).toBeVisible();
+  await expect(page.locator("#syncButton .sync-count")).toBeHidden();
 });
 
 test("phones pull to refresh, desktop keeps the button", async ({ page }, testInfo) => {

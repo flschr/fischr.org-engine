@@ -13,27 +13,18 @@
    * across the screen from the button that revealed them.
    *
    * `display: contents` on .sidebar-nav lifts the three collection buttons out
-   * of their wrapper so they share one row with Einstellungen. That drops the
+   * of their wrapper so they share one row with Veröffentlichen. That drops the
    * wrapper from the accessibility tree, which is why the landmark lives on
    * the <aside role="navigation"> around it and the wrapper is a plain div. */
-  /* How much fixed chrome the bottom edge is carrying right now. The bar, the
-     publish strip and the status toast all measure from this one value instead
-     of each re-deriving it, so they can never drift apart. */
+  /* How much fixed chrome the bottom edge is carrying right now. The bar and
+     the status toast both measure from this one value instead of each
+     re-deriving it, so they can never drift apart. */
   :root {
     --tabbar-h: 3.4rem;
     /* Measured, not guessed: 0.4rem padding above and below a 2.3rem button
        plus its border comes to 3.16rem on a 16px root. */
     --writingbar-h: 3.2rem;
     --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-  }
-  /* :not(.is-editor-view) is load-bearing, not decoration: :has() inherits its
-     argument's specificity, so without it these two rules would outrank the
-     editor rule below and reserve room in the editor for chrome that is hidden
-     there. Keeping the conditions mutually exclusive settles it by meaning
-     rather than by specificity. */
-  .admin-body:not(.is-editor-view):has(.sync-button.has-changes),
-  .admin-body:not(.is-editor-view):has(.sync-button.is-publishing) {
-    --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 3.45rem);
   }
   /* The editor hides the tab bar, but it is not empty down there: the writing
      bar sits on the bottom edge and rides up with the keyboard. Anything else
@@ -65,7 +56,7 @@
   }
   .sidebar-nav { display: contents; }
   .nav-link,
-  .sidebar-settings {
+  .sync-button {
     flex: 1 1 0;
     flex-direction: column;
     justify-content: center;
@@ -73,50 +64,56 @@
     min-width: 0;
     min-height: var(--tabbar-h);
     padding: 0.3rem 0.15rem;
+    margin: 0;
+    border: 0;
     border-radius: 0;
     background: transparent;
     color: var(--ink-faint);
     font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: -0.015em;
+    box-shadow: none;
   }
   /* A filled pill reads as a button; in a tab bar the accent alone reads as
-     "you are here" and keeps the row calm. */
+     "you are here" and keeps the row calm. Veröffentlichen has no is-active
+     state (it opens a queue, not a persistent collection) — has-changes is
+     its own, separate signal that something is waiting, not "you are here". */
   .nav-link.is-active,
   .nav-link:hover,
-  .sidebar-settings.is-active,
-  .sidebar-settings:hover { background: transparent; color: var(--accent-ink); }
-  .nav-link.is-active .nav-icon,
-  .sidebar-settings.is-active svg { color: var(--accent); }
+  .sync-button:hover { background: transparent; color: var(--accent-ink); }
+  .nav-link.is-active .nav-icon { color: var(--accent); }
   .nav-link .nav-icon { flex: 0 0 auto; }
   .nav-link .nav-icon svg,
-  .sidebar-settings svg { width: 1.35rem; height: 1.35rem; }
+  .sync-button svg { width: 1.35rem; height: 1.35rem; }
   .nav-label,
-  .sidebar-settings span:not([data-icon]) {
+  .sync-button .sync-label {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-
-  /* Publish is an action with a state, not a destination, so it sits above the
-     tabs rather than in them — and only when there is something to publish.
-     A permanent bar reading "0" would cost a row of screen for no information;
-     hidden in the drawer, the count was invisible exactly when it mattered. */
-  .sync-button {
-    position: fixed;
-    left: max(0.75rem, env(safe-area-inset-left));
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 0.55rem);
-    z-index: 31;
-    justify-content: center;
-    width: auto;
-    min-height: 2.85rem;
-    margin: 0;
-    box-shadow: var(--shadow);
+  /* The count used to sit in a wide floating pill next to the label ("3
+     Veröffentlichen"); in the narrow tab column it moves onto the icon as a
+     small corner badge instead, and disappears rather than sit there as a
+     standing "0" — nothing to publish is the common case, not news. Anchored
+     off the icon's own (fixed) width, not the button's, so it lands on the
+     icon's corner regardless of how wide this tab ends up in the row. */
+  .sync-button { position: relative; }
+  .sync-button .sync-count {
+    position: absolute;
+    top: 0.05rem;
+    left: calc(50% + 0.35rem);
+    min-width: 1rem;
+    min-height: 1rem;
+    padding: 0 0.3rem;
+    background: var(--line);
+    color: var(--ink-soft);
+    font-size: 0.62rem;
+    display: none;
   }
-  .sync-button .sync-label { flex: 0 0 auto; }
-  .sync-button:not(.has-changes):not(.is-publishing) { display: none; }
+  .sync-button.has-changes .sync-count { display: inline-flex; }
+  .sync-button.has-changes { color: var(--accent-ink); }
+  .sync-button.has-changes > [data-icon] { color: var(--accent); }
 
   /* Everything fixed to the bottom edge floats over the content, so the
      workspace and the status toast both end above it. */
@@ -174,7 +171,17 @@
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }
   .stats-head .library-tools { min-width: 0; }
-  .library-tools .search { flex: 1 1 auto; width: auto; min-width: 3.5rem; }
+  /* Die Pillen zuerst, der gelesene Zeitraum darunter — als Bedienelement
+     steht die Auswahl vor ihrer eigenen Beschriftung. Nur in der Spalte:
+     im Fließtext der Desktop-Zeile stehen beide nebeneinander und die
+     Reihenfolge betrifft dort nur die Lesereihenfolge, nicht die Optik. */
+  .stats-head .stats-range-label { order: 2; }
+  .stats-head .library-tools { order: 1; }
+  /* flex-basis 0, nicht auto: WebKit bemisst den Inhaltsbeitrag eines Textfelds
+     ohne size-Attribut am Platzhaltertext. Bei "Name, Beitrag, Alt-Text" schob
+     das die Zeile in Safari über den Rand, obwohl Chromium hier nichts zeigte —
+     mit fester Basis 0 zählt nur noch das Wachstum, nicht die Platzhalterlänge. */
+  .library-tools .search { flex: 1 1 0; width: auto; min-width: 3.5rem; }
   /* Matches .media-view/.library-view .library-tools select's specificity
      (04-media-library.css, 02-layout.css) rather than beating it on source
      order alone — a plain `.library-tools select` here lost that fight
@@ -189,60 +196,4 @@
 
 @media (max-width: 30rem) {
   .media-grid { grid-template-columns: 1fr 1fr; }
-}
-
-/* ---- Publish dialog on phones ----------------------------------------- */
-/* On a narrow screen the dialog became a cramped box and its footer packed a
-   long toggle plus up to three buttons into one non-wrapping row. Turn it into
-   a full-width bottom sheet: stack the footer, keep the actions pinned so
-   "Veröffentlichen" is always one tap away, and use dvh so the address bar
-   never clips it. */
-@media (max-width: 40rem) {
-  .social-config-global { grid-template-columns: 1fr; }
-  .social-category-grid { grid-template-columns: 1fr; }
-
-  /* Span the viewport exactly via left/right:0 (100vw can be a hair wider than
-     the visual viewport on mobile, which let the whole sheet pan sideways). */
-  .publish-dialog {
-    left: 0;
-    right: 0;
-    width: auto;
-    max-width: none;
-    max-height: 100dvh;
-    margin: auto 0 0;
-    border-radius: var(--radius) var(--radius) 0 0;
-    overflow-x: hidden;
-  }
-  .publish-dialog-inner {
-    gap: 0.9rem;
-    max-height: 92dvh;
-    padding: 1rem 1rem 0;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-  }
-  .publish-dialog-foot {
-    position: sticky;
-    bottom: 0;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.6rem;
-    margin-top: 0.2rem;
-    padding: 0.7rem 0 calc(0.8rem + env(safe-area-inset-bottom));
-    background: var(--panel);
-  }
-  .social-foot-post { flex: 1 1 100%; }
-  .publish-dialog-foot-spacer { display: none; }
-  .publish-dialog-foot button { flex: 1 1 8rem; min-height: 2.75rem; }
-  #publishDialogUnpublish { flex-basis: 100%; }
-}
-
-/* ---- Publish overlay on phones ----------------------------------------- */
-/* Full width above whatever chrome the bottom edge is carrying, so it never
-   lands on top of the tab bar or the writing bar. */
-@media (max-width: 52rem) {
-  .publish-overlay {
-    left: max(0.75rem, env(safe-area-inset-left));
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: calc(var(--bottom-chrome) + 0.75rem);
-    width: auto;
-  }
 }

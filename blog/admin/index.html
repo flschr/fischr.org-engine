@@ -39,7 +39,7 @@ eleventyExcludeFromCollections: true
       <div class="admin-layout">
         <aside id="sidebar" class="admin-sidebar" role="navigation" aria-label="Navigation">
           <!-- A div, not a nav: on phones this wrapper is display:contents so
-               its five tabs share one row, which would drop a landmark here. -->
+               its four tabs share one row, which would drop a landmark here. -->
           <div class="sidebar-nav">
             <button class="nav-link is-active" type="button" data-collection="posts" aria-current="page">
               <span class="nav-icon" data-icon="file-text" aria-hidden="true"></span>
@@ -54,14 +54,14 @@ eleventyExcludeFromCollections: true
               <span class="nav-label">Statistik</span>
             </button>
           </div>
+          <!-- Publish and Einstellungen used to be two separate destinations
+               here; Einstellungen now lives as a button inside the queue it
+               opens (queue-settings below) so this is the sidebar's/tab bar's
+               fourth and last stop, not a fifth. -->
           <button id="syncButton" class="sync-button" type="button">
             <span data-icon="refresh-cw" aria-hidden="true"></span>
             <span class="sync-label">Veröffentlichen</span>
             <span class="sync-count">0</span>
-          </button>
-          <button id="settingsNav" class="sidebar-settings" type="button">
-            <span data-icon="sliders-horizontal" aria-hidden="true"></span>
-            <span>Einstellungen</span>
           </button>
         </aside>
 
@@ -273,7 +273,7 @@ eleventyExcludeFromCollections: true
             <div class="library-head view-head">
               <h1 class="view-title">Media</h1>
               <div class="library-tools">
-                <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Name, Beitrag, Alt-Text">
+                <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Bilder durchsuchen">
                 <select id="mediaFilterInput" aria-label="Medienfilter">
                   <option value="all">Alle</option>
                   <option value="duplicates">Duplikate</option>
@@ -317,6 +317,12 @@ eleventyExcludeFromCollections: true
                 <button id="discardAllButton" type="button" class="ghost danger" disabled>
                   <span data-icon="trash-2" aria-hidden="true"></span>
                   <span>Alles verwerfen</span>
+                </button>
+                <!-- Einstellungen war ein eigener Nav-Punkt; jetzt Knopf hier,
+                     einen Tab weniger in Sidebar/Tab-Leiste. -->
+                <button id="queueSettingsButton" type="button" class="ghost queue-settings">
+                  <span data-icon="sliders-horizontal" aria-hidden="true"></span>
+                  <span>Einstellungen</span>
                 </button>
               </div>
             </div>

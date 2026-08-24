@@ -42,23 +42,6 @@
 }
 .sync-button.has-changes .sync-count { background: var(--accent); color: #fff; }
 
-/* Small, quiet settings link directly under the sync button at the foot. */
-.sidebar-settings {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 0.55rem;
-  min-height: 2.1rem;
-  padding: 0 0.6rem;
-  border-color: transparent;
-  background: transparent;
-  color: var(--ink-faint);
-  font-size: 0.82rem;
-  font-weight: 550;
-}
-.sidebar-settings:hover { background: var(--panel-2); color: var(--ink); }
-.sidebar-settings.is-active { background: var(--accent-weak); color: var(--accent-ink); }
-.sidebar-settings svg { width: 1rem; height: 1rem; flex: 0 0 auto; }
-
 /* ---- Layout + sidebar -------------------------------------------------- */
 
 .admin-layout {
