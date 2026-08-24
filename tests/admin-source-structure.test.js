@@ -205,7 +205,7 @@ test("every identifier a module uses is either declared or imported", async () =
     "RWGithubService", "RWEditorRecovery", "RWContentService", "RWMarkdownMedia", "RWIcons",
     "RWEditor", "RWPublishStatus", "RWDraftRepository", "RWMediaService", "RWGpxUpload",
     "RWPreviewRenderer", "RWSourcePages", "RWPublishPlan", "RWAdmonitions",
-    "RWMarkdownConventions", "RWSocialConfig", "RWGpxService", "markdownit"
+    "RWMarkdownConventions", "RWSocialConfig", "RWGpxService", "RWSearchText", "markdownit"
   ];
 
   const eslint = new ESLint({
@@ -264,4 +264,20 @@ test("the admin lint gate really covers the built bundle", async () => {
   // andere Aufräumaufgabe als ein Aufruf, der im Browser abstürzt.
   const errors = results[0].messages.filter((message) => message.severity === 2);
   assert.deepEqual(errors.map((message) => `${message.line} ${message.message}`), []);
+});
+
+test("no debugging scaffolding survives into the shipped bundle", () => {
+  // A probe written onto `window` during troubleshooting once made it all the
+  // way into a commit: eslint has no opinion about it, the tests stayed green,
+  // and it would have shipped internal state to the page. The admin talks to
+  // the outside through named globals it declares on purpose (RWEditor,
+  // RWIcons, RWPublishStatus and their kin); anything scratch-shaped is not
+  // that.
+  const source = adminSource();
+
+  assert.doesNotMatch(source, /window\.__/, "a window.__ global is debugging scaffolding, not an interface");
+  assert.doesNotMatch(source, /\bdebugger\b/, "a debugger statement would stop the editor for whoever opens devtools");
+  // console.log is the other thing that survives a debugging session. Warnings
+  // and errors are how this admin reports real trouble and stay allowed.
+  assert.doesNotMatch(source, /console\.log\(/, "console.log is left over from debugging; use showStatus() or console.warn");
 });

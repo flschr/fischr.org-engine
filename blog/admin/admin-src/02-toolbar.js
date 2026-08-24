@@ -1,16 +1,16 @@
 import { els } from "./01b-elements.js";
 import { insertFootnoteFromDialog, insertLinkFromDialog } from "./02b-toolbar-dialogs.js";
 import { insertAdmonitionFromDialog } from "./02c-admonition-dialog.js";
-import { generateMissingAltTexts } from "./16a-alt-text-actions.js";
 
 // --- Editor toolbar (data-driven; add a button by adding an entry) -------
 //
 // Split in two, because the writing bar now sits directly above the on-screen
 // keyboard and a phone has room for about five targets there. PRIMARY holds
 // what gets used in every article; MORE lives behind the "+" and costs one
-// extra tap. Only writing commands belong in either — document actions
-// (unpublish, delete) sit behind the top bar's "⋯" instead, because "insert a
-// footnote" and "take the article off the site" must not be neighbours.
+// extra tap. Only *insertions* belong in either. Generating alt texts rewrites
+// every image in the article and is therefore a document action, like unpublish
+// and delete — it has its own button on the article bar. "Insert a footnote"
+// and "rewrite all the images" must not be neighbours.
 
 export const icon = (name) => window.RWIcons?.svg(name) || "";
 
@@ -83,11 +83,5 @@ export const MORE_COMMANDS = [
     title: "GPX-Tour hochladen",
     icon: "route",
     run: () => els.gpxUploadInput.click()
-  },
-  {
-    name: "alt-text",
-    title: "Alt-Texte erzeugen",
-    icon: "sparkles",
-    run: () => generateMissingAltTexts()
   }
 ];

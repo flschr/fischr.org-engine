@@ -607,7 +607,9 @@ test("saving an edited public article writes to drafts and publishes nothing", a
   await page.locator(".entry-card").filter({ hasText: path }).click();
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
   await page.locator(".cm-content").click();
+  await page.keyboard.press("End");
   await page.keyboard.insertText(" Bearbeitet.");
+  await expect(page.locator(".cm-content")).toContainText("Bearbeitet.");
 
   await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
   await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
@@ -617,8 +619,11 @@ test("saving an edited public article writes to drafts and publishes nothing", a
   // non-cancelling deploy queue, so the saves made while writing must not each
   // become one. Sending is the deliberate act, and it is a different button.
   await expect(page.getByRole("dialog", { name: "Veröffentlichen" })).toHaveCount(0);
+  // The edit itself has to reach the blob. Asserting only that *a* blob was
+  // written would hold even if the typing never landed — the save would still
+  // write the unchanged article.
   await expect.poll(() => requests.some((request) =>
-    request.method === "POST" && request.url.endsWith("/git/blobs")
+    request.method === "POST" && request.url.endsWith("/git/blobs") && /Bearbeitet\./.test(request.body.content || "")
   )).toBe(true);
   await assertNoPublishStarted(page, requests);
 });
@@ -669,7 +674,11 @@ test("unpublishing a public article runs from the article menu, confirmed", asyn
   // The send button always sends. Unpublishing is the opposite intent and sits
   // behind the article bar's "⋯", where a mis-tap cannot reach it.
   const bar = page.getByRole("navigation", { name: "Artikel" });
-  await expect(bar.getByRole("button", { name: "Änderung veröffentlichen" })).toBeVisible();
+  // Public and nothing waiting: there is nothing to send, so no send button.
+  // Checked against a sibling that is never hidden, so an editor that had not
+  // finished opening could not satisfy this by accident.
+  await expect(bar.getByRole("button", { name: "Speichern" })).toBeVisible();
+  await expect(page.locator("#publishButton")).toBeHidden();
   await expect(bar.getByRole("button", { name: "Veröffentlichung zurücknehmen" })).toHaveCount(0);
 
   await bar.getByRole("button", { name: "Weitere Artikelaktionen" }).click();
@@ -699,7 +708,8 @@ test("a queued new post is not mistaken for an already public article", async ({
   });
 
   await expect(page.locator("#editorMetaLine")).toContainText("Veröffentlichung vorgemerkt");
-  const publish = page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Änderung veröffentlichen" });
+  // Nothing is live yet, so this is a publication and not an update.
+  const publish = page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Veröffentlichen" });
   await publish.click();
   await expect.poll(() => requests.some((request) =>
     request.method === "POST" && request.url.endsWith("/git/blobs") && /draft: false/.test(request.body.content || "")
@@ -743,4 +753,87 @@ test("a queued slug rename remains an update of the public article", async ({ pa
     request.url.endsWith("/git/trees") &&
     request.body.tree?.some((entry) => entry.path === "automation/admin-rename-origins.json" && entry.sha === null)
   )).toBe(true);
+});
+
+test("the send button appears only when there is something to send", async ({ page }) => {
+  const requests = [];
+  const path = "blog/posts/2026-08-18-public.md";
+  const sha = "public-post-sha";
+  const content = `---\ntitle: Öffentlicher Artikel\nslug: public\ndate: 2026-08-18T12:00:00+02:00\ndraft: false\n---\n\nÖffentlicher Text.\n`;
+  const tree = [{ path, type: "blob", sha, size: content.length }];
+  const blobs = { [sha]: { encoding: "base64", content: Buffer.from(content).toString("base64") } };
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, requests, tree, { mainTree: tree, blobs });
+  await page.goto("/admin/");
+
+  // A fresh draft: nothing is live yet, so sending is the only way anything
+  // becomes live and the button has to be there even before a single keystroke.
+  await page.locator("#newEntryButtonLib").click();
+  const send = page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Veröffentlichen" });
+  await expect(send).toBeVisible();
+
+  // Now the published article. This assertion could pass for the wrong reason —
+  // an editor that has not finished opening has no buttons at all — so wait for
+  // the editor to be live and for a sibling button that is never hidden before
+  // claiming the send button is absent.
+  await page.locator('[data-collection="posts"]').evaluate((button) => button.click());
+  await page.locator(".entry-card").filter({ hasText: path }).click();
+  await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
+  const bar = page.getByRole("navigation", { name: "Artikel" });
+  await expect(bar.getByRole("button", { name: "Speichern" })).toBeVisible();
+  await expect(page.locator("#editorMetaLine")).toContainText("Veröffentlicht");
+  await expect(page.locator("#publishButton")).toBeHidden();
+  const saveBefore = await page.locator("#saveButton").boundingBox();
+
+  // One keystroke is a difference, and a difference is worth sending. This is
+  // the half that makes the assertion above mean something: the button was
+  // genuinely absent and genuinely comes back.
+  await page.locator(".cm-content").click();
+  await page.keyboard.press("End");
+  await page.keyboard.insertText(" Bearbeitet.");
+  // Prove the edit landed before reading anything off it. A click alone does
+  // not reliably put the caret where insertText needs it, and an assertion
+  // about a button reacting to an edit that never happened would pass for the
+  // wrong reason.
+  await expect(page.locator(".cm-content")).toContainText("Bearbeitet.");
+  await expect(bar.getByRole("button", { name: "Änderung veröffentlichen" })).toBeVisible();
+
+  // Its slot was reserved the whole time, so nothing else moved sideways when
+  // it appeared — a row that re-flows under the pointer on the first keystroke
+  // is exactly the kind of jitter this editor was meant to lose.
+  const after = await page.locator("#saveButton").boundingBox();
+  expect(Math.round(after.x)).toBe(Math.round(saveBefore.x));
+});
+
+test("a send button that is not offered is not reachable either", async ({ page }) => {
+  // Reserving the slot means the button is still in the document while there is
+  // nothing to send. That must not make it something a keyboard or a screen
+  // reader can still land on — otherwise the row is honest to the eye and lying
+  // to everyone else.
+  const path = "blog/posts/2026-08-18-public.md";
+  const sha = "public-post-sha";
+  const content = `---\ntitle: Öffentlicher Artikel\nslug: public\ndate: 2026-08-18T12:00:00+02:00\ndraft: false\n---\n\nText.\n`;
+  const tree = [{ path, type: "blob", sha, size: content.length }];
+  const blobs = { [sha]: { encoding: "base64", content: Buffer.from(content).toString("base64") } };
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, [], tree, { mainTree: tree, blobs });
+  await page.goto("/admin/");
+  await page.locator('[data-collection="posts"]').evaluate((button) => button.click());
+  await page.locator(".entry-card").filter({ hasText: path }).click();
+  await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
+  await expect(page.locator("#publishButton")).toBeHidden();
+
+  // Not focusable, even when asked directly.
+  const focusable = await page.locator("#publishButton").evaluate((element) => {
+    element.focus();
+    return document.activeElement === element;
+  });
+  expect(focusable).toBe(false);
+
+  // And absent from the bar's accessible contents, not merely invisible in it.
+  const labels = await page.getByRole("navigation", { name: "Artikel" })
+    .getByRole("button").evaluateAll((elements) => elements.map((element) => element.getAttribute("aria-label")));
+  expect(labels).not.toContain("Veröffentlichen");
+  expect(labels).not.toContain("Änderung veröffentlichen");
+  expect(labels).toContain("Speichern");
 });

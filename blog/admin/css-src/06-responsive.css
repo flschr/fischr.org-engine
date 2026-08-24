@@ -137,7 +137,8 @@
   }
   .meta-panel { grid-template-columns: 1fr; }
   /* Six buttons now instead of eighteen, so the article bar fits without the
-     sideways scroll it used to need. */
+     sideways scroll it used to need. The send button hides itself when there is
+     nothing to send, which usually makes it five. */
   .editor-bar {
     flex-wrap: nowrap;
     gap: 0.35rem;

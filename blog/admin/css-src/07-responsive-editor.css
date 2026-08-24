@@ -26,13 +26,23 @@
     min-height: 0;
     height: 100%;
   }
-  .admin-body.is-editor-view .editor-bar {
+  /* The wrapper only exists to make one line out of the two bars on a wide
+     screen. Here the writing bar is fixed to the keyboard and therefore out of
+     flow, so the wrapper is left holding the article bar alone — and must not
+     keep the row layout, or that bar would be squeezed against a zero-width
+     sibling. */
+  .editor-bars {
+    display: block;
     position: relative;
     top: auto;
     z-index: 2;
+    gap: 0;
     margin-top: 0;
-    padding-top: 0;
-    padding-bottom: 0.35rem;
+    padding: 0 0 0.35rem;
+  }
+  .editor-bars .editor-bar {
+    display: flex;
+    width: 100%;
   }
 
   /* The writing bar rides the keyboard. `--keyboard-inset` is published by

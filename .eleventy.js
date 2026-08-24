@@ -52,6 +52,8 @@ const { extractFirstImageAlt, imageMimeType, resolveSocialImage } = require("./l
 const { sitemapLastModified } = require("./lib/eleventy/sitemap");
 const { buildRecipeStructuredData, buildReviewStructuredData } = require("./lib/eleventy/structured-data");
 const { adminBundleVersion, adminDeployedFiles } = require("./lib/eleventy/admin-bundle");
+const { createAdminSearchTextExtractor } = require("./lib/eleventy/admin-search");
+const sourcePages = require("./blog/admin/source-pages");
 const { leafletRuntimeAssets } = require("./lib/eleventy/runtime-vendors");
 
 const production = process.env.ELEVENTY_ENV === "production";
@@ -84,6 +86,19 @@ function isPublished(item) {
 
 function sortNewestFirst(a, b) {
   return b.date - a.date;
+}
+
+const adminSearchSourcePages = new Set(sourcePages.paths());
+const getAdminSearchText = createAdminSearchTextExtractor();
+
+function repoPath(inputPath = "") {
+  return String(inputPath).replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function isAdminSearchDocument(inputPath = "") {
+  const file = repoPath(inputPath);
+  if (adminSearchSourcePages.has(file)) return true;
+  return /^blog\/(posts|pages)\/.+\.md$/.test(file);
 }
 
 function getPublishedPosts(collectionApi) {
@@ -295,6 +310,13 @@ module.exports = function (eleventyConfig) {
   // Empty when the admin is not published, so the JSON never leaks draft data.
   eleventyConfig.addCollection("adminPosts", (collectionApi) =>
     publishAdmin ? collectionApi.getFilteredByGlob("blog/posts/**/*.md").sort(sortNewestFirst) : []);
+  // Everything the admin lists as an editable entry: posts and pages as Markdown
+  // plus the two Nunjucks pages it edits as source. Same set as the article and
+  // page lists, so the full-text index cannot know a different world than they do.
+  eleventyConfig.addCollection("adminSearchDocuments", (collectionApi) =>
+    publishAdmin
+      ? collectionApi.getAll().filter((item) => isAdminSearchDocument(item.inputPath)).sort(sortNewestFirst)
+      : []);
   eleventyConfig.addCollection("aliases", getAliasCollection);
 
   // Templates pass a post's displayDate (a plain YYYY-MM-DD), which is rendered
@@ -417,6 +439,18 @@ module.exports = function (eleventyConfig) {
 
   eleventyConfig.addFilter("adminMediaReferences", (item) => {
     return media.getAdminMediaReferences(item);
+  });
+
+  // path → searchable text, for the admin's full-text search over article and
+  // page content. Entries without text are dropped: an empty string would only
+  // add bytes to a payload the admin fetches in one piece.
+  eleventyConfig.addFilter("adminSearchIndex", (items = []) => {
+    const index = {};
+    for (const item of items) {
+      const text = getAdminSearchText(item);
+      if (text) index[repoPath(item.inputPath)] = text;
+    }
+    return index;
   });
 
   eleventyConfig.addFilter("sitemapLastModified", sitemapLastModified);

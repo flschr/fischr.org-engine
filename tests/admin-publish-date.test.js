@@ -96,7 +96,10 @@ test("a published post has a dedicated confirmed unpublish action", () => {
   assert.match(renderMeta, /const published = Boolean\(state\.current\.published\)/);
   // The send button only sends. Unpublishing is the opposite intent and lives
   // behind the article bar's "⋯", so the button no longer inverts itself.
-  assert.match(renderMeta, /els\.publishButton\.innerHTML = ICON\.send/);
+  // Its own upkeep moved out of the meta line: it has to react on every
+  // keystroke, which the meta line does not.
+  assert.match(source, /function syncPublishButton\([\s\S]*?els\.publishButton\.innerHTML = ICON\.send/);
+  assert.match(renderMeta, /syncPublishButton\(\)/);
   assert.doesNotMatch(source, /ICON\.unpublish/);
   assert.match(source, /els\.publishButton\.addEventListener\("click", handleCurrentPublishAction\)/);
   assert.doesNotMatch(extractBlock(source, "function currentPublishAction()"), /unpublish/);

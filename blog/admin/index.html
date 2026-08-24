@@ -97,45 +97,55 @@ eleventyExcludeFromCollections: true
             <div class="editor-head view-head">
               <h1 id="editorViewTitle" class="view-title">New article</h1>
             </div>
-            <!-- Two bars, split by what the buttons act on. This one acts on
-                 the document and stays at the top; the writing bar below acts
-                 on the text and rides the keyboard. They used to be one strip
-                 of eighteen buttons that scrolled sideways on a phone. -->
-            <nav class="editor-bar" aria-label="Artikel">
-              <span class="editor-bar-spacer"></span>
-              <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
-                <span data-icon="eye" aria-hidden="true"></span>
-              </button>
-              <button id="toggleMetaButton" class="tb-btn" type="button" aria-expanded="false" aria-label="Artikeloptionen" title="Artikeloptionen">
-                <span data-icon="sliders-horizontal" aria-hidden="true"></span>
-              </button>
-              <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen">
-                <span data-icon="ellipsis" aria-hidden="true"></span>
-              </button>
-              <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
-                <span data-icon="save" aria-hidden="true"></span>
-              </button>
-              <button id="publishButton" class="tb-btn tb-publish is-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
-                <span data-icon="send" aria-hidden="true"></span>
-              </button>
-            </nav>
+            <!-- Two bars, split by what the buttons act on: one on the text,
+                 one on the document. The split exists for the phone, where the
+                 writing bar leaves the flow and rides the on-screen keyboard.
+                 On a wide screen there is no keyboard to ride and plenty of
+                 room, so this wrapper lays both out as a single line. -->
+            <div class="editor-bars">
+              <nav id="writingBar" class="writing-bar" aria-label="Schreiben">
+                <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung"></div>
+                <span class="writing-bar-spacer"></span>
+                <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)">
+                  <span data-icon="undo-2" aria-hidden="true"></span>
+                </button>
+                <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)">
+                  <span data-icon="redo-2" aria-hidden="true"></span>
+                </button>
+              </nav>
+
+              <nav class="editor-bar" aria-label="Artikel">
+                <span class="editor-bar-spacer"></span>
+                <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
+                  <span data-icon="eye" aria-hidden="true"></span>
+                </button>
+                <!-- Generates alt text for every image in the article, so it
+                     belongs with the actions on the document rather than in the
+                     writing bar's "+", which is for inserting things. -->
+                <button id="altTextButton" class="tb-btn" type="button" aria-label="Alt-Texte erzeugen" title="Alt-Texte erzeugen">
+                  <span data-icon="sparkles" aria-hidden="true"></span>
+                </button>
+                <button id="toggleMetaButton" class="tb-btn" type="button" aria-expanded="false" aria-label="Artikeloptionen" title="Artikeloptionen">
+                  <span data-icon="sliders-horizontal" aria-hidden="true"></span>
+                </button>
+                <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen">
+                  <span data-icon="ellipsis" aria-hidden="true"></span>
+                </button>
+                <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
+                  <span data-icon="save" aria-hidden="true"></span>
+                </button>
+                <!-- Starts absent: whether there is anything to send is a
+                     decision about the open article, and no article is open
+                     yet. syncPublishButton() makes it either way before the
+                     editor is ever shown. -->
+                <button id="publishButton" class="tb-btn tb-publish is-publish is-absent" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                  <span data-icon="send" aria-hidden="true"></span>
+                </button>
+              </nav>
+            </div>
 
             <input id="imageUploadInput" class="hidden-file-input" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
             <input id="gpxUploadInput" class="hidden-file-input" type="file" accept="application/gpx+xml,.gpx">
-
-            <!-- Acts on the text. Inline here on a wide screen; on a phone CSS
-                 pins it to `--keyboard-inset` so it rides just above the
-                 on-screen keyboard, where the thumbs already are. -->
-            <nav id="writingBar" class="writing-bar" aria-label="Schreiben">
-              <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung"></div>
-              <span class="writing-bar-spacer"></span>
-              <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)">
-                <span data-icon="undo-2" aria-hidden="true"></span>
-              </button>
-              <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)">
-                <span data-icon="redo-2" aria-hidden="true"></span>
-              </button>
-            </nav>
 
             <article class="editor-article">
               <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel"></textarea>
@@ -367,6 +377,7 @@ eleventyExcludeFromCollections: true
     <script src="{{ '/admin/content-service.js' | adminAssetUrl }}"></script>
     <script src="{{ '/admin/source-pages.js' | adminAssetUrl }}"></script>
     <script src="{{ '/admin/markdown-media.js' | adminAssetUrl }}"></script>
+    <script src="{{ '/admin/search-text.js' | adminAssetUrl }}"></script>
     <script src="{{ '/admin/admonitions.js' | adminAssetUrl }}"></script>
     <script src="{{ '/admin/editor-recovery.js' | adminAssetUrl }}"></script>
     <script src="{{ '/admin/social-config.js' | adminAssetUrl }}"></script>

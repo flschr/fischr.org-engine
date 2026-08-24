@@ -28,6 +28,7 @@ export const els = {
   moreCommandsDialog: document.getElementById("moreCommandsDialog"),
   moreCommandsList: document.getElementById("moreCommandsList"),
   previewModeButton: document.getElementById("previewModeButton"),
+  altTextButton: document.getElementById("altTextButton"),
   toggleMetaButton: document.getElementById("toggleMetaButton"),
   saveButton: document.getElementById("saveButton"),
   publishButton: document.getElementById("publishButton"),

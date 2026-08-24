@@ -1,0 +1,6 @@
+---
+permalink: /admin/posts-search.json
+eleventyExcludeFromCollections: true
+sitemap: false
+---
+{{ collections.adminSearchDocuments | adminSearchIndex | dump | safe }}

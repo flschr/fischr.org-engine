@@ -7,11 +7,16 @@ import { fetchTree, hasGithubAccess } from "./05-github-auth.js";
 import { baseName, entryInfoFromPath, isSourcePagePath } from "./06-paths.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { openEntry } from "./25c-entry-opening.js";
+import { loadPublishedPostsIndex } from "./25e-posts-index.js";
+import { ensureSearchIndex, entryListEmptyMessage, entrySearchMatch, parseSearchQuery, resetSearchIndex, searchExcerptNode, searchIndexStatus } from "./25d-entry-search.js";
 import { refreshMedia } from "./26a-media-library.js";
 
 // --- Entries -------------------------------------------------------------
 
 export async function refreshEntries(force) {
+  // Dropped before anything is drawn: the render below asks for what is missing,
+  // so a refresh that arrives while a search is open answers with fresh text.
+  if (force) { state.postsIndex = null; resetSearchIndex(); }
   if (state.collection === "media") {
     await refreshMedia(force);
     return;
@@ -55,7 +60,6 @@ export async function refreshEntries(force) {
   localEntries.forEach((entry) => byPath.set(entry.path, { ...(byPath.get(entry.path) || {}), ...entry }));
   state.entries = Array.from(byPath.values()).sort(collection.sort);
   renderEntryList();
-  if (force) state.postsIndex = null; // re-fetch the index on an explicit refresh
   attachEntryFrontmatter().catch(() => {});
 }
 
@@ -93,54 +97,6 @@ function entryListMeta(path, change) {
   return { date: info?.date || "", sortKey: info?.sortKey || 0, draft: false };
 }
 
-// The build emits each media reference as { url, alt }. An older index — or one
-// still in a cache — carries bare path strings; both read as a reference without
-// an alt text.
-function normalizeIndexMedia(media) {
-  if (!Array.isArray(media)) return [];
-  return media
-    .map((entry) => (typeof entry === "string"
-      ? { url: entry, alt: "" }
-      : { url: String(entry?.url || ""), alt: String(entry?.alt || "") }))
-    .filter((entry) => entry.url);
-}
-
-// Real title + date + draft flag for remote posts live in their frontmatter.
-// The build emits them all as one small auth-protected JSON, so the list can
-// look them up in a single request instead of one GitHub blob fetch per post.
-export async function loadPublishedPostsIndex() {
-  if (state.postsIndex) return state.postsIndex;
-  if (state.postsIndexPromise) return state.postsIndexPromise;
-  state.postsIndexPromise = (async () => {
-    try {
-      const response = await fetch("/admin/posts-index.json", { credentials: "same-origin", headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`Index ${response.status}`);
-      const list = await response.json();
-      const map = new Map();
-      list.forEach((item) => {
-        const path = String(item.path || "").replace(/^\.\//, "");
-        if (!path) return;
-        const iso = String(item.date || "");
-        map.set(path, {
-          title: String(item.title || ""),
-          url: String(item.url || ""),
-          date: iso.slice(0, 10),
-          sortKey: Date.parse(iso) || 0,
-          draft: Boolean(item.draft),
-          media: normalizeIndexMedia(item.media)
-        });
-      });
-      state.postsIndex = map;
-      return map;
-    } catch {
-      return new Map();
-    } finally {
-      state.postsIndexPromise = null;
-    }
-  })();
-  return state.postsIndexPromise;
-}
-
 async function attachEntryFrontmatter() {
   const collection = state.collection;
   if (collection !== "posts") return; // the index currently covers posts only
@@ -163,24 +119,27 @@ async function attachEntryFrontmatter() {
 }
 
 export function renderEntryList() {
-  const query = els.searchInput.value.trim().toLowerCase();
-  const entries = state.entries.filter((entry) => {
-    return !query || entry.path.toLowerCase().includes(query) || String(entry.title || "").toLowerCase().includes(query);
-  });
+  const terms = parseSearchQuery(els.searchInput.value);
+  // Asked for once, and only once somebody searches. Every render checks, so a
+  // refresh that dropped the payload picks it up again by itself.
+  if (terms.length && searchIndexStatus() === "idle") ensureSearchIndex().then(renderEntryList);
+  const matches = [];
+  for (const entry of state.entries) {
+    const result = entrySearchMatch(entry, terms);
+    if (result.match) matches.push({ entry, excerpt: result.excerpt });
+  }
 
   els.entryList.innerHTML = "";
 
-  if (!entries.length) {
+  if (!matches.length) {
     const item = document.createElement("li");
     item.className = "entry-empty";
-    item.textContent = !hasGithubAccess()
-      ? "Verbinde GitHub, um Inhalte zu laden – oder beginne direkt mit „Neu“."
-      : query ? "Keine Treffer." : "Noch keine Einträge. Beginne mit „Neu“.";
+    item.textContent = entryListEmptyMessage(terms, hasGithubAccess());
     els.entryList.append(item);
     return;
   }
 
-  entries.forEach((entry) => {
+  matches.forEach(({ entry, excerpt }) => {
     const item = document.createElement("li");
     const button = document.createElement("button");
     button.type = "button";
@@ -199,6 +158,7 @@ export function renderEntryList() {
       `<span class="entry-meta">${escapeHtml(date ? `${date} · ` : "")}${escapeHtml(entry.path)}</span>`,
       pills ? `<span class="entry-status">${pills}</span>` : ""
     ].join("");
+    if (excerpt) button.append(searchExcerptNode(excerpt)); // nodes, never markup
 
     button.addEventListener("click", () => openEntry(entry.path));
     item.append(button);

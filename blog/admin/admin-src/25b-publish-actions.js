@@ -7,6 +7,7 @@ import { openPublishDialog } from "./13-publish-dialog.js";
 import { editorIsDirty } from "./19-recovery.js";
 import { askUnpublishAction } from "./19a-editor-dialogs.js";
 import { renderEditorMetaLine } from "./20-editor-fields.js";
+import { publishAffordance } from "./20c-publish-affordance.js";
 import { queueCurrent } from "./25a-entry-actions.js";
 import { syncOutbox } from "./27b-publish-actions.js";
 
@@ -94,8 +95,37 @@ export async function handleCurrentPublishAction() {
 // rare, opposite intent and lives behind the top bar's "⋯" — a single button
 // that silently turned into its own inverse was the reason the bar needed a
 // four-way label lookup to explain itself.
+//
+// Both what the button does and whether it is there at all come out of the same
+// call, so the bar cannot show a button whose action is null.
+export function currentPublishState() {
+  const published = Boolean(state.current?.published);
+  const hasQueuedChange = currentEntryHasQueuedChange();
+  // editorIsDirty() serialises the whole document and every field to compare
+  // snapshots. It is only ever asked when its answer can change the outcome —
+  // an unpublished article offers the button regardless, and a published one
+  // with a change already queued does too.
+  const editorDirty = published && !hasQueuedChange ? editorIsDirty() : false;
+  return publishAffordance({
+    collection: state.current?.collection,
+    published,
+    draftIntent: els.draftInput.checked,
+    hasQueuedChange,
+    editorDirty,
+    sourceMode: Boolean(state.current?.sourceMode)
+  });
+}
+
+// A queued change can sit under either name: renaming an article writes the new
+// path and removes the old one, and the article on screen may be either side of
+// that. Both count as "there is something to send".
+export function currentEntryHasQueuedChange() {
+  const paths = [state.current?.path, state.current?.publishedPath].filter(Boolean);
+  return paths.some((path) => state.changes.has(path));
+}
+
 export function currentPublishAction() {
-  return els.draftInput.checked ? "publish" : "sync-publish";
+  return currentPublishState().action;
 }
 
 export async function unpublishCurrentPost() {

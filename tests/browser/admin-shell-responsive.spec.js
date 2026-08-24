@@ -247,11 +247,14 @@ test("the writing bar sits at the bottom of a phone and the article bar at the t
   expect(Math.round(writing.y + writing.height)).toBeLessThanOrEqual(viewport.height + 1);
   expect(article.y).toBeLessThan(viewport.height / 4);
 
-  // One row, not a sideways-scrolling strip: everything in it is reachable
-  // without a swipe.
+  // One row each, not sideways-scrolling strips: everything in both is
+  // reachable without a swipe. The article bar carries six buttons now that
+  // alt-text sits there, which is the count worth watching.
   const bar = page.locator("#writingBar");
   const overflows = await bar.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(overflows).toBe(false);
+  const articleOverflows = await page.locator(".editor-bar").evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+  expect(articleOverflows).toBe(false);
   for (const name of ["Fett (⌘B)", "Kursiv (⌘I)", "Link (⌘K)", "Bild oder Video einfügen", "Weitere Einfügungen"]) {
     await expect(bar.getByRole("button", { name })).toBeVisible();
   }

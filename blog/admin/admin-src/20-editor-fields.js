@@ -12,7 +12,7 @@ import { updateEditorViewTitle } from "./20a-editor-field-actions.js";
 import { setSourceModeUi } from "./20b-source-pages.js";
 import { showView } from "./23-routing.js";
 import { pushNav } from "./24-history.js";
-import { currentPublishAction } from "./25b-publish-actions.js";
+import { currentPublishState } from "./25b-publish-actions.js";
 
 // --- Editor fields -------------------------------------------------------
 
@@ -47,11 +47,40 @@ export function renderEditorMetaLine() {
   parts.push(status);
   els.editorMetaLine.textContent = parts.join(" · ");
 
-  const publishAction = currentPublishAction();
+  syncPublishButton();
+}
+
+// One reading of "is the button there right now", so the shortcut below and
+// the write further down can never mean different things by it — they did for
+// one commit, when the shortcut still asked about the `hidden` attribute after
+// the write had already moved to a class.
+function publishButtonShown() {
+  return !els.publishButton.classList.contains("is-absent") && !els.publishButton.hidden;
+}
+
+// Kept apart from the meta line above because it runs on every keystroke: an
+// edit to a published article is what brings the button back, so waiting for
+// the next full re-render would leave it missing exactly while it is needed.
+//
+// `fromKeystroke` is what keeps that cheap. Once the button is up, no further
+// typing can take it down — only a save or reloading the article can, and both
+// re-render the meta line, which calls this without the flag. So on the
+// keystroke path there is nothing left to decide and the document never gets
+// serialised again.
+export function syncPublishButton({ fromKeystroke = false } = {}) {
+  if (!els.publishButton || !state.current) return;
+  if (fromKeystroke && publishButtonShown()) return;
+  const affordance = currentPublishState();
+  // Absent, but still taking up its place. The button comes and goes with the
+  // first keystroke, and letting the row re-flow around it would shift every
+  // other button sideways under the pointer at exactly the moment the eye is
+  // on the text. `visibility` keeps it out of the tab order and out of the
+  // accessibility tree just as `hidden` would, without moving its neighbours.
+  els.publishButton.classList.toggle("is-absent", !affordance.visible);
+  if (!affordance.visible) return;
   els.publishButton.innerHTML = ICON.send;
-  const publishLabel = publishAction === "publish" ? "Veröffentlichen" : "Änderung veröffentlichen";
-  els.publishButton.setAttribute("aria-label", publishLabel);
-  els.publishButton.title = publishLabel;
+  els.publishButton.setAttribute("aria-label", affordance.label);
+  els.publishButton.title = affordance.label;
 }
 
 export function rememberEditorInputs() {

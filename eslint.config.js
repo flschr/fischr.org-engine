@@ -9,6 +9,7 @@ const adminGeschwister = {
   RWGithubService: "readonly",
   RWContentService: "readonly",
   RWMarkdownMedia: "readonly",
+  RWSearchText: "readonly",
   RWEditorRecovery: "readonly",
   RWMediaService: "readonly",
   RWPublishService: "readonly",

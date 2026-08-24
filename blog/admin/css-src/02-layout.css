@@ -60,12 +60,13 @@
 /* Library rows: title + meta on the left, status on the right */
 .library-view .entry-card {
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "title status" "meta status";
+  grid-template-areas: "title status" "meta status" "excerpt excerpt";
   align-items: center;
   column-gap: 1.1rem;
 }
 .library-view .entry-title { grid-area: title; }
 .library-view .entry-meta { grid-area: meta; }
+.library-view .entry-excerpt { grid-area: excerpt; }
 .library-view .entry-status {
   grid-area: status;
   display: flex;
@@ -77,6 +78,24 @@
 
 .entry-title { color: var(--ink); font-size: 1rem; font-weight: 620; line-height: 1.3; overflow-wrap: anywhere; }
 .entry-meta { display: block; color: var(--ink-faint); font-size: 0.78rem; line-height: 1.4; overflow-wrap: anywhere; }
+/* Search hit inside an article's text — shown only when the query matched there. */
+.entry-excerpt {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+/* Accent, not amber: amber is this admin's colour for a pending change, and a
+   card that carries one is already amber — the mark would vanish on it. */
+.entry-excerpt mark {
+  padding: 0 0.12em;
+  border-radius: 0.2em;
+  background: var(--accent-weak-2);
+  color: var(--ink);
+  font-weight: 640;
+}
 .entry-pill {
   justify-self: start;
   margin-top: 0.35rem;

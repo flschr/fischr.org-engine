@@ -57,3 +57,28 @@ test("runtime retries and immutable blob caches stay bounded", () => {
   assert.match(source, /BLOB_TEXT_CACHE_LIMIT = 500/);
   assert.match(source, /while \(blobTextCache\.size > BLOB_TEXT_CACHE_LIMIT\)/);
 });
+
+test("a keystroke never serialises the document just to place a button", () => {
+  const source = adminSource();
+
+  // The send button reacts per character, and editorIsDirty() compares full
+  // JSON snapshots of the body and every field. Two guards keep that off the
+  // typing path, and both are load-bearing:
+  //
+  // 1. The dirty check is only asked when its answer can change the outcome.
+  assert.match(source, /const editorDirty = published && !hasQueuedChange \? editorIsDirty\(\) : false/);
+  // 2. Once the button is up, typing cannot take it down — only a save or a
+  //    reload can, and both re-render without the keystroke flag.
+  assert.match(source, /if \(fromKeystroke && publishButtonShown\(\)\) return/);
+  assert.match(source, /syncPublishButton\(\{ fromKeystroke: true \}\)/);
+});
+
+test("the send button's presence is read and written through one predicate", () => {
+  const source = adminSource();
+
+  // These drifted apart once already: the write moved to a class while the
+  // shortcut still asked about the `hidden` attribute, so the button stopped
+  // coming back. Both sides go through publishButtonShown() now.
+  assert.match(source, /function publishButtonShown\(\)[\s\S]*?classList\.contains\("is-absent"\)/);
+  assert.match(source, /classList\.toggle\("is-absent", !affordance\.visible\)/);
+});

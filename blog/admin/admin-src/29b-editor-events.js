@@ -7,11 +7,14 @@ import { onCategoryChange } from "./10a-social-editor-ui.js";
 import { addGalleryImage } from "./11-social-images.js";
 import { onContentTypeChange } from "./12-content-type.js";
 import { closePublishDialog, confirmPublishDialog, restoreDialogBackup, updateSocialPanel } from "./13-publish-dialog.js";
+import { generateMissingAltTexts } from "./16a-alt-text-actions.js";
 import { cancelSocialImagePick, startSocialImagePick } from "./15-media-references.js";
-import { ensureEditor, handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, renderEditorBody, resetEditorDrop, setEditorMode, syncEditorFromVisible } from "./17-editor.js";
+import { EDITOR_CHANGED, ensureEditor, renderEditorBody, setEditorMode, syncEditorFromVisible } from "./17-editor.js";
+import { handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, resetEditorDrop } from "./17a-editor-drop.js";
 import { confirmLeaveEditor } from "./19-recovery.js";
-import { renderEditorMetaLine, resizeTitleInput } from "./20-editor-fields.js";
+import { renderEditorMetaLine, resizeTitleInput, syncPublishButton } from "./20-editor-fields.js";
 import { renderEntryList } from "./25-entries.js";
+import { ensureSearchIndex, searchIndexStatus } from "./25d-entry-search.js";
 import { newEntry, queueEntryDelete } from "./25a-entry-actions.js";
 import { handleCurrentPublishAction, saveWithProgress, unpublishCurrentPost } from "./25b-publish-actions.js";
 import { queueGpxUpload, queueUploads } from "./26-media.js";
@@ -23,6 +26,11 @@ import { refreshCurrent } from "./29-events.js";
 
 export function wireEditorEvents() {
   els.searchInput.addEventListener("input", renderEntryList);
+  // The list itself asks for the full text once a query needs it. Fetching it
+  // already on focus only moves that request ahead of the first keystroke.
+  els.searchInput.addEventListener("focus", () => {
+    if (searchIndexStatus() === "idle") ensureSearchIndex().then(renderEntryList);
+  });
   els.refreshButton.addEventListener("click", refreshCurrent);
   els.refreshMediaButton.addEventListener("click", refreshCurrent);
   els.socialImageSelectButton?.addEventListener("click", startSocialImagePick);
@@ -48,6 +56,15 @@ export function wireEditorEvents() {
   els.previewModeButton.addEventListener("click", () => {
     setEditorMode(state.editorMode === "preview" ? "markdown" : "preview");
   });
+
+  els.altTextButton?.addEventListener("click", () => generateMissingAltTexts());
+
+  // Typing into a published article is what brings its send button back. Both
+  // listeners hand in the keystroke flag, which is what keeps a per-character
+  // check from serialising the document — see syncPublishButton().
+  const syncFromKeystroke = () => syncPublishButton({ fromKeystroke: true });
+  document.addEventListener(EDITOR_CHANGED, syncFromKeystroke);
+  els.titleInput.addEventListener("input", syncFromKeystroke);
 
   els.toggleMetaButton.addEventListener("click", () => {
     const expanded = els.toggleMetaButton.getAttribute("aria-expanded") === "true";

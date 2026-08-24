@@ -20,6 +20,7 @@ export function setSourceModeUi(enabled) {
   els.titleInput.hidden = sourceMode;
   els.publishButton.hidden = sourceMode;
   els.docMenuButton.hidden = sourceMode;
+  els.altTextButton.hidden = sourceMode;
   els.previewModeButton.hidden = sourceMode;
   els.toggleMetaButton.hidden = sourceMode;
   if (els.writingBar) els.writingBar.hidden = sourceMode;

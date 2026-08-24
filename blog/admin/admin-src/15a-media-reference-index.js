@@ -2,7 +2,7 @@ import { state } from "./01c-state.js";
 import { extension, isVideoPosterPath, publicMediaPath } from "./06-paths.js";
 import { stripMarkdownUrl } from "./09-frontmatter.js";
 import { entryReferenceFromContent, extractMediaReferences } from "./15-media-references.js";
-import { loadPublishedPostsIndex } from "./25-entries.js";
+import { loadPublishedPostsIndex } from "./25e-posts-index.js";
 
 function addMediaReference(index, publicPath, reference) {
   if (!publicPath || !reference?.path) return;

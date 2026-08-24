@@ -2,14 +2,17 @@ import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { ICON } from "./02-toolbar.js";
 import { showStatus } from "./03-status.js";
-import { isMediaPath } from "./06-paths.js";
 import { gpxMarkdown, imageMarkdown, videoMarkdown } from "./09-frontmatter.js";
 import { bindPreviewImageFallbacks, renderPreview } from "./16a-alt-text-actions.js";
 import { loadPreviewRuntime } from "./16b-runtime-loader.js";
 import { scheduleAutosave } from "./19-recovery.js";
-import { queueUploads } from "./26-media.js";
 
 // --- Editor instance -----------------------------------------------------
+
+// Fires on every edit to the article body. Announced on `document` rather than
+// handed to a caller, so nothing has to import this module back — see the
+// dispatch below.
+export const EDITOR_CHANGED = "rw:editor-changed";
 
 export function ensureEditor() {
   if (state.editor) return state.editor;
@@ -24,6 +27,11 @@ export function ensureEditor() {
     onChange: (value) => {
       state.bodyMarkdown = value;
       scheduleAutosave();
+      // Announced rather than called: 20-editor-fields.js already imports this
+      // module, so importing it back would close a cycle — the kind this
+      // project has been bitten by before (see 00-konstanten.js). The listener
+      // is wired in 29b-editor-events.js, which imports both anyway.
+      document.dispatchEvent(new CustomEvent(EDITOR_CHANGED));
     }
   });
   return state.editor;
@@ -104,106 +112,4 @@ export function insertGpxMarkdown(publicPath) {
   if (!editor) return;
   editor.insertText(gpxMarkdown({ src: publicPath }), { block: true });
   syncEditorFromVisible();
-}
-
-function acceptsEditorMediaDrop() {
-  return !state.isBusy && state.view === "editor" && state.current && !state.current.sourceMode && ["posts", "pages"].includes(state.current.collection);
-}
-
-function isDroppedMedia(file) {
-  return Boolean(file) && (
-    file.type.startsWith("image/") ||
-    file.type.startsWith("video/") ||
-    isMediaPath(file.name || "")
-  );
-}
-
-export function transferHasMedia(dataTransfer) {
-  if (!dataTransfer) return false;
-  const files = Array.from(dataTransfer.files || []);
-  if (files.some(isDroppedMedia)) return true;
-
-  const items = Array.from(dataTransfer.items || []);
-  if (items.length) {
-    const hasMediaItem = items.some((item) => {
-      if (item.kind !== "file") return false;
-      if (item.type.startsWith("image/") || item.type.startsWith("video/")) return true;
-      // Finder can omit the MIME type for QuickTime videos during drag-over.
-      // Accept the unknown file provisionally; the drop handler validates its
-      // filename once the browser exposes the actual File.
-      return !item.type;
-    });
-    if (hasMediaItem) return true;
-  }
-
-  // WebKit can keep both collections empty while an external file is over
-  // the page. "Files" is the only signal available until the drop event.
-  return Array.from(dataTransfer.types || []).includes("Files");
-}
-
-function mediaFilesFromTransfer(dataTransfer) {
-  if (!dataTransfer) return [];
-  const files = Array.from(dataTransfer.files || []).filter(isDroppedMedia);
-  const itemFiles = Array.from(dataTransfer.items || [])
-    .filter((item) => item.kind === "file")
-    .map((item) => item.getAsFile())
-    .filter(isDroppedMedia);
-
-  // Read both standard views defensively. Consume copies already present in
-  // `files` so browsers exposing the same selection through both APIs do not
-  // upload everything twice, while an engine-specific extra item is retained.
-  const remainingFileCopies = new Map();
-  for (const file of files) {
-    const key = `${file.name}\n${file.size}\n${file.lastModified}\n${file.type}`;
-    remainingFileCopies.set(key, (remainingFileCopies.get(key) || 0) + 1);
-  }
-  for (const file of itemFiles) {
-    const key = `${file.name}\n${file.size}\n${file.lastModified}\n${file.type}`;
-    const remaining = remainingFileCopies.get(key) || 0;
-    if (remaining > 0) {
-      remainingFileCopies.set(key, remaining - 1);
-    } else {
-      files.push(file);
-    }
-  }
-  return files;
-}
-
-function setEditorDropActive(active) {
-  els.editorForm.classList.toggle("is-dragging-upload", Boolean(active) && !els.editorForm.hidden);
-}
-
-export function resetEditorDrop() {
-  state.editorDragDepth = 0;
-  setEditorDropActive(false);
-}
-
-export function handleEditorDragEnter(event) {
-  if (!acceptsEditorMediaDrop() || !transferHasMedia(event.dataTransfer)) return;
-  event.preventDefault();
-  state.editorDragDepth += 1;
-  setEditorDropActive(true);
-}
-
-export function handleEditorDragOver(event) {
-  if (!acceptsEditorMediaDrop() || !transferHasMedia(event.dataTransfer)) return;
-  event.preventDefault();
-  event.dataTransfer.dropEffect = "copy";
-  setEditorDropActive(true);
-}
-
-export function handleEditorDragLeave(event) {
-  if (!acceptsEditorMediaDrop() || !transferHasMedia(event.dataTransfer)) return;
-  event.preventDefault();
-  state.editorDragDepth = Math.max(0, state.editorDragDepth - 1);
-  if (state.editorDragDepth === 0) setEditorDropActive(false);
-}
-
-export async function handleEditorDrop(event) {
-  if (!acceptsEditorMediaDrop() || !transferHasMedia(event.dataTransfer)) return;
-  event.preventDefault();
-  const files = mediaFilesFromTransfer(event.dataTransfer);
-  resetEditorDrop();
-  if (!files.length) return;
-  await queueUploads(files, true);
 }
