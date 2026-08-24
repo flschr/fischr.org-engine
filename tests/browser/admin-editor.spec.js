@@ -47,6 +47,31 @@ test("admonition toolbar wraps selected text and previews the chosen type", asyn
   await expect(admonition.locator(".admonition-icon")).toBeVisible();
 });
 
+test("admonition Titel is pre-filled from the selection and needs no typing to confirm", async ({ page }) => {
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page);
+  await page.goto("/admin/");
+  await page.locator("#newEntryButtonLib").click();
+
+  const editor = page.locator(".cm-content");
+  await editor.click();
+  await page.keyboard.insertText("Bring warm clothes");
+  await editor.press("Shift+Home");
+  await page.getByRole("button", { name: "Weitere Einfügungen" }).click();
+  await page.getByRole("dialog", { name: "Weitere Einfügungen" }).getByRole("button", { name: "Hinweis einfügen" }).click();
+  const dialog = page.getByRole("dialog");
+
+  // The whole point: confirm without touching Typ or Titel at all.
+  await expect(dialog.getByLabel("Titel", { exact: true })).toHaveValue("Bring warm clothes");
+  await dialog.getByRole("button", { name: "Einfügen" }).click();
+
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Vorschau" }).click();
+  // NOTE is the default/first <option>, and its CSS class is "info" (the
+  // shared style bucket, not the marker name — see admonitions.js).
+  const admonition = page.locator("#previewPanel .admonition-info");
+  await expect(admonition).toContainText("Bring warm clothes");
+});
+
 test("select all in the article editor stays inside the article text", async ({ page }) => {
   await page.unroute("**/api/admin/auth/session");
   await mockAuthenticatedGithub(page);

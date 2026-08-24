@@ -2,7 +2,13 @@ import { ensureEditor } from "./17-editor.js";
 
 export async function insertAdmonitionFromDialog(editor = ensureEditor()) {
   if (!editor) return;
-  const options = await askAdmonitionOptions();
+  // Read once and reuse: the dialog pre-fills Titel from it (so a selection
+  // makes the dialog confirmable without typing anything), and the same text
+  // becomes the admonition body — both need to agree on what was selected at
+  // the moment the button was pressed, not re-read it separately later after
+  // focus has moved into the dialog's own fields.
+  const selectedText = editor.getSelectedText?.() || "";
+  const options = await askAdmonitionOptions(selectedText);
   if (!options) {
     editor.focus();
     return;
@@ -10,12 +16,12 @@ export async function insertAdmonitionFromDialog(editor = ensureEditor()) {
 
   const markdown = window.RWAdmonitions.buildAdmonitionMarkdown({
     ...options,
-    body: editor.getSelectedText?.() || ""
+    body: selectedText
   });
   editor.insertText(markdown, { block: true });
 }
 
-function askAdmonitionOptions() {
+function askAdmonitionOptions(selectedText = "") {
   return new Promise((resolve) => {
     const dialog = document.createElement("dialog");
     dialog.className = "dialog link-dialog";
@@ -48,6 +54,9 @@ function askAdmonitionOptions() {
     input.setAttribute("aria-label", "Titel");
     input.placeholder = "Gut zu wissen";
     input.required = true;
+    // A selection already has to be turned into a single line for the title
+    // field regardless — collapse newlines/whitespace the same way here.
+    if (selectedText.trim()) input.value = selectedText.trim().replace(/\s+/g, " ");
     titleLabel.append(titleText, input);
 
     const menu = document.createElement("menu");
@@ -86,5 +95,6 @@ function askAdmonitionOptions() {
     document.body.append(dialog);
     dialog.showModal();
     input.focus();
+    input.select();
   });
 }
