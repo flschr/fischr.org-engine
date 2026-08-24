@@ -265,6 +265,15 @@ test("the writing bar sits at the bottom of a phone and the article bar at the t
   expect(overflows).toBe(false);
   const articleOverflows = await page.locator(".editor-bar").evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(articleOverflows).toBe(false);
+  // The above only proves each bar doesn't overflow itself — not that it sits
+  // fully on screen. A row that fits its own box can still render past the
+  // viewport edge if an ancestor fails to constrain it (see the media
+  // toolbar bug this pattern missed: document.scrollWidth stayed put too,
+  // because html/body's overflow-x: hidden clips the bleed instead of
+  // reporting it as scrollable). Checking the bar's own right edge against
+  // the viewport catches that class of bug directly.
+  expect(Math.round(writing.x + writing.width)).toBeLessThanOrEqual(viewport.width);
+  expect(Math.round(article.x + article.width)).toBeLessThanOrEqual(viewport.width);
   for (const name of ["Fett (⌘B)", "Kursiv (⌘I)", "Link (⌘K)", "Bild oder Video einfügen", "Weitere Einfügungen"]) {
     await expect(bar.getByRole("button", { name })).toBeVisible();
   }
@@ -352,6 +361,11 @@ test("the stats range pills fit one row without scrolling", async ({ page }, tes
   const range = page.locator("#statsRange");
   const overflows = await range.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(overflows).toBe(false);
+  // Same reasoning as the media toolbar: this only proves the row doesn't
+  // overflow itself, not that .stats-head (same column-flip layout as the
+  // media/library toolbars) actually constrained it to the screen.
+  const rangeBox = await range.boundingBox();
+  expect(Math.round(rangeBox.x + rangeBox.width)).toBeLessThanOrEqual(page.viewportSize().width);
 
   // Accessible name survives the shortened label.
   await expect(page.getByRole("button", { name: "7 Tage" })).toBeVisible();
