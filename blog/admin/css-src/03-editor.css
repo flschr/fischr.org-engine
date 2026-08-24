@@ -23,6 +23,13 @@
      scrolling starts. */
   top: var(--workspace-pad-top);
   z-index: 12;
+  /* Its own compositing layer: without one, Chrome repaints a sticky element
+     from the main thread on every scroll frame instead of just moving an
+     existing layer, and on a fast trackpad scroll that repaint can lag a
+     frame behind the content scrolling underneath — background: var(--bg)
+     below is solid, but a lagging repaint can still show a frame of that
+     content through it before catching up. */
+  will-change: transform;
   display: flex;
   align-items: center;
   gap: 0.5rem;
