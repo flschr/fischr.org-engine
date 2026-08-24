@@ -35,6 +35,13 @@
      in dark mode, over yellow — never a fixed white that would vanish on the
      yellow fill). */
   --accent-contrast-weak: rgb(255 255 255 / 0.25);
+  /* Text/icon on a filled --accent surface that marks "you are here" (the
+     current nav destination), not an action — the one place that gets to
+     show both favicon colors at once instead of --accent-contrast's plain
+     white. In dark mode the fill is already yellow, so this collapses back
+     to --accent-contrast there (near-black on yellow is the same "both
+     colors together" mark, just with the roles already swapped). */
+  --accent-mark-ink: var(--accent-weak-2);
   --green: #15803d;
   --green-weak: #ecfdf3;
   /* Red carries two jobs that pull in opposite directions, so it is two tokens.
@@ -118,6 +125,7 @@
     --accent-rgb: 253 224 71;
     --accent-contrast: #14120c;
     --accent-contrast-weak: rgb(20 18 12 / 0.28);
+    --accent-mark-ink: var(--accent-contrast);
     --cm-selection: #443c1c;
     --green: #41c059;
     --green-weak: #1c3024;
@@ -131,7 +139,6 @@
     --brown: #cb945f;
     --brown-weak: #332719;
     --drop-veil: rgb(22 24 28 / 0.86);
-    --cm-selection: #393d72;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.25);
     --shadow: 0 16px 44px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.40);
   }

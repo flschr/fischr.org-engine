@@ -90,13 +90,16 @@
   font-weight: 550;
 }
 .nav-link:hover { background: var(--panel-2); color: var(--ink); }
+/* The current destination gets the favicon's own two colors together — a
+   filled black chip with yellow text — not the paler accent-weak tint used
+   for softer hints elsewhere. It reads as a mark, not just a tinted row. */
 .nav-link.is-active {
-  background: var(--accent-weak);
+  background: var(--accent);
   border-color: transparent;
-  color: var(--accent-ink);
+  color: var(--accent-mark-ink);
   font-weight: 600;
 }
-.nav-link.is-active .nav-icon { color: var(--accent); }
+.nav-link.is-active .nav-icon { color: var(--accent-mark-ink); }
 .nav-icon { display: inline-flex; flex: 0 0 1.3rem; color: var(--ink-faint); }
 .nav-icon svg { width: 1.3rem; height: 1.3rem; }
 .nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
