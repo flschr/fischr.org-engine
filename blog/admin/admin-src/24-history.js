@@ -24,10 +24,36 @@ function currentNavState() {
 
 export function pushNav() {
   if (state.navigating) return;
+  // A fresh nav entry starts clean — any guard tracked for whatever was open
+  // before belongs to a document that's no longer on top of the stack.
+  state.dirtyGuardPushed = false;
   try {
     history.pushState(currentNavState(), "");
   } catch (error) {
     // history may be unavailable in some embedded contexts — ignore
+  }
+}
+
+// A native back-swipe gesture commits and fires `popstate` only after its own
+// animation has already settled — by then, `handlePopState`'s "stay put" push
+// races a transition WebKit has decided is done, so it doesn't reliably take
+// (this is what broke when the dedicated back button — which went through a
+// synchronous click handler instead — was removed for the gesture in favor of
+// popstate alone). Pre-empting a real edit with a throwaway duplicate history
+// entry sidesteps the race entirely: the gesture only ever gets to consume the
+// harmless duplicate, which lands back on an unchanged view, giving our own
+// confirm dialog time to run before anything is actually left behind.
+export function ensureDirtyGuard() {
+  if (state.dirtyGuardPushed || state.navigating) return;
+  if (!((state.view === "editor" && editorIsDirty()) || (state.view === "social" && socialConfigDirty()))) return;
+  state.navigating = true;
+  try {
+    history.pushState(currentNavState(), "");
+    state.dirtyGuardPushed = true;
+  } catch (error) {
+    // ignore
+  } finally {
+    state.navigating = false;
   }
 }
 
@@ -83,17 +109,38 @@ export async function handlePopState(event) {
 
   const target = event.state || { rw: "library", collection: "posts" };
 
-  if ((state.view === "editor" && editorIsDirty()) || (state.view === "social" && socialConfigDirty())) {
+  // A pop consumes at most one entry. If a guard duplicate was on top, this
+  // pop only landed back on the real (still dirty) editor entry underneath
+  // it — not on whatever actually comes before it in the stack.
+  const guardConsumed = state.dirtyGuardPushed;
+  state.dirtyGuardPushed = false;
+
+  if (state.skipNextDirtyCheck) {
+    state.skipNextDirtyCheck = false;
+  } else if ((state.view === "editor" && editorIsDirty()) || (state.view === "social" && socialConfigDirty())) {
     const ok = await confirmLeaveEditor();
     if (!ok) {
-      // Stay put: re-push the editor state we just navigated away from.
+      // Stay put: re-arm the guard so the next swipe re-triggers this check.
       state.navigating = true;
       try {
         history.pushState(currentNavState(), "");
+        state.dirtyGuardPushed = true;
       } catch (error) {
         /* ignore */
       }
       state.navigating = false;
+      return;
+    }
+    if (guardConsumed) {
+      // Still sitting on the real editor entry, not the target the user
+      // actually swiped toward — one more back() reaches it. The dirty check
+      // is skipped there since leaving was just confirmed.
+      state.skipNextDirtyCheck = true;
+      try {
+        history.back();
+      } catch (error) {
+        /* ignore */
+      }
       return;
     }
   }

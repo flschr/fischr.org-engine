@@ -70,6 +70,8 @@ export const state = {
   publishPollController: null,
   queueRefreshRequest: 0,
   navigating: false,
+  dirtyGuardPushed: false,
+  skipNextDirtyCheck: false,
   mediaReferenceIndex: new Map(),
   mediaReferenceSignature: "",
   mediaReferenceRequest: 0,

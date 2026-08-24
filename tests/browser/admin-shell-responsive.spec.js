@@ -209,6 +209,34 @@ test("mobile editor hides the tab bar and leaves the way out to the platform", a
   await expect(page.locator("#sidebar")).toBeVisible();
 });
 
+test("swiping back out of a dirty editor asks before discarding it", async ({ page }) => {
+  await page.goto("/admin/");
+  const depth = () => page.evaluate(() => history.length);
+  const start = await depth();
+
+  await page.locator("#newEntryButtonLib").click();
+  await expect(page.locator("#editorForm")).toBeVisible();
+  expect(await depth()).toBe(start + 1);
+
+  const editor = page.locator(".cm-content");
+  await editor.click();
+  await page.keyboard.insertText("Unsaved words");
+
+  // The first edit arms a throwaway duplicate history entry (ensureDirtyGuard,
+  // 24-history.js) so a swipe-back only ever consumes that stand-in, giving
+  // the confirm dialog below time to run before anything is actually left —
+  // see the "no confirmation before losing changes" regression this covers.
+  await expect.poll(depth).toBe(start + 2);
+
+  await page.goBack();
+  await expect(page.locator("#unsavedDialog")).toBeVisible();
+  await expect(page.locator("#editorForm")).toBeVisible();
+
+  await page.locator("#unsavedDialog").getByRole("button", { name: "Verwerfen" }).click();
+  await expect(page.locator("#editorForm")).toBeHidden();
+  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+});
+
 test("desktop keeps the sidebar and needs no back button", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name.startsWith("mobile"), "Desktop-only interaction");
   await page.goto("/admin/");

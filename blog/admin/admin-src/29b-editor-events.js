@@ -11,6 +11,7 @@ import { cancelSocialImagePick, startSocialImagePick } from "./15-media-referenc
 import { EDITOR_CHANGED, ensureEditor, renderEditorBody, setEditorMode, syncEditorFromVisible } from "./17-editor.js";
 import { handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, handleEditorDrop, resetEditorDrop } from "./17a-editor-drop.js";
 import { confirmLeaveEditor } from "./19-recovery.js";
+import { ensureDirtyGuard } from "./24-history.js";
 import { renderEditorMetaLine, resizeTitleInput, syncPublishButton } from "./20-editor-fields.js";
 import { renderEntryList } from "./25-entries.js";
 import { newEntry, queueEntryDelete } from "./25a-entry-actions.js";
@@ -59,6 +60,14 @@ export function wireEditorEvents() {
   const syncFromKeystroke = () => syncPublishButton({ fromKeystroke: true });
   document.addEventListener(EDITOR_CHANGED, syncFromKeystroke);
   els.titleInput.addEventListener("input", syncFromKeystroke);
+
+  // Arms the swipe-back guard (24-history.js) on the first edit of a session.
+  // Delegated on the form rather than on each field, so title/slug/date/draft/
+  // category/tags all arrive here for free; the body editor's own change event
+  // is listed explicitly since it isn't a native input inside this form.
+  document.addEventListener(EDITOR_CHANGED, ensureDirtyGuard);
+  els.editorForm.addEventListener("input", ensureDirtyGuard);
+  els.editorForm.addEventListener("change", ensureDirtyGuard);
 
   els.toggleMetaButton.addEventListener("click", () => {
     syncAutoSlug();
