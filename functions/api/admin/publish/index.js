@@ -69,11 +69,13 @@ export async function handlePublishStart(context, { readSession: sitzungLesen, f
     requestId: String(payload?.requestId || ""),
     mainSha: String(payload?.mainSha || ""),
     draftSha: String(payload?.draftSha || ""),
-    changeCount: Number(payload?.changeCount || 0)
+    changeCount: Number(payload?.changeCount || 0),
+    // Was die Warteschlange ausgewählt hat. Fehlt sie, geht alles mit.
+    paths: Array.isArray(payload?.paths) ? payload.paths.map((pfad) => String(pfad)) : null
   };
 
   const fehlend = Object.entries(anfrage)
-    .filter(([schluessel, wert]) => schluessel !== "changeCount" && !wert)
+    .filter(([schluessel, wert]) => !["changeCount", "paths"].includes(schluessel) && !wert)
     .map(([schluessel]) => schluessel);
   if (fehlend.length) {
     return jsonResponse({ message: `Fehlende Angaben: ${fehlend.join(", ")}` }, { status: 400 });

@@ -112,3 +112,19 @@ export const { findHtmlMedia, findMarkdownImages, findMediaShortcuts, visibleMar
   stripMarkdownUrl,
   extension
 });
+
+// Welche Medien ein Eintrag benennt — als Karte über die Warteschlange.
+//
+// Der Referenz-Index oben beantwortet die andere Richtung (welcher Artikel benutzt dieses Bild)
+// und stützt sich dafür auf den Bau-Index für alles Veröffentlichte. Für die Auswahl in der
+// Warteschlange zählt nur, was in der *anstehenden* Fassung steht: Ein Bild, das der Artikel
+// gerade verloren hat, muss nicht mitreisen, und eines, das er gerade bekommen hat, sehr wohl.
+// Beides steht im Inhalt, den die Warteschlange ohnehin geladen hat.
+export function medienJeAenderung(changes = []) {
+  const karte = new Map();
+  changes.forEach((change) => {
+    if (change.collection === "media" || !change.content) return;
+    karte.set(change.path, extractMediaReferences(change.content).map((referenz) => referenz.publicPath));
+  });
+  return karte;
+}

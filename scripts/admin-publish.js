@@ -27,6 +27,9 @@ const requestId = process.env.PUBLISH_REQUEST_ID || "";
 const expectedMainSha = process.env.MAIN_SHA || "";
 const expectedDraftSha = process.env.DRAFT_SHA || "";
 const requestedChangeCount = process.env.CHANGE_COUNT || "";
+// Die Auswahl aus der Warteschlange. Leer heisst „alles" — so verhält sich eine Veröffentlichung
+// ohne Auswahl genau wie vorher, und ein älterer Admin kann weiter senden.
+const auswahl = leseAuswahl(process.env.PUBLISH_PATHS);
 const reconciliationAttempts = Number(process.env.RECONCILE_ATTEMPTS || 8);
 const safelyConcurrentMainPaths = [
   /^automation\//,
@@ -34,6 +37,22 @@ const safelyConcurrentMainPaths = [
 ];
 
 main();
+
+function leseAuswahl(rohwert) {
+  const text = String(rohwert || "").trim();
+  if (!text) return null;
+  let pfade;
+  try {
+    pfade = JSON.parse(text);
+  } catch {
+    throw new Error("PUBLISH_PATHS ist kein gültiges JSON.");
+  }
+  if (!Array.isArray(pfade)) throw new Error("PUBLISH_PATHS muss eine Liste von Pfaden sein.");
+  // Eine leere Liste ist etwas anderes als keine Liste: Sie hiesse „nichts senden", und das ist
+  // kein Zustand, den jemand gemeint haben kann — die Veröffentlichung wäre folgenlos.
+  if (!pfade.length) throw new Error("PUBLISH_PATHS ist leer — es gäbe nichts zu veröffentlichen.");
+  return new Set(pfade.map((pfad) => String(pfad)));
+}
 
 function main() {
   git(["config", "user.name", "github-actions[bot]"]);
@@ -74,7 +93,7 @@ function preparePublishCommit() {
   // Start from the exact main commit the admin reviewed and apply only the
   // reviewed main..drafts delta. Newer drafts commits are intentionally absent.
   checkoutBranch(workBranch, currentMainSha);
-  applyPathDelta(expectedMainSha, expectedDraftSha, managedPaths);
+  applyPathDelta(expectedMainSha, expectedDraftSha, managedPaths, auswahl);
   assertReviewedImagesNormalized();
   assertVideoDerivativesPrepared();
   git(["add", "-A", "--", "."]);
@@ -84,7 +103,7 @@ function preparePublishCommit() {
     console.log("No managed changes to publish.");
   } else {
     const tree = git(["write-tree"]);
-    const changeCount = requestedChangeCount || countChanges(expectedMainSha, expectedDraftSha, managedPaths);
+    const changeCount = requestedChangeCount || countChanges(expectedMainSha, expectedDraftSha, managedPaths, auswahl);
     const message = `Publish ${changeCount} change${String(changeCount) === "1" ? "" : "s"} [admin-publish] [skip ci]`;
     finalCommit = git(["commit-tree", tree, "-p", currentMainSha, "-m", message]);
   }
@@ -92,7 +111,7 @@ function preparePublishCommit() {
   console.log(`Prepared transactional publish ${requestId}: ${finalCommit} from ${currentMainSha}.`);
   writeOutput("final_sha", finalCommit);
   writeOutput("base_sha", currentMainSha);
-  writeOutput("validation_mode", validationMode(diffPaths(expectedMainSha, expectedDraftSha, managedPaths)));
+  writeOutput("validation_mode", validationMode(diffPaths(expectedMainSha, expectedDraftSha, managedPaths, auswahl)));
 }
 
 function pushFinalCommit() {
@@ -115,7 +134,7 @@ function pushFinalCommit() {
         );
       }
       checkoutBranch(`admin-publish-rebase-${process.pid}`, currentMainSha);
-      applyPathDelta(baseSha, preparedCommit, managedPaths);
+      applyPathDelta(baseSha, preparedCommit, managedPaths, auswahl);
       const tree = git(["write-tree"]);
       finalCommit = git([
         "commit-tree", tree,
@@ -172,7 +191,7 @@ function assertMainCompatible() {
 }
 
 function reviewedDeltaAlreadyPublished(currentMainSha) {
-  const reviewedPaths = diffPaths(expectedMainSha, expectedDraftSha, managedPaths);
+  const reviewedPaths = diffPaths(expectedMainSha, expectedDraftSha, managedPaths, auswahl);
   return reviewedPaths.length > 0 && reviewedPaths.every((changedPath) => {
     return blobAt(currentMainSha, changedPath) === blobAt(expectedDraftSha, changedPath);
   });
@@ -192,7 +211,7 @@ function assertReviewedDraftExists() {
 // an unnormalized upload passed straight through into the published tree.
 function assertReviewedImagesNormalized() {
   const rasterExtensions = /\.(?:avif|hei[cf]|jpe?g|png|tiff?|webp)$/i;
-  const changedImages = diffPaths(expectedMainSha, expectedDraftSha, ["blog/assets/images"]);
+  const changedImages = diffPaths(expectedMainSha, expectedDraftSha, ["blog/assets/images"], auswahl);
   const unnormalized = changedImages.filter(
     (imagePath) => rasterExtensions.test(imagePath)
       && !imagePath.toLowerCase().endsWith(".webp")
@@ -231,13 +250,13 @@ function assertVideoDerivativesPrepared() {
 
 function reviewedVideoBlobPaths() {
   const videoExtensions = /\.(?:m4v|mov|mp4|webm)$/i;
-  return diffPaths(expectedMainSha, expectedDraftSha, ["blog/assets/videos"])
+  return diffPaths(expectedMainSha, expectedDraftSha, ["blog/assets/videos"], auswahl)
     .filter((videoPath) => videoExtensions.test(videoPath) && blobAt(expectedDraftSha, videoPath))
     .map((videoPath) => `/${videoPath.replace(/^blog\//, "")}`);
 }
 
 function reviewedVideoUploadPaths() {
-  return diffPaths(expectedMainSha, expectedDraftSha, ["automation/media-uploads"])
+  return diffPaths(expectedMainSha, expectedDraftSha, ["automation/media-uploads"], auswahl)
     .filter((recordPath) => recordPath.endsWith(".json") && blobAt(expectedDraftSha, recordPath))
     .map((recordPath) => {
       try {

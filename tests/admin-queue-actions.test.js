@@ -120,3 +120,83 @@ test("Medien tragen ihre eigene Aktion und fragen nichts nach", async () => {
   const gelesen = await beschriften([{ path: "blog/assets/images/uploads/x.webp", kind: "upsert", sha: "m", collection: "media" }]);
   assert.deepEqual(gelesen, ["medien"]);
 });
+
+// --- Auswahl ---------------------------------------------------------------
+//
+// Der gefährliche Teil ist nicht die Kaste, sondern was mit den Medien passiert. Ein Artikel
+// ohne sein Bild ergibt eine kaputte Seite; ein Bild ohne seinen Artikel ist eine Datei, die
+// niemand sieht. Nur der erste Fall richtet Schaden an.
+
+const artikel = (pfad, aktion = "aktualisieren") => ({ path: pfad, collection: "posts", aktion });
+const medium = (pfad, publicPath) => ({ path: pfad, collection: "media", aktion: "medien", publicPath });
+
+function senden(changes, abgewaehlt = [], medien = {}) {
+  return aktionen.pfadeZumSenden(
+    changes,
+    new Set(abgewaehlt),
+    new Map(Object.entries(medien))
+  );
+}
+
+test("ohne Abwahl geht alles mit", () => {
+  const changes = [artikel("blog/posts/a.md"), medium("blog/assets/images/uploads/x.webp", "/assets/images/uploads/x.webp")];
+  assert.deepEqual(senden(changes), ["blog/assets/images/uploads/x.webp", "blog/posts/a.md"]);
+});
+
+test("ein abgewählter Artikel bleibt liegen", () => {
+  const changes = [artikel("blog/posts/a.md"), artikel("blog/posts/b.md")];
+  assert.deepEqual(senden(changes, ["blog/posts/a.md"]), ["blog/posts/b.md"]);
+});
+
+// Der Schadensfall: Ginge das Bild nicht mit, stünde der Artikel auf main mit einer Bildadresse,
+// hinter der nichts liegt.
+test("das Bild eines gewählten Artikels reist zwingend mit", () => {
+  const changes = [artikel("blog/posts/a.md"), medium("blog/assets/images/uploads/x.webp", "/assets/images/uploads/x.webp")];
+  const gesendet = senden(changes, [], { "blog/posts/a.md": ["/assets/images/uploads/x.webp"] });
+  assert.ok(gesendet.includes("blog/assets/images/uploads/x.webp"));
+});
+
+test("ein Bild, auf das nur abgewählte Artikel zeigen, bleibt liegen", () => {
+  const changes = [artikel("blog/posts/a.md"), medium("blog/assets/images/uploads/x.webp", "/assets/images/uploads/x.webp")];
+  const gesendet = senden(changes, ["blog/posts/a.md"], { "blog/posts/a.md": ["/assets/images/uploads/x.webp"] });
+  assert.deepEqual(gesendet, []);
+});
+
+// Zwei Artikel, ein Bild: Solange einer von beiden mitgeht, muss das Bild mit.
+test("ein geteiltes Bild folgt dem gewählten Artikel", () => {
+  const changes = [
+    artikel("blog/posts/a.md"),
+    artikel("blog/posts/b.md"),
+    medium("blog/assets/images/uploads/x.webp", "/assets/images/uploads/x.webp")
+  ];
+  const medien = { "blog/posts/a.md": ["/assets/images/uploads/x.webp"], "blog/posts/b.md": ["/assets/images/uploads/x.webp"] };
+  assert.deepEqual(
+    senden(changes, ["blog/posts/a.md"], medien),
+    ["blog/assets/images/uploads/x.webp", "blog/posts/b.md"]
+  );
+});
+
+// Ein Bild, das kein Artikel benennt, ist auf main höchstens überflüssig — es bleibt deshalb
+// dabei, statt eine Auswahl zu erfinden, die niemand getroffen hat.
+test("ein unreferenziertes Bild reist mit", () => {
+  const changes = [artikel("blog/posts/a.md"), medium("blog/assets/images/uploads/frei.webp", "/assets/images/uploads/frei.webp")];
+  const gesendet = senden(changes, ["blog/posts/a.md"], {});
+  assert.deepEqual(gesendet, ["blog/assets/images/uploads/frei.webp"]);
+});
+
+// Was öffentlich nichts bewirkt, wird nicht gezeigt und kann daher nicht abgewählt werden. Es
+// muss trotzdem mit, sonst laufen drafts und main dauerhaft auseinander.
+test("wirkungslose Änderungen reisen immer mit", () => {
+  const changes = [
+    { path: "blog/posts/entwurf.md", collection: "posts", aktion: aktionen.OHNE_WIRKUNG },
+    artikel("blog/posts/a.md")
+  ];
+  assert.deepEqual(senden(changes, ["blog/posts/a.md"]), ["blog/posts/entwurf.md"]);
+});
+
+test("erzwungene Medien nennt genau die, die ein gewählter Artikel braucht", () => {
+  const changes = [artikel("blog/posts/a.md"), artikel("blog/posts/b.md")];
+  const medien = { "blog/posts/a.md": ["/bild-a.webp"], "blog/posts/b.md": ["/bild-b.webp"] };
+  const erzwungen = aktionen.erzwungeneMedien(changes, new Set(["blog/posts/b.md"]), new Map(Object.entries(medien)));
+  assert.deepEqual([...erzwungen], ["/bild-a.webp"]);
+});

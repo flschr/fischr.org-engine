@@ -71,3 +71,48 @@ export async function beschrifteAktionen(changes, mainMap, { index, istEntwurf }
     change.aktion = queueAktion({ warOeffentlich, wirdOeffentlich });
   }));
 }
+
+// Welche Pfade eine Veröffentlichung mitnimmt, wenn nicht alles gewählt ist.
+//
+// Abgewählt wird auf der Ebene, auf der jemand denkt: Artikel und Seiten. Medien tragen keine
+// eigene Kasten — sie sind Zubehör, und eine Auswahl auf ihnen könnte nur schaden. Ein Artikel
+// ohne sein Bild ergibt eine kaputte Seite; ein Bild ohne seinen Artikel ist eine Datei, die
+// niemand sieht.
+//
+// Daraus folgen drei Regeln:
+//
+//   Ein Medium, das ein gewählter Artikel braucht, reist mit — immer.
+//   Ein Medium, auf das nur abgewählte Artikel zeigen, bleibt liegen.
+//   Alles übrige reist mit: Was öffentlich nichts bewirkt, hält sonst `drafts` und `main`
+//   dauerhaft auseinander, und ein unreferenziertes Bild auf `main` schadet niemandem.
+export function pfadeZumSenden(changes, abgewaehlt, medienJeAenderung) {
+  const auswaehlbar = (change) => change.collection !== "media" && istWirksam(change.aktion);
+  const medienVon = (change) => medienJeAenderung.get(change.path) || [];
+
+  const benoetigt = new Set();
+  const nurAbgewaehlt = new Set();
+  changes.filter(auswaehlbar).forEach((change) => {
+    const ziel = abgewaehlt.has(change.path) ? nurAbgewaehlt : benoetigt;
+    medienVon(change).forEach((publicPath) => ziel.add(publicPath));
+  });
+
+  return changes
+    .filter((change) => {
+      if (auswaehlbar(change)) return !abgewaehlt.has(change.path);
+      if (change.collection !== "media") return true;
+      const publicPath = change.publicPath || "";
+      return benoetigt.has(publicPath) || !nurAbgewaehlt.has(publicPath);
+    })
+    .map((change) => change.path)
+    .sort();
+}
+
+// Für die Anzeige: Medien, die ein gewählter Artikel braucht. Sie tragen deshalb keine Kasten,
+// und die Warteschlange sagt, warum.
+export function erzwungeneMedien(changes, abgewaehlt, medienJeAenderung) {
+  const benoetigt = new Set();
+  changes
+    .filter((change) => change.collection !== "media" && istWirksam(change.aktion) && !abgewaehlt.has(change.path))
+    .forEach((change) => (medienJeAenderung.get(change.path) || []).forEach((publicPath) => benoetigt.add(publicPath)));
+  return benoetigt;
+}

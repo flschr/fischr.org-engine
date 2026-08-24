@@ -37,7 +37,7 @@ const PAUSE = "10 seconds";
 // hintereinander. Ein echtes Schloss (eine Zeile in D1 oder ein Durable Object) gehört in die
 // Stufe, die den Admin auf diesen Weg umzieht — vorher hat es nichts zu bewachen.
 export async function fuehrePublishAus(event, step, { fetch: holen = fetch, buch = null, jetzt = () => Math.floor(Date.now() / 1000) } = {}) {
-  const { repository, requestId, mainSha, draftSha, changeCount, token } = event.payload;
+  const { repository, requestId, mainSha, draftSha, changeCount, token, paths = null } = event.payload;
   const github = (pfad, optionen) => anfrage(pfad, token, optionen, holen);
 
   // Jeder Ausgang wird ins Buch geschrieben, bevor er zurückgegeben wird — auch der frühe.
@@ -79,7 +79,10 @@ export async function fuehrePublishAus(event, step, { fetch: holen = fetch, buch
           request_id: requestId,
           main_sha: mainSha,
           draft_sha: draftSha,
-          change_count: String(changeCount)
+          change_count: String(changeCount),
+          // Die Auswahl aus der Warteschlange, als JSON. Leer heisst alles — so verhält sich
+          // eine Veröffentlichung ohne Auswahl genau wie vorher.
+          paths: paths?.length ? JSON.stringify(paths) : ""
         }
       }
     });

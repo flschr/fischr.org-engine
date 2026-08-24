@@ -177,10 +177,13 @@ test("immediate admin sync sends the exact reviewed commits, not whatever is cur
 
   assert.match(syncOutbox, /const draftsHead = state\.tree && state\.treeHeadSha\s*\? state\.treeHeadSha/);
   assert.match(syncOutbox, /const mainHead = state\.mainTree && state\.mainTreeHeadSha\s*\? state\.mainTreeHeadSha/);
-  assert.match(syncOutbox, /starteVeroeffentlichung\(\{ requestId, mainHead, draftsHead, changeCount: changes\.length \}\)/);
+  assert.match(syncOutbox, /starteVeroeffentlichung\(\{\s*requestId, mainHead, draftsHead, changeCount: changes\.length, paths\s*\}\)/);
+  // Ohne Abwahl geht keine Pfadliste raus — der Bau behandelt „keine Liste" als „alles" und
+  // verhält sich damit exakt wie vorher.
+  assert.match(syncOutbox, /const paths = state\.queueAbgewaehlt\.size/);
 
   // Und der Start geht an den eigenen Endpunkt, nicht mehr per Dispatch aus dem Browser.
-  const starter = extractBlock(source, "async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount })");
+  const starter = extractBlock(source, "async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount, paths })");
   assert.match(starter, /fetch\("\/api\/admin\/publish"/);
   assert.match(starter, /mainSha: mainHead/);
   assert.match(starter, /draftSha: draftsHead/);

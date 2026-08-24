@@ -25,6 +25,9 @@ function extractFunction(sourceText, anchor) {
 function runSyncOutbox(changes) {
   const source = extractFunction(adminSource(), "async function syncOutbox()");
   const state = {
+    // Nichts abgewählt: Der Regelfall, in dem sich eine Veröffentlichung genau wie vor der
+    // Auswahl verhält.
+    queueAbgewaehlt: new Set(),
     publishInFlight: false,
     mediaProcessing: false,
     tree: {},
@@ -43,7 +46,7 @@ function runSyncOutbox(changes) {
     "guardMediaReadyForPublish", "recoverPendingMediaOperations", "renderQueue", "hasGithubAccess",
     "requireGithubAccess", "openQueue", "focusGithubConnection", "ensureDraftsBranch", "github",
     "repo", "window", "changeSignature", "persistPublishRequest", "renderSyncState",
-    "pollPublishCompletion", "starteVeroeffentlichung",
+    "pollPublishCompletion", "starteVeroeffentlichung", "istWirksam", "pfadeZumSenden", "medienJeAenderung",
     `return (${source});`
   )(
     state,
@@ -68,7 +71,10 @@ function runSyncOutbox(changes) {
     (token, request) => polled.push({ token, request }),
     // Seit der Umstellung startet der Admin nicht mehr selbst per Dispatch, sondern über den
     // eigenen Endpunkt. Was hier gezählt wird, ist damit der Start, nicht mehr der Dispatch.
-    async (anfrage) => { dispatches.push({ endpoint: "/api/admin/publish", options: { body: anfrage } }); return { id: "wf-1" }; }
+    async (anfrage) => { dispatches.push({ endpoint: "/api/admin/publish", options: { body: anfrage } }); return { id: "wf-1" }; },
+    () => true,
+    () => [],
+    () => new Map()
   );
   return syncOutbox().then(() => ({ dispatches, statuses, persisted, polled, state }));
 }

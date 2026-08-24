@@ -253,3 +253,38 @@ test("ohne Buch läuft der Ablauf unverändert", async () => {
   const ergebnis = await lauf.fuehrePublishAus(ereignis(), step, { fetch: holen });
   assert.equal(ergebnis.status, "fertig");
 });
+
+// Und dieselbe Auswahl muss die letzte Schicht erreichen: die Eingaben des Actions-Laufs.
+// Bis hierher hat sie vier Stationen hinter sich, und jede hätte sie fallen lassen können.
+test("die Auswahl erreicht die Eingaben des Baus", async () => {
+  const { step } = stepStub();
+  const eingaben = [];
+  const { holen } = githubStub();
+  const mitschnitt = async (url, optionen = {}) => {
+    if (url.includes("/dispatches")) eingaben.push(JSON.parse(optionen.body).inputs);
+    return holen(url, optionen);
+  };
+
+  await lauf.fuehrePublishAus(
+    ereignis({ paths: ["blog/posts/a.md"] }),
+    step,
+    { fetch: mitschnitt }
+  );
+
+  assert.equal(eingaben.length, 1);
+  assert.equal(eingaben[0].paths, '["blog/posts/a.md"]');
+});
+
+// Ohne Auswahl bleibt die Eingabe leer — und leer heisst im Bau „alles", nicht „nichts".
+test("ohne Auswahl bleibt die Eingabe leer", async () => {
+  const { step } = stepStub();
+  const eingaben = [];
+  const { holen } = githubStub();
+  const mitschnitt = async (url, optionen = {}) => {
+    if (url.includes("/dispatches")) eingaben.push(JSON.parse(optionen.body).inputs);
+    return holen(url, optionen);
+  };
+
+  await lauf.fuehrePublishAus(ereignis(), step, { fetch: mitschnitt });
+  assert.equal(eingaben[0].paths, "");
+});

@@ -38,6 +38,10 @@ export const state = {
   searchIndexRequest: 0,
   searchPendingTexts: new Map(),
   changes: new Map(),
+  // Abgewählt statt ausgewählt: Was neu in die Warteschlange kommt, ist damit von selbst dabei.
+  // Andersherum müsste jede neue Änderung erst angehakt werden, und wer das übersieht, sendet
+  // weniger als er glaubt — der leisere und deshalb schlimmere Fehler.
+  queueAbgewaehlt: new Set(),
   current: null,
   autoSlug: false,
   bodyMarkdown: "",

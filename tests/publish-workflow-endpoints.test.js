@@ -106,6 +106,9 @@ test("eine vollständige Anfrage startet eine Instanz und gibt ihre Kennung zur�
     mainSha: "aaa",
     draftSha: "bbb",
     changeCount: 3,
+    // Ohne Auswahl geht alles mit — das ist etwas anderes als eine leere Auswahl, die nichts
+    // veröffentlichen würde.
+    paths: null,
     repository: "example/example-blog",
     token: "gh-token"
   });
@@ -403,4 +406,24 @@ test("der Proxy lässt genau die Endpunkte durch, die der Admin für den Status 
   assert.equal(isAllowedEndpoint("actions/workflows/build.yml/dispatches"), false);
   assert.equal(isAllowedEndpoint("actions/runs"), false);
   assert.equal(isAllowedEndpoint("../secrets"), false);
+});
+
+// Die Auswahl aus der Warteschlange reist bis in den Bau. Sie durchquert vier Schichten —
+// Admin, Endpunkt, Workflow, Actions-Eingabe —, und jede davon kann sie stillschweigend fallen
+// lassen: Dann veröffentlicht der Bau alles, obwohl jemand etwas abgewählt hat.
+test("eine Auswahl wird an die Instanz durchgereicht", async () => {
+  const { binding, erzeugt } = workflowStub();
+  const antwort = await start.handlePublishStart(
+    {
+      request: anfrage({
+        requestId: "r1", mainSha: "aaa", draftSha: "bbb", changeCount: 2,
+        paths: ["blog/posts/a.md", "blog/assets/images/uploads/x.webp"]
+      }),
+      env: umgebung(binding)
+    },
+    angemeldet
+  );
+
+  assert.equal(antwort.status, 202);
+  assert.deepEqual(erzeugt[0].params.paths, ["blog/posts/a.md", "blog/assets/images/uploads/x.webp"]);
 });

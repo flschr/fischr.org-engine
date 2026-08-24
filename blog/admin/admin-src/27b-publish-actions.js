@@ -1,4 +1,6 @@
 import { repo } from "./00-konstanten.js";
+import { istWirksam, pfadeZumSenden } from "./04c-queue-actions.js";
+import { medienJeAenderung } from "./15a-media-reference-index.js";
 import { github } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
 import { setBusy, showStatus } from "./03-status.js";
@@ -14,12 +16,12 @@ import { changeSignature, openQueue, renderQueue } from "./27c-queue-render.js";
 // Ein veralteter Stand kommt als 409 zurück und ist kein Ausfall, sondern eine Auskunft: In der
 // Zwischenzeit wurde etwas anderes veröffentlicht. Sie muss als solche ankommen, sonst sucht man
 // den Fehler bei sich.
-async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount }) {
+async function starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount, paths }) {
   const antwort = await fetch("/api/admin/publish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
-    body: JSON.stringify({ requestId, mainSha: mainHead, draftSha: draftsHead, changeCount })
+    body: JSON.stringify({ requestId, mainSha: mainHead, draftSha: draftsHead, changeCount, paths })
   });
 
   if (antwort.ok) return antwort.json().catch(() => ({}));
@@ -52,6 +54,14 @@ export async function syncOutbox() {
   if (!changes.length) {
     showStatus("No pending changes.");
     renderQueue();
+    return;
+  }
+  // Alles abgewählt heisst nicht „nichts veröffentlichen": Es liefe ein voller Bau samt Deploy
+  // für einen Stand, der sich öffentlich nicht unterscheidet. Wer hier landet, hat sich vertan.
+  const wirksame = changes.filter((change) => istWirksam(change.aktion ?? "medien"));
+  if (wirksame.length && wirksame.every((change) => state.queueAbgewaehlt.has(change.path))) {
+    showStatus("Nichts ausgewählt — mindestens eine Änderung muss zum Senden angehakt sein.", "error");
+    await openQueue();
     return;
   }
   if (!hasGithubAccess()) {
@@ -101,7 +111,15 @@ export async function syncOutbox() {
     // das fiel erst im Bau auf.
     // Die Kennung der Instanz gehört in die Anfrage: Sie ist der einzige Faden zurück zu dem
     // Vorgang, falls nie ein Actions-Lauf erscheint — und sie überlebt so auch ein Neuladen.
-    const gestartet = await starteVeroeffentlichung({ requestId, mainHead, draftsHead, changeCount: changes.length });
+    // Ohne Abwahl geht keine Pfadliste raus. Das ist nicht dasselbe wie eine Liste, die zufällig
+    // alles enthält: Der Bau behandelt „keine Liste" als „alles" und verhält sich damit exakt
+    // wie vorher — eine Auswahl, die niemand getroffen hat, kann so auch nichts verändern.
+    const paths = state.queueAbgewaehlt.size
+      ? pfadeZumSenden(changes, state.queueAbgewaehlt, medienJeAenderung(changes))
+      : null;
+    const gestartet = await starteVeroeffentlichung({
+      requestId, mainHead, draftsHead, changeCount: changes.length, paths
+    });
     request.workflowId = gestartet?.id || "";
     state.publishInFlight = true;
     state.publishStartedCount = changes.length;
