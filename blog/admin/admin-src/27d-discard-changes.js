@@ -5,6 +5,7 @@
 // und wie beginnt eine. Verwerfen ist der dritte Fall — und der einzige, der Arbeit wegwirft.
 
 import { repo } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { github } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
 import { setBusy, showStatus } from "./03-status.js";
@@ -22,25 +23,25 @@ export async function discardAllChanges() {
   await waitForMediaCommits();
   const changes = await getAllChanges();
   if (!changes.length) return;
-  if (!guardMediaIdle("Alle Änderungen verwerfen")) return;
+  if (!guardMediaIdle(t("action.discardAllChanges"))) return;
   const confirmedChangeSet = changeSetSignature(changes);
   const confirmedDraftHead = state.treeHeadSha;
   const visibleCount = visibleQueueChanges(changes).length;
   const confirmed = await askDiscardAction({
-    title: "Discard all changes?",
+    title: t("queue.discardAllTitle"),
     text: visibleCount === 1
-      ? "1 change is permanently removed from the queue."
-      : `${visibleCount} changes are permanently removed from the queue.`,
-    actionLabel: "Discard all"
+      ? t("queue.discardAllBodySingular")
+      : t("queue.discardAllBodyPlural", { count: visibleCount }),
+    actionLabel: t("queue.discardAllAction")
   });
   if (!confirmed) return;
   setBusy(true);
   try {
     const confirmedChanges = await loadFreshChanges();
     if (!confirmedChanges.length) return;
-    if (!guardMediaIdle("Alle Änderungen verwerfen")) return;
+    if (!guardMediaIdle(t("action.discardAllChanges"))) return;
     if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedChanges) !== confirmedChangeSet) {
-      showStatus("Die Warteschlange wurde zwischenzeitlich aktualisiert. Bitte erneut prüfen und verwerfen.", "error");
+      showStatus(t("queue.staleQueueError"), "error");
       return;
     }
     // Create an ordinary forward-moving snapshot commit whose tree equals
@@ -70,9 +71,9 @@ export async function discardAllChanges() {
     state.changeCache = null;
     await loadChanges();
     await refreshCurrentSilent();
-    showStatus("All changes discarded.");
+    showStatus(t("queue.allDiscarded"));
   } catch (error) {
-    showStatus(`Verwerfen fehlgeschlagen — möglicherweise wurde parallel gespeichert. Bitte Queue neu laden: ${error.message}`, "error");
+    showStatus(t("queue.discardFailed", { error: error.message }), "error");
   } finally {
     setBusy(false);
     renderQueue();
@@ -88,34 +89,34 @@ export async function discardUnusedMedia() {
   if (!changes.length) return;
   const orphans = orphanMediaChanges();
   if (!orphans.length) return;
-  if (!guardMediaIdle("Unbenutzte Uploads verwerfen")) return;
+  if (!guardMediaIdle(t("action.discardUnusedUploads"))) return;
   const confirmedOrphanSet = changeSetSignature(orphans);
   const confirmedDraftHead = state.treeHeadSha;
   const confirmed = await askDiscardAction({
-    title: "Discard unused uploads?",
+    title: t("queue.discardUnusedTitle"),
     text: orphans.length === 1
-      ? "1 Bild, das in keinem Artikel verwendet wird, wird aus der Queue entfernt."
-      : `${orphans.length} Bilder, die in keinem Artikel verwendet werden, werden aus der Queue entfernt.`,
-    actionLabel: "Verwerfen"
+      ? t("queue.discardUnusedBodySingular")
+      : t("queue.discardUnusedBodyPlural", { count: orphans.length }),
+    actionLabel: t("action.discard")
   });
   if (!confirmed) return;
   setBusy(true);
   try {
     const confirmedChanges = await loadFreshChanges();
     if (!confirmedChanges.length) return;
-    if (!guardMediaIdle("Unbenutzte Uploads verwerfen")) return;
+    if (!guardMediaIdle(t("action.discardUnusedUploads"))) return;
     const confirmedOrphans = orphanMediaChanges();
     if (!confirmedOrphans.length) return;
     if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedOrphans) !== confirmedOrphanSet) {
-      showStatus("Die unbenutzten Uploads wurden zwischenzeitlich aktualisiert. Bitte erneut prüfen und verwerfen.", "error");
+      showStatus(t("queue.staleUnusedError"), "error");
       return;
     }
     await discardUnusedMediaChanges(confirmedOrphans);
     await loadChanges();
     await refreshCurrentSilent();
-    showStatus(confirmedOrphans.length === 1 ? "1 unbenutzter Upload entfernt." : `${confirmedOrphans.length} unbenutzte Uploads entfernt.`);
+    showStatus(confirmedOrphans.length === 1 ? t("queue.unusedRemovedSingular") : t("queue.unusedRemovedPlural", { count: confirmedOrphans.length }));
   } catch (error) {
-    showStatus(`Verwerfen fehlgeschlagen: ${error.message}`, "error");
+    showStatus(t("queue.discardFailedShort", { error: error.message }), "error");
   } finally {
     setBusy(false);
     renderQueue();

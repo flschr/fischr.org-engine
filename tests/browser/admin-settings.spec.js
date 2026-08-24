@@ -38,7 +38,7 @@ test("saving the settings commits the social configuration onto the published br
   await save.click();
 
   await expect(page.locator("#socialConfigStatus")).toHaveText("Gespeichert");
-  await expect(page.locator("#statusBar")).toContainText("Social configuration saved.");
+  await expect(page.locator("#statusBar")).toContainText("Social-Konfiguration gespeichert.");
   expect(errors).toEqual([]);
 
   // Der Commit muss auf dem Veröffentlichungs-Branch landen, nicht in den Entwürfen.

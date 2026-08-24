@@ -1,4 +1,5 @@
 import { repo } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { istWirksam, pfadeZumSenden } from "./04c-queue-actions.js";
 import { medienJeAenderung } from "./15a-media-reference-index.js";
 import { github } from "./01-bootstrap.js";
@@ -69,12 +70,12 @@ export async function syncOutbox() {
     : changes;
   if (!await guardMediaReadyForPublish(reisendeAenderungen)) {
     if (!state.mediaProcessing) {
-      recoverPendingMediaOperations().catch((error) => showStatus(`Medienverarbeitung fehlgeschlagen: ${error.message}`, "error"));
+      recoverPendingMediaOperations().catch((error) => showStatus(t("queue.mediaProcessingFailed", { error: error.message }), "error"));
     }
     return;
   }
   if (!changes.length) {
-    showStatus("No pending changes.");
+    showStatus(t("queue.noPendingChanges"));
     renderQueue();
     return;
   }
@@ -82,12 +83,12 @@ export async function syncOutbox() {
   // für einen Stand, der sich öffentlich nicht unterscheidet. Wer hier landet, hat sich vertan.
   const wirksame = changes.filter((change) => istWirksam(change.aktion ?? "medien"));
   if (wirksame.length && wirksame.every((change) => state.queueAbgewaehlt.has(change.path))) {
-    showStatus("Nichts ausgewählt — mindestens eine Änderung muss zum Senden angehakt sein.", "error");
+    showStatus(t("queue.nothingSelected"), "error");
     await openQueue();
     return;
   }
   if (!hasGithubAccess()) {
-    requireGithubAccess("publishing");
+    requireGithubAccess(t("action.publishing"));
     await openQueue();
     focusGithubConnection();
     return;
@@ -95,7 +96,7 @@ export async function syncOutbox() {
 
   setBusy(true);
   try {
-    showStatus("Starting publish …");
+    showStatus(t("queue.startingPublish"));
     await ensureDraftsBranch();
     // `getAllChanges()` above has already resolved the exact drafts commit
     // behind the reviewed tree. Prefer that immutable commit over an immediate
@@ -150,18 +151,18 @@ export async function syncOutbox() {
     state.publishInFlight = true;
     state.publishStartedCount = gesendeteAnzahl;
     state.publishStartedSignatures = new Set(changes.map(changeSignature));
-    state.publishStatus = { state: "queued", message: "Waiting for GitHub to accept the publish request" };
+    state.publishStatus = { state: "queued", message: t("queue.waitingForGithub") };
     persistPublishRequest(request);
     state.publishPollToken += 1;
     const pollToken = state.publishPollToken;
     renderSyncState(changes);
-    showStatus("Veröffentlichung gestartet – GitHub optimiert, verteilt und synchronisiert die Entwürfe.");
+    showStatus(t("queue.publishStarted"));
     pollPublishCompletion(pollToken, request);
   } catch (error) {
     const authHint = /GitHub (401|403)/.test(error.message)
-      ? " Sign out and back in to refresh GitHub permissions, then publish again."
+      ? t("queue.reauthHint")
       : "";
-    showStatus(`Veröffentlichung fehlgeschlagen: ${error.message}${authHint}`, "error");
+    showStatus(t("queue.publishFailed", { error: error.message, hint: authHint }), "error");
   } finally {
     setBusy(false);
   }

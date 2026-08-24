@@ -1,4 +1,5 @@
 import { publishRequestKey } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { github, isTransientGitHubError } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -193,7 +194,7 @@ export async function resumePublish() {
     request.visibleChangeCount || visibleQueueChanges(Array.from(state.changes.values())).length || request.changeCount || 0
   );
   state.publishStartedSignatures = new Set(request.signatures || []);
-  state.publishStatus = { state: "queued", message: "Restoring publish status from GitHub" };
+  state.publishStatus = { state: "queued", message: t("queue.restoringStatus") };
   state.publishPollToken += 1;
   renderSyncState(Array.from(state.changes.values()));
   pollPublishCompletion(state.publishPollToken, request);

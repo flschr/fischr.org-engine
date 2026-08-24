@@ -63,7 +63,7 @@ export function setCollection(collection) {
     replaceNav();
     // Use the cached tree (invalidated on every save/upload/publish), so
     // switching to the gallery is instant instead of refetching the whole tree.
-    refreshMedia(false).catch((error) => showStatus(`Media could not be loaded: ${error.message}`, "error"));
+    refreshMedia(false).catch((error) => showStatus(t("media.mediaLoadFailed", { error: error.message }), "error"));
     return;
   }
 
@@ -77,7 +77,7 @@ export function setCollection(collection) {
   }
   showView("library");
   replaceNav();
-  refreshEntries(false).catch((error) => showStatus(`List could not be loaded: ${error.message}`, "error"));
+  refreshEntries(false).catch((error) => showStatus(t("queue.listLoadFailed", { error: error.message }), "error"));
 }
 
 export function backToLibrary() {

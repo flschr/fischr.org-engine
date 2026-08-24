@@ -1,4 +1,5 @@
 import { tokenKey } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -42,7 +43,7 @@ export function wireNavigationEvents() {
     els.saveTokenButton.addEventListener("click", async () => {
       const nextToken = els.tokenInput.value.trim();
       if (!nextToken) {
-        showStatus("GitHub token missing.", "error");
+        showStatus(t("auth.tokenMissing"), "error");
         return;
       }
 
@@ -83,7 +84,7 @@ export function wireNavigationEvents() {
       state.mainTree = null;
       state.changeCache = null;
       updateConnectionState();
-      showStatus("Disconnected.");
+      showStatus(t("common.disconnected"));
     });
   }
   window.addEventListener("resize", resizeTitleInput);

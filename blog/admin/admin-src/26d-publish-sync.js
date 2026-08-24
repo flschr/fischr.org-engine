@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { istWirksam } from "./04c-queue-actions.js";
@@ -102,9 +103,9 @@ async function hasUnfinishedMediaProcessing(changes = []) {
   return false;
 }
 
-export function guardMediaIdle(action = "Diese Aktion") {
+export function guardMediaIdle(action = t("action.thisAction")) {
   if (!hasActiveMediaWork()) return true;
-  showStatus(`${action} wartet, bis GitHub alle Medien verarbeitet hat.`, "error");
+  showStatus(t("media.actionWaitsForProcessing", { action }), "error");
   return false;
 }
 

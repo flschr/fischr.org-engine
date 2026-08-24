@@ -1,4 +1,5 @@
 import { repo } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { draftRepository, socialConfigPath } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -84,8 +85,8 @@ export function updateSocialConfigDirty() {
   const canSave = dirty && hasGithubAccess() && !state.isBusy;
   els.socialConfigSave.disabled = !canSave;
   els.socialConfigReset.disabled = !dirty || state.isBusy;
-  if (dirty) setSocialConfigStatus("Unsaved changes", "pending");
-  else if (hasGithubAccess()) setSocialConfigStatus("Gespeichert", "ok");
+  if (dirty) setSocialConfigStatus(t("dialog.unsavedChanges"), "pending");
+  else if (hasGithubAccess()) setSocialConfigStatus(t("settings.saved"), "ok");
 }
 
 export function setSocialConfigStatus(text, tone) {
@@ -98,7 +99,7 @@ export function resetSocialConfig() {
   if (!state.socialConfigDraft) return;
   state.socialConfigDraft = normalizeSocialConfigDraft(JSON.parse(state.socialConfigLoaded));
   renderSocialConfig();
-  setSocialConfigStatus("Reset.", "muted");
+  setSocialConfigStatus(t("settings.reset"), "muted");
 }
 
 // Commit a single text file straight onto the published branch, retrying if the branch
@@ -112,11 +113,11 @@ async function commitFileToPublished(path, content, message) {
 }
 
 export async function saveSocialConfig() {
-  if (!requireGithubAccess("saving settings")) return;
+  if (!requireGithubAccess(t("action.savingSettings"))) return;
   if (!socialConfigDirty()) return;
   const content = socialConfigSerialized();
   setBusy(true);
-  setSocialConfigStatus("Wird gespeichert …", "muted");
+  setSocialConfigStatus(t("settings.saving"), "muted");
   try {
     await commitFileToPublished(socialConfigPath, content, "Update social config [skip ci]");
     // Adopt the saved config as the new baseline + refresh the per-post catalog.
@@ -128,11 +129,11 @@ export async function saveSocialConfig() {
     // intentionally omits.
     state.socialConfigLoaded = JSON.stringify(collectSocialConfigDraft());
     state.statsCache.clear();
-    showStatus("Social configuration saved.");
-    setSocialConfigStatus("Gespeichert", "ok");
+    showStatus(t("settings.savedToast"));
+    setSocialConfigStatus(t("settings.saved"), "ok");
   } catch (error) {
-    showStatus(`Speichern fehlgeschlagen: ${error.message}`, "error");
-    setSocialConfigStatus("Error while saving", "off");
+    showStatus(t("settings.saveFailed", { error: error.message }), "error");
+    setSocialConfigStatus(t("settings.errorSaving"), "off");
   } finally {
     setBusy(false);
     updateSocialConfigDirty();

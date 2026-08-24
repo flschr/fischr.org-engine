@@ -1,4 +1,5 @@
 import { gotosocialTextLimit } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { findMarkdownImages, markdownAltHasText } from "./15a-media-reference-index.js";
 
 import { els } from "./01b-elements.js";
@@ -64,7 +65,7 @@ export function openPublishDialog(reopened) {
   initSocialPanel();
   syncContentTypeFields();
   updateSocialPanel();
-  if (els.publishDialogTitle) els.publishDialogTitle.textContent = "Publish";
+  if (els.publishDialogTitle) els.publishDialogTitle.textContent = t("dialog.publish");
   if (els.publishDialogConfirm) els.publishDialogConfirm.textContent = "Veröffentlichen";
   if (els.publishDialogSocialHint) els.publishDialogSocialHint.hidden = true;
   els.publishDialog.showModal();
@@ -99,8 +100,9 @@ export async function confirmPublishDialog() {
 
 function askMissingAltTextAction(count) {
   if (!els.missingAltDialog || !els.missingAltDialogText) return Promise.resolve(false);
-  const imageText = count === 1 ? "One image has" : `${count} images have`;
-  els.missingAltDialogText.textContent = `${imageText} no alt text. Generate ${count === 1 ? "it" : "them"} automatically now? If you choose Yes, the post will not be published yet, so you can review the result first.`;
+  els.missingAltDialogText.textContent = count === 1
+    ? t("dialog.missingAltTextSingular")
+    : t("dialog.missingAltTextPlural", { count });
   els.missingAltDialog.returnValue = "no";
   return new Promise((resolve) => {
     const resolveWithValue = () => resolve(els.missingAltDialog.returnValue === "generate");
@@ -127,7 +129,7 @@ export function updateSocialPanel() {
   // rendered as a pinned suffix inside the field below, so don't repeat it.
   els.socialTextInput.placeholder = rule
     ? socialFillTemplate(socialApplyLinkToggle(rule.template, false), socialBodyExcerpt())
-    : "No default text";
+    : t("social.noDefaultText");
 
   // The link the template appends isn't part of the editable text, so show it
   // as a read-only suffix pinned at the end of the text field — always visible

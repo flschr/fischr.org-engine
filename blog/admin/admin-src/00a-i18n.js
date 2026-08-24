@@ -1,13 +1,19 @@
-// Reine Werte + drei kleine Funktionen, ohne einen einzigen Import — wie
+// Drei kleine Funktionen, ohne einen einzigen Import auf die eigene Logik — wie
 // 00-konstanten.js, aus demselben Grund: fast jedes andere Modul liest hier
 // etwas, und ein Zyklus hätte genau dieselbe Klasse Bug ausgelöst, die
-// 00-konstanten.js schon einmal hatte (siehe dort).
+// 00-konstanten.js schon einmal hatte (siehe dort). Die beiden Wörterbücher
+// stehen in eigenen Dateien (00a1-i18n-de.js, 00a2-i18n-en.js) — reine Werte
+// ohne eigene Importe, die dieses Modul importiert —, damit dieses Modul
+// unter der 200-Zeilen-Grenze bleibt (tests/admin-source-structure.test.js).
 //
 // Deckt bisher die statische Auszeichnung ab (index.html, die njk-Partials):
 // Überschriften, Dialogtitel, Feldbeschriftungen, aria-label/title/
 // placeholder. Die von JS erzeugten Texte (Status-Toasts, dynamisch gebaute
 // Dialoginhalte, Kartenlisten) folgen in einem eigenen Schritt — dort ruft
 // jede Stelle t() direkt auf, statt über data-i18n zu laufen.
+
+import { dictDe } from "./00a1-i18n-de.js";
+import { dictEn } from "./00a2-i18n-en.js";
 
 export const langStorageKey = "rw-admin-lang";
 
@@ -22,74 +28,7 @@ export function setLang(lang) {
 // de ist die Vorgabe UND der Ausweich, falls ein Schlüssel im gewählten
 // Wörterbuch fehlt — deshalb schreibfehlerfest gegenüber einem vergessenen
 // en-Eintrag, nie gegenüber einem vergessenen de-Eintrag.
-const dict = {
-  de: {
-    "viewTitle.articles": "Artikel",
-    "viewTitle.pages": "Seiten",
-    "viewTitle.newArticle": "Neuer Artikel",
-    "viewTitle.editArticle": "Artikel bearbeiten",
-    "viewTitle.newPage": "Neue Seite",
-    "viewTitle.editPage": "Seite bearbeiten",
-    "viewTitle.media": "Mediathek",
-    "viewTitle.queue": "Sync",
-    "viewTitle.stats": "Statistik",
-    "viewTitle.settings": "Einstellungen",
-    "aria.choosePreviewImage": "Vorschaubild aus der Mediathek wählen",
-    "aria.chooseFromLibrary": "Aus Mediathek wählen",
-    "aria.editorContent": "Inhalt",
-    "aria.editorPreview": "Vorschau",
-    "dialog.publish": "Veröffentlichen",
-    "dialog.contentType": "Inhaltstyp",
-    "dialog.sharing": "Teilen",
-    "dialog.missingAltText": "Fehlender Alt-Text",
-    "dialog.unsavedChanges": "Ungespeicherte Änderungen",
-    "dialog.deleteEntry": "Eintrag löschen?",
-    "dialog.deleteArticle": "Artikel löschen?",
-    "dialog.deletePage": "Seite löschen?",
-    "dialog.deleteEntryBody": "Die Löschung wird vorgemerkt und erst beim Veröffentlichen ausgeführt.",
-    "dialog.discardChange": "Änderung verwerfen?",
-    "dialog.discardChangeBody": "„{item}“ wird dauerhaft aus der Warteschlange entfernt.",
-    "settings.githubConnection": "GitHub-Verbindung",
-    "settings.publishingDestination": "Veröffentlichungsziel",
-    "settings.gotosocialInstance": "GoToSocial-Instanz",
-    "settings.postTypes": "Beitragstypen",
-    "settings.language": "Sprache",
-    "settings.languageHint": "Sprache der Admin-Oberfläche. Gilt nur für dieses Gerät."
-  },
-  en: {
-    "viewTitle.articles": "Articles",
-    "viewTitle.pages": "Pages",
-    "viewTitle.newArticle": "New article",
-    "viewTitle.editArticle": "Edit article",
-    "viewTitle.newPage": "New page",
-    "viewTitle.editPage": "Edit page",
-    "viewTitle.media": "Media",
-    "viewTitle.queue": "Sync",
-    "viewTitle.stats": "Statistics",
-    "viewTitle.settings": "Settings",
-    "aria.choosePreviewImage": "Choose preview image from library",
-    "aria.chooseFromLibrary": "Choose from library",
-    "aria.editorContent": "Content",
-    "aria.editorPreview": "Preview",
-    "dialog.publish": "Publish",
-    "dialog.contentType": "Content type",
-    "dialog.sharing": "Sharing",
-    "dialog.missingAltText": "Missing alt text",
-    "dialog.unsavedChanges": "Unsaved changes",
-    "dialog.deleteEntry": "Delete entry?",
-    "dialog.deleteArticle": "Delete article?",
-    "dialog.deletePage": "Delete page?",
-    "dialog.deleteEntryBody": "The deletion is queued and only carried out when you publish.",
-    "dialog.discardChange": "Discard change?",
-    "dialog.discardChangeBody": "“{item}” is permanently removed from the queue.",
-    "settings.githubConnection": "GitHub connection",
-    "settings.publishingDestination": "Publishing destination",
-    "settings.gotosocialInstance": "GoToSocial instance",
-    "settings.postTypes": "Post types",
-    "settings.language": "Language",
-    "settings.languageHint": "Language of the admin interface. Applies only to this device."
-  }
-};
+const dict = { de: dictDe, en: dictEn };
 
 export function t(key, vars) {
   const table = dict[currentLang()] || dict.de;

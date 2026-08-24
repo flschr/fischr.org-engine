@@ -41,7 +41,7 @@ export function queueKarte(change, { publishLocked, mediaProcessing, erzwungen }
   const discard = document.createElement("button");
   discard.type = "button";
   discard.className = "ghost danger queue-discard";
-  discard.innerHTML = `<span data-icon="trash-2" aria-hidden="true"></span><span>Verwerfen</span>`;
+  discard.innerHTML = `<span data-icon="trash-2" aria-hidden="true"></span><span>${t("action.discard")}</span>`;
   window.RWIcons?.inject(discard);
   discard.disabled = publishLocked || mediaProcessing;
   discard.addEventListener("click", async () => {
@@ -52,11 +52,11 @@ export function queueKarte(change, { publishLocked, mediaProcessing, erzwungen }
     if (!confirmed) return;
     try {
       const confirmedChanges = await loadFreshChanges();
-      if (!guardMediaIdle("Verwerfen")) return;
+      if (!guardMediaIdle(t("action.discard"))) return;
       const confirmedVisibleChanges = visibleQueueChanges(confirmedChanges);
       const confirmedChange = confirmedVisibleChanges.find((candidate) => candidate.path === change.path);
       if (!confirmedChange || changeSignature(confirmedChange) !== changeSignature(change)) {
-        showStatus("Die Änderung wurde zwischenzeitlich aktualisiert. Bitte erneut prüfen und verwerfen.", "error");
+        showStatus(t("queue.staleChangeError"), "error");
         renderQueue();
         return;
       }
@@ -68,9 +68,9 @@ export function queueKarte(change, { publishLocked, mediaProcessing, erzwungen }
       else await deleteChange(confirmedChange.path, confirmedChange.sha);
       await refreshCurrentSilent();
       renderQueue();
-      showStatus("Removed from the queue.");
+      showStatus(t("queue.removedFromQueue"));
     } catch (error) {
-      showStatus(`Verwerfen fehlgeschlagen: ${error.message}`, "error");
+      showStatus(t("queue.discardFailedShort", { error: error.message }), "error");
     }
   });
 

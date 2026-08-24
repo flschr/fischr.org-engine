@@ -1,4 +1,5 @@
 import { findHtmlMedia, findMarkdownImages, findMediaShortcuts, visibleMarkdownSource } from "./15a-media-reference-index.js";
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -42,14 +43,14 @@ export function startImagePick(onChoose) {
   els.mediaSearchInput.value = "";
   els.mediaFilterInput.value = "all";
   showView("media");
-  refreshMedia(false).catch((error) => showStatus(`Gallery could not be loaded: ${error.message}`, "error"));
+  refreshMedia(false).catch((error) => showStatus(t("media.galleryLoadFailed", { error: error.message }), "error"));
 }
 
 export function startSocialImagePick() {
   startImagePick((publicPath) => {
     els.socialImageInput.value = publicPath;
     els.socialImageInput.dispatchEvent(new Event("input", { bubbles: true }));
-    showStatus("Social image set.");
+    showStatus(t("social.imageSet"));
   });
 }
 

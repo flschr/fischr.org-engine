@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { SOCIAL_OFF, loadSocialConfig, socialDefaultRule, socialRuleById, socialRules, socialToken } from "./10-social-editor.js";
@@ -17,7 +18,7 @@ export function populateSocialCategoryOptions() {
   standard.value = "";
   const def = socialDefaultRule();
   const defId = def ? (def.id || socialToken(def.name)) : "";
-  standard.textContent = def ? `Default (${def.name})` : "Default";
+  standard.textContent = def ? t("social.defaultWith", { name: def.name }) : t("social.default");
   select.appendChild(standard);
   const explicitTok = socialToken(explicit);
   socialRules().forEach((rule) => {
@@ -33,7 +34,7 @@ export function populateSocialCategoryOptions() {
   // Opt-out entry at the foot of the list.
   const off = document.createElement("option");
   off.value = SOCIAL_OFF;
-  off.textContent = "Don't share";
+  off.textContent = t("social.dontShare");
   select.appendChild(off);
 
   // syndicate:false → show "Don't share" regardless of any stored template.

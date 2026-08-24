@@ -46,7 +46,7 @@ function runSyncOutbox(changes) {
     "guardMediaReadyForPublish", "recoverPendingMediaOperations", "renderQueue", "hasGithubAccess",
     "requireGithubAccess", "openQueue", "focusGithubConnection", "ensureDraftsBranch", "github",
     "repo", "window", "changeSignature", "persistPublishRequest", "renderSyncState",
-    "pollPublishCompletion", "starteVeroeffentlichung", "istWirksam", "pfadeZumSenden", "medienJeAenderung", "auswahlPfade",
+    "pollPublishCompletion", "starteVeroeffentlichung", "istWirksam", "pfadeZumSenden", "medienJeAenderung", "auswahlPfade", "t",
     `return (${source});`
   )(
     state,
@@ -76,7 +76,10 @@ function runSyncOutbox(changes) {
     () => [],
     () => new Map(),
     // Nichts abgewählt: keine Pfadliste, also reist alles mit — der Regelfall.
-    () => null
+    () => null,
+    // Reines Textrouting spielt für diesen Test keine Rolle — nur, dass syncOutbox lauffähig
+    // bleibt, jetzt wo es t() aufruft.
+    (key) => key
   );
   return syncOutbox().then(() => ({ dispatches, statuses, persisted, polled, state }));
 }

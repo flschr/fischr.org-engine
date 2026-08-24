@@ -1,4 +1,5 @@
 import { repo, tokenKey } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -52,18 +53,18 @@ export function focusGithubConnection() {
   if (els.tokenInput && !els.tokenFallback?.hidden) els.tokenInput.focus();
 }
 
-export function requireGithubAccess(action = "saving") {
+export function requireGithubAccess(action = t("action.saving")) {
   if (hasGithubAccess()) return true;
   writeAutosave();
   const error = githubConnectionError();
-  const message = `Melde dich vor „${action}“ erneut bei GitHub an. Dein Text bleibt in der lokalen Wiederherstellungskopie erhalten.`;
+  const message = t("auth.reconnectPrompt", { action });
   showStatus(error ? `${error} ${message}` : message, "error");
   focusGithubConnection();
   return false;
 }
 
 export async function validateTokenAccess(token) {
-  if (!token) throw new Error("GitHub token missing.");
+  if (!token) throw new Error(t("auth.tokenMissing"));
 
   const response = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.name}`, {
     headers: {
@@ -78,7 +79,7 @@ export async function validateTokenAccess(token) {
   const repository = await response.json();
   const permissions = repository.permissions || {};
   if (!permissions.admin && !permissions.maintain && !permissions.push) {
-    throw new Error(`GitHub token has no write access to ${repo.owner}/${repo.name}.`);
+    throw new Error(t("auth.noWriteAccess", { repo: `${repo.owner}/${repo.name}` }));
   }
 
   return repository;
@@ -92,7 +93,7 @@ async function githubRepositoryError(response) {
   } catch (error) {
     detail = "";
   }
-  return `GitHub authorization could not be verified (${response.status}${detail}).`;
+  return t("auth.notVerified", { status: response.status, detail });
 }
 
 export async function verifyStoredTokenAccess() {

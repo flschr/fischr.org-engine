@@ -1,4 +1,5 @@
 import { maxVideoUploadBytes } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { collections, draftRepository, gpxUploadService, mediaService } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -30,9 +31,9 @@ function isUploadableMediaFile(file) {
 function videoUploadLimitMessage(files = []) {
   if (files.length === 1) {
     const file = files[0];
-    return `Video too large: ${file.name || "selected video"} is ${formatBytes(file.size)}. Max ${formatBytes(maxVideoUploadBytes)}.`;
+    return t("media.videoTooLarge", { name: file.name || t("media.selectedVideo"), size: formatBytes(file.size), max: formatBytes(maxVideoUploadBytes) });
   }
-  return `${files.length} videos skipped. Max ${formatBytes(maxVideoUploadBytes)} per video.`;
+  return t("media.videosSkippedOverLimit", { count: files.length, max: formatBytes(maxVideoUploadBytes) });
 }
 
 function pendingFileChange(file) {
@@ -154,7 +155,7 @@ export async function queueUploads(files, insertIntoEditor) {
     return;
   }
   if (!selected.length) return;
-  if (!requireGithubAccess("uploading media")) {
+  if (!requireGithubAccess(t("action.uploadingMedia"))) {
     els.imageUploadInput.value = "";
     els.mediaUploadInput.value = "";
     return;
@@ -178,12 +179,13 @@ export async function queueUploads(files, insertIntoEditor) {
       state.mediaUploadItems.set(item.change.path, item);
     });
     writeAutosave();
-    const skipped = rejectedVideos.length ? ` ${rejectedVideos.length} video${rejectedVideos.length === 1 ? "" : "s"} skipped.` : "";
-    showStatus(`${selected.length} Upload${selected.length === 1 ? " wird" : "s werden"} im Hintergrund verarbeitet.${skipped}`, rejectedVideos.length ? "error" : undefined);
+    const skipped = rejectedVideos.length ? t(rejectedVideos.length === 1 ? "media.videosSkippedSingular" : "media.videosSkippedPlural", { count: rejectedVideos.length }) : "";
+    const processing = t(selected.length === 1 ? "media.uploadsProcessingSingular" : "media.uploadsProcessingPlural", { count: selected.length });
+    showStatus(`${processing}${skipped}`, rejectedVideos.length ? "error" : undefined);
 
     startMediaJobs(pending);
   } catch (error) {
-    showStatus(`Upload fehlgeschlagen: ${error.message}`, "error");
+    showStatus(t("media.uploadFailed", { error: error.message }), "error");
   } finally {
     els.imageUploadInput.value = "";
     els.mediaUploadInput.value = "";
@@ -192,7 +194,7 @@ export async function queueUploads(files, insertIntoEditor) {
 
 export async function queueGpxUpload(files) {
   const file = Array.from(files || [])[0];
-  if (!requireGithubAccess("uploading a GPX tour")) {
+  if (!requireGithubAccess(t("action.uploadingGpxTour"))) {
     els.gpxUploadInput.value = "";
     return;
   }

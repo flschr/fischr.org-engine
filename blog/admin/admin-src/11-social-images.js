@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -67,7 +68,7 @@ function toggleImageSelection(path) {
   const list = socialEffectiveSelection().slice();
   const index = list.indexOf(path);
   if (index >= 0) list.splice(index, 1);
-  else if (list.length >= 4) { showStatus("Maximum 4 images.", "error"); return; }
+  else if (list.length >= 4) { showStatus(t("social.maxImages"), "error"); return; }
   else list.push(path);
   state.current.socialImages = list; // now an explicit selection ([] = none)
   renderImagePicker();
@@ -134,7 +135,7 @@ function renderImagePicker() {
   if (!candidates.length) {
     const empty = document.createElement("p");
     empty.className = "social-hint";
-    empty.textContent = "No images in the post — add them from the gallery.";
+    empty.textContent = t("social.noImages");
     thumbs.append(empty);
     return;
   }

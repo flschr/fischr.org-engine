@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -111,7 +112,7 @@ export function renderMediaReferences(references) {
 
   const title = document.createElement("div");
   title.className = "media-reference-title";
-  title.textContent = references.length === 1 ? "Used in" : `Used in (${references.length})`;
+  title.textContent = references.length === 1 ? t("media.usedIn") : t("media.usedInCount", { count: references.length });
 
   const list = document.createElement("div");
   list.className = "media-reference-list";
@@ -138,10 +139,10 @@ export function formatBytes(bytes) {
 }
 
 export async function queueMediaDelete(item) {
-  if (!requireGithubAccess("deleting media")) return;
+  if (!requireGithubAccess(t("action.deletingMedia"))) return;
 
   await waitForMediaCommits();
-  if (!guardMediaIdle("Löschen")) return;
+  if (!guardMediaIdle(t("action.deleting"))) return;
 
   const existing = await getChange(item.path);
   if (item.mediaKind === "video") {

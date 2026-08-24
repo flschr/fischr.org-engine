@@ -102,7 +102,7 @@ test("discarding a queued video deletion restores video, poster and metadata tog
   await expect(page.locator(".queue-card")).not.toContainText(poster.path);
   await page.locator(".queue-card").getByRole("button", { name: "Verwerfen" }).click();
   await page.locator("#discardDialogAction").click();
-  await expect(page.locator("#statusBar")).toContainText("Removed from the queue");
+  await expect(page.locator("#statusBar")).toContainText("Aus der Warteschlange entfernt.");
 
   const treeRequests = requests.filter((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
   expect(treeRequests.at(-1).body.tree).toEqual(expect.arrayContaining([
@@ -264,7 +264,7 @@ test("a standalone poster repair can be discarded without exposing its path", as
   await expect(page.locator(".queue-card")).not.toContainText(poster.path);
   await page.locator(".queue-card").getByRole("button", { name: "Verwerfen" }).click();
   await page.locator("#discardDialogAction").click();
-  await expect(page.locator("#statusBar")).toContainText("Removed from the queue");
+  await expect(page.locator("#statusBar")).toContainText("Aus der Warteschlange entfernt.");
   const treeRequest = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
   expect(treeRequest.body.tree).toEqual([expect.objectContaining({ path: poster.path, sha: null })]);
 });

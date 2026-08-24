@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { githubConnectionError, sessionHasGithubAccess, tokenHasGithubAccess } from "./05-github-auth.js";
@@ -11,25 +12,25 @@ export function updateConnectionState() {
   const authError = githubConnectionError();
   const needsReconnectUser = Boolean(!sessionConnected && state.session?.login && state.session?.authorizationError);
   els.connectionDot.classList.toggle("is-connected", connected);
-  els.connectionDot.setAttribute("title", connected ? "Verbunden" : "Nicht verbunden");
-  if (els.connectionState) els.connectionState.textContent = connected ? "verbunden" : "nicht verbunden";
+  els.connectionDot.setAttribute("title", connected ? t("connection.connected") : t("connection.notConnected"));
+  if (els.connectionState) els.connectionState.textContent = connected ? t("connection.connected").toLowerCase() : t("connection.notConnected").toLowerCase();
   if (els.connectionText) {
     els.connectionText.textContent = sessionConnected
-      ? "GitHub is connected. Changes go live when you publish."
+      ? t("connection.githubConnected")
       : fallbackConnected
-        ? "GitHub token is connected. Changes go live when you publish."
+        ? t("connection.tokenConnected")
         : authError
-          ? `${authError} Melde dich vor dem Speichern oder Veröffentlichen erneut an.`
+          ? t("connection.reconnectHint", { error: authError })
           : state.session?.configured
-            ? "Melde dich bei GitHub an, um Artikel und Medien zu laden und die Warteschlange zu veröffentlichen."
-            : "GitHub OAuth isn't configured yet. Until then you can use the token fallback.";
+            ? t("connection.signInPrompt")
+            : t("connection.oauthNotConfigured");
   }
   if (els.connectionUser) {
     els.connectionUser.hidden = !(sessionConnected || needsReconnectUser);
     els.connectionUser.textContent = sessionConnected
-      ? `Signed in as @${state.session.login || "github"}`
+      ? t("connection.signedInAs", { login: state.session.login || "github" })
       : needsReconnectUser
-        ? `@${state.session.login} needs to reconnect`
+        ? t("connection.needsReconnect", { login: state.session.login })
       : "";
   }
   if (els.loginButton) els.loginButton.hidden = sessionConnected || !state.session?.configured;

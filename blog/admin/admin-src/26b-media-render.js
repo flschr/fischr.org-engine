@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -33,7 +34,7 @@ export function renderMedia() {
     empty.className = "entry-empty";
     empty.textContent = !hasGithubAccess()
       ? "Verbinde GitHub, um Medien zu laden."
-      : query ? "No matches." : "No media yet.";
+      : query ? t("media.noMatches") : t("media.noMediaYet");
     els.mediaGrid.append(empty);
     return;
   }

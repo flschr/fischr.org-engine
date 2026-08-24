@@ -7,6 +7,7 @@ import { confirmLeaveEditor } from "./19-recovery.js";
 import { loadStats, openStats, setStatsRangeButtons } from "./21-stats.js";
 import { toggleStatsRowDrill } from "./21a-stats-details.js";
 import { statsIsPreset } from "./21b-stats-period.js";
+import { updateConnectionState } from "./28-connection.js";
 import {
   applyStatsPicker,
   closeStatsPicker,
@@ -88,10 +89,15 @@ export function wireAdminViewEvents() {
     button.remove();
   });
   // A device preference, not part of the saved social config — takes effect
-  // immediately, no Speichern/Zurücksetzen of its own.
+  // immediately, no Speichern/Zurücksetzen of its own. applyStaticTranslations
+  // only reaches [data-i18n] markup; updateConnectionState builds its own
+  // text from t() on every call and has to be asked again explicitly, or the
+  // connection card would keep showing the previous language until its next
+  // unrelated re-render.
   els.adminLangSelect?.addEventListener("change", () => {
     setLang(els.adminLangSelect.value);
     applyStaticTranslations();
+    updateConnectionState();
   });
   els.socialConfigSave?.addEventListener("click", saveSocialConfig);
   els.socialConfigReset?.addEventListener("click", resetSocialConfig);

@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { ICON } from "./02-toolbar.js";
@@ -23,7 +24,7 @@ export function ensureEditor() {
   state.editor = window.RWEditor.create(els.editorMount, {
     value: state.bodyMarkdown,
     lang: els.langInput.value || "de",
-    placeholder: "Write your text here",
+    placeholder: t("editor.placeholder"),
     onChange: (value) => {
       state.bodyMarkdown = value;
       scheduleAutosave();

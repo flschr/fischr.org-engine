@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { ensureEditor } from "./17-editor.js";
 
 export async function insertLinkFromDialog(editor = ensureEditor()) {
@@ -31,13 +32,13 @@ function askLinkHref(editor) {
     form.method = "dialog";
 
     const heading = document.createElement("h2");
-    heading.textContent = "Insert link";
+    heading.textContent = t("link.title");
 
     const label = document.createElement("label");
     label.className = "dialog-field";
 
     const labelText = document.createElement("span");
-    labelText.textContent = "Link-Adresse";
+    labelText.textContent = t("link.address");
 
     const input = document.createElement("input");
     input.type = "text";
@@ -56,12 +57,12 @@ function askLinkHref(editor) {
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "ghost";
-    cancel.textContent = "Abbrechen";
+    cancel.textContent = t("common.cancel");
 
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.className = "primary-action";
-    submit.textContent = "Insert";
+    submit.textContent = t("common.insert");
 
     let resolved = false;
     const finish = (value) => {
@@ -103,29 +104,29 @@ function askFootnoteText(editor) {
     form.method = "dialog";
 
     const heading = document.createElement("h2");
-    heading.textContent = "Insert footnote";
+    heading.textContent = t("footnote.title");
 
     const label = document.createElement("label");
     label.className = "dialog-field";
 
     const labelText = document.createElement("span");
-    labelText.textContent = "Footnote text";
+    labelText.textContent = t("footnote.text");
 
     const input = document.createElement("textarea");
     input.rows = 4;
-    input.placeholder = "Footnote text";
+    input.placeholder = t("footnote.text");
     input.value = selected;
 
     const menu = document.createElement("menu");
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "ghost";
-    cancel.textContent = "Abbrechen";
+    cancel.textContent = t("common.cancel");
 
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.className = "primary-action";
-    submit.textContent = "Insert";
+    submit.textContent = t("common.insert");
 
     let resolved = false;
     const finish = (value) => {

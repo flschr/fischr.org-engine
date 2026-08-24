@@ -1,4 +1,5 @@
 import { gotosocialTextLimit } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -26,7 +27,7 @@ export function renderSocialCategoryCards() {
   if (!rules.length) {
     const empty = document.createElement("p");
     empty.className = "social-config-empty";
-    empty.textContent = "No post types yet. Add one.";
+    empty.textContent = t("social.noPostTypes");
     list.append(empty);
     return;
   }
@@ -49,7 +50,7 @@ function buildSocialCategoryCard(rule, index) {
   summary.className = "social-category-summary";
   const summaryName = document.createElement("span");
   summaryName.className = "social-category-summary-name";
-  summaryName.textContent = rule.name || "Ohne Namen";
+  summaryName.textContent = rule.name || t("social.noName");
   summary.append(summaryName);
   card.append(summary);
 
@@ -64,12 +65,12 @@ function buildSocialCategoryCard(rule, index) {
   head.className = "social-category-head";
   const name = textControl(rule.name || "", (value) => {
     rule.name = value;
-    summaryName.textContent = value || "Ohne Namen";
+    summaryName.textContent = value || t("social.noName");
     updateSocialConfigDirty();
-  }, "Post type name");
+  }, t("social.postTypeName"));
   name.classList.add("social-category-name");
   head.append(name);
-  const remove = iconGhostButton("trash-2", "Remove post type");
+  const remove = iconGhostButton("trash-2", t("social.removePostType"));
   remove.classList.add("danger");
   remove.addEventListener("click", () => removeSocialCategory(index));
   head.append(remove);
@@ -80,7 +81,7 @@ function buildSocialCategoryCard(rule, index) {
   const tplLabel = document.createElement("span");
   const tplCount = document.createElement("span");
   tplCount.className = "social-count";
-  tplLabel.append(document.createTextNode("Text template "), tplCount);
+  tplLabel.append(document.createTextNode(`${t("social.textTemplate")} `), tplCount);
   const tplArea = document.createElement("textarea");
   tplArea.rows = 2;
   tplArea.value = rule.template || "";
@@ -99,10 +100,16 @@ function buildSocialCategoryCard(rule, index) {
   const imgLabel = document.createElement("label");
   imgLabel.className = "social-inline-field";
   const imgSpan = document.createElement("span");
-  imgSpan.textContent = "Images";
+  imgSpan.textContent = t("social.images");
   const imgSelect = document.createElement("select");
   // Max images attached to the post (0–4; capped at 4 by GoToSocial).
-  [[0, "None"], [1, "1 image"], [2, "2 images"], [3, "3 images"], [4, "4 images"]].forEach(([value, text]) => {
+  [
+    [0, t("social.imagesNone")],
+    [1, t("social.images1")],
+    [2, t("social.images2")],
+    [3, t("social.images3")],
+    [4, t("social.images4")]
+  ].forEach(([value, text]) => {
     const option = document.createElement("option");
     option.value = String(value);
     option.textContent = text;
@@ -120,7 +127,7 @@ function buildSocialCategoryCard(rule, index) {
   linkInput.type = "checkbox";
   linkInput.checked = rule.link !== false;
   const linkSpan = document.createElement("span");
-  linkSpan.textContent = "Append link";
+  linkSpan.textContent = t("social.appendLink");
   linkInput.addEventListener("change", () => {
     if (linkInput.checked) delete rule.link;
     else rule.link = false;
@@ -131,7 +138,7 @@ function buildSocialCategoryCard(rule, index) {
 
   const hint = document.createElement("span");
   hint.className = "social-category-hint";
-  hint.textContent = "Placeholders: {title} · {content} — the checkbox controls the link";
+  hint.textContent = t("social.templateHint");
   opts.append(hint);
   card.append(opts);
 

@@ -1,4 +1,5 @@
 import { altTextMaxDataUrlLength, altTextMaxImageSide } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { escapeMarkdownAlt, imageMimeType } from "./15a-media-reference-index.js";
 
 import { els } from "./01b-elements.js";
@@ -64,7 +65,7 @@ function resizeImageDataUrl(dataUrl) {
       const width = image.naturalWidth || image.width;
       const height = image.naturalHeight || image.height;
       if (!width || !height) {
-        reject(new Error("Image size could not be read."));
+        reject(new Error(t("media.imageSizeUnreadable")));
         return;
       }
 
@@ -74,13 +75,13 @@ function resizeImageDataUrl(dataUrl) {
       canvas.height = Math.max(1, Math.round(height * scale));
       const context = canvas.getContext("2d");
       if (!context) {
-        reject(new Error("Image could not be prepared."));
+        reject(new Error(t("media.imagePrepareFailed")));
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL("image/jpeg", 0.82));
     };
-    image.onerror = () => reject(new Error("Image could not be read."));
+    image.onerror = () => reject(new Error(t("media.imageReadFailed")));
     image.src = dataUrl;
   });
 }

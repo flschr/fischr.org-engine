@@ -1,4 +1,5 @@
 import { buildDocument, splitDocument } from "./09-frontmatter.js";
+import { t } from "./00a-i18n.js";
 import { editorRecovery } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -115,9 +116,12 @@ export async function maybeOfferRestore(current) {
   }
   const when = formatEditorDate(saved.savedAt);
   const restore = await askDiscardAction({
-    title: "Restore unsaved draft?",
-    text: `An unsaved version${when ? ` from ${when}` : ""} was found${saved.label ? ` — “${saved.label}”` : ""}. Restore it, or keep the saved version?`,
-    actionLabel: "Restore"
+    title: t("dialog.restoreDraftTitle"),
+    text: t("dialog.restoreDraftBody", {
+      when: when ? t("dialog.restoreDraftWhen", { when }) : "",
+      label: saved.label ? t("dialog.restoreDraftLabel", { label: saved.label }) : ""
+    }),
+    actionLabel: t("action.restore")
   });
   if (!restore) {
     clearAutosave();
@@ -163,7 +167,7 @@ export async function maybeOfferRestore(current) {
     state.suppressRestore = false;
   }
   state.savedSnapshot = committedSnapshot;
-  showStatus("Unsaved draft restored — remember to save.");
+  showStatus(t("dialog.restoreDraftToast"));
 }
 
 // The editor is "live" whenever a doc is open — including while it's hidden
@@ -184,9 +188,9 @@ export async function confirmLeaveEditor() {
   if (state.view === "social") {
     if (!socialConfigDirty()) return true;
     return askDiscardAction({
-      title: "Discard changes?",
-      text: "The social configuration has unsaved changes.",
-      actionLabel: "Verwerfen"
+      title: t("dialog.discardChangesTitle"),
+      text: t("dialog.socialConfigUnsavedBody"),
+      actionLabel: t("action.discard")
     });
   }
   if (!editorIsDirty()) return true;

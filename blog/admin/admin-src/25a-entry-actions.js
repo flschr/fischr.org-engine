@@ -51,7 +51,7 @@ export async function newEntry(forcedCollection) {
 
 export async function queueCurrent(mode) {
   if (!state.current || !["posts", "pages"].includes(state.current.collection)) return false;
-  if (!requireGithubAccess(mode === "publish" ? "publishing" : "saving")) return false;
+  if (!requireGithubAccess(mode === "publish" ? t("action.publishing") : t("action.saving"))) return false;
 
   const collection = state.current.collection;
   if (state.current.sourceMode) {
@@ -155,7 +155,7 @@ export async function queueCurrent(mode) {
 
 export async function queueEntryDelete() {
   if (!state.current || !["posts", "pages"].includes(state.current.collection)) return false;
-  if (!requireGithubAccess("deleting")) return false;
+  if (!requireGithubAccess(t("action.deleting"))) return false;
 
   const fields = collectEditorFields();
   const path = state.current.path || (fields.title ? buildEntryPath(fields, state.current.collection) : "");

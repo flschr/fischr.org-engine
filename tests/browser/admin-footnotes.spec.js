@@ -17,8 +17,8 @@ async function insertFootnote(page, text) {
   // is not needed in every article.
   await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Weitere Einfügungen" }).click();
   await page.getByRole("dialog", { name: "Weitere Einfügungen" }).getByRole("button", { name: "Fußnote" }).click();
-  await page.getByRole("dialog").getByPlaceholder("Footnote text").fill(text);
-  await page.getByRole("dialog").getByRole("button", { name: "Insert" }).click();
+  await page.getByRole("dialog").getByPlaceholder("Fußnotentext").fill(text);
+  await page.getByRole("dialog").getByRole("button", { name: "Einfügen" }).click();
 }
 
 test("footnotes use normal editor selection, formatting, deletion and undo", async ({ page }) => {
@@ -137,9 +137,9 @@ test("footnote selections can be linked from the editor toolbar", async ({ page 
   await page.keyboard.press("Home");
   await page.keyboard.press("Shift+End");
   await page.getByRole("toolbar", { name: "Formatierung" }).getByRole("button", { name: "Link (⌘K)" }).click();
-  const linkDialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Insert link" }) });
+  const linkDialog = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "Link einfügen" }) });
   await linkDialog.getByPlaceholder("https://example.com").fill("https://example.com/fussnote");
-  await linkDialog.getByRole("button", { name: "Insert" }).click();
+  await linkDialog.getByRole("button", { name: "Einfügen" }).click();
   await expect(page.locator(".cm-footnote-line .cm-link")).toContainText("Verlinkte Quelle");
 
   await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Vorschau" }).click();
