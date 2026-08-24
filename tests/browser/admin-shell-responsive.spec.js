@@ -12,7 +12,7 @@ test("mobile sections are reachable without opening anything", async ({ page }, 
   await page.goto("/admin/");
 
   // No drawer to reveal them: every destination is on screen from the start.
-  // Einstellungen no longer has its own tab — it opens from inside Queue.
+  // Einstellungen no longer has its own tab — it opens from inside Sync.
   await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
   await expect(page.locator("#syncButton")).toBeVisible();
@@ -139,7 +139,7 @@ test("mobile tab bar sits below the content it must not cover", async ({ page },
   const workspacePadding = await page.locator("#content").evaluate((node) => parseFloat(getComputedStyle(node).paddingBottom));
   expect(workspacePadding).toBeGreaterThanOrEqual(bar.height);
 
-  // Queue is a permanent tab now (it also opens Einstellungen), so it
+  // Sync is a permanent tab now (it also opens Einstellungen), so it
   // stays on screen even with nothing pending — only its badge is conditional.
   await expect(page.locator("#syncButton")).toBeVisible();
   await expect(page.locator("#syncButton .sync-count")).toBeHidden();

@@ -13,7 +13,7 @@
    * across the screen from the button that revealed them.
    *
    * `display: contents` on .sidebar-nav lifts the three collection buttons out
-   * of their wrapper so they share one row with Queue. That drops the
+   * of their wrapper so they share one row with Sync. That drops the
    * wrapper from the accessibility tree, which is why the landmark lives on
    * the <aside role="navigation"> around it and the wrapper is a plain div. */
   /* How much fixed chrome the bottom edge is carrying right now. The bar and
@@ -76,7 +76,7 @@
   }
   /* Same filled --accent marker as the web sidebar's .nav-link.is-active (see
      01a-shell.css) — the phone tab bar should mark "you are here" the same
-     way, not fall back to a fainter phone-only treatment. Queue has no
+     way, not fall back to a fainter phone-only treatment. Sync has no
      is-active state (it opens a queue, not a persistent collection) —
      has-changes is its own, separate signal that something is waiting, not
      "you are here". */
@@ -86,6 +86,13 @@
      the filled marker right after the tap that was supposed to show it. */
   .nav-link:not(.is-active):hover,
   .sync-button:hover { background: transparent; color: var(--accent-ink); }
+  /* An inset rounded pill, not the button's own full-bleed square corner to
+     corner — reads as a native iOS selection mark instead of a flat slab
+     wedged into the tab strip. */
+  .nav-link.is-active {
+    margin: 0.3rem 0.25rem;
+    border-radius: var(--radius);
+  }
   .nav-link.is-active .nav-icon { color: var(--accent-contrast); }
   .nav-link .nav-icon { flex: 0 0 auto; }
   .nav-link .nav-icon svg,
@@ -102,7 +109,7 @@
     flex: 0 1 auto;
   }
   /* The count used to sit in a wide floating pill next to the label ("3
-     Queue"); in the narrow tab column it moves onto the icon as a
+     Sync"); in the narrow tab column it moves onto the icon as a
      small corner badge instead, and disappears rather than sit there as a
      standing "0" — nothing to publish is the common case, not news. Anchored
      off the icon's own (fixed) width, not the button's, so it lands on the
