@@ -153,8 +153,17 @@ eleventyExcludeFromCollections: true
               </nav>
             </div>
 
-            <input id="imageUploadInput" class="hidden-file-input" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
-            <input id="gpxUploadInput" class="hidden-file-input" type="file" accept="application/gpx+xml,.gpx">
+            <!-- tabindex="-1", not display:none/hidden: both trigger buttons
+                 (02-toolbar.js) open these via .click() from a real tap, and
+                 iOS Safari refuses that unless the input stays visually
+                 present in the DOM — display:none breaks the picker there.
+                 tabindex="-1" only pulls it out of keyboard/Tab navigation,
+                 which is what actually matters for iOS's Previous/Next
+                 keyboard bar: it counts navigable fields, and these never
+                 needed to be one (they're only ever reached via their
+                 buttons, never tapped or tabbed to directly). -->
+            <input id="imageUploadInput" class="hidden-file-input" type="file" tabindex="-1" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
+            <input id="gpxUploadInput" class="hidden-file-input" type="file" tabindex="-1" accept="application/gpx+xml,.gpx">
 
             <article class="editor-article">
               <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel"></textarea>
