@@ -89,6 +89,21 @@ test("der Volltext wird erst bei der ersten Suche geholt, und dann nicht wieder"
   expect(requests).toHaveLength(2);
 });
 
+// René sucht im Admin selten. Das Feld zu fokussieren — anklicken, per Tab erreichen — passiert
+// dabei häufiger als tatsächlich zu suchen, und darf für sich allein nichts laden.
+test("das Suchfeld zu fokussieren lädt noch nichts, erst ein Suchwort tut das", async ({ page }) => {
+  const requests = [];
+  await openLibrary(page, { onSearchRequest: (url) => requests.push(url) });
+
+  await page.locator("#searchInput").focus();
+  await page.waitForTimeout(200);
+  expect(requests).toEqual([]);
+
+  await page.locator("#searchInput").pressSequentially("münchen");
+  await expect(page.locator("#entryList .entry-excerpt")).toBeVisible();
+  expect(requests).toHaveLength(1);
+});
+
 test("ein gescheiterter Abruf sagt es, statt „nichts gefunden“ zu behaupten", async ({ page }) => {
   await page.unroute("**/api/admin/auth/session");
   await page.route("**/admin/posts-index.json", (route) => route.fulfill({

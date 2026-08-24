@@ -14,7 +14,6 @@ import { handleEditorDragEnter, handleEditorDragLeave, handleEditorDragOver, han
 import { confirmLeaveEditor } from "./19-recovery.js";
 import { renderEditorMetaLine, resizeTitleInput, syncPublishButton } from "./20-editor-fields.js";
 import { renderEntryList } from "./25-entries.js";
-import { ensureSearchIndex, searchIndexStatus } from "./25d-entry-search.js";
 import { newEntry, queueEntryDelete } from "./25a-entry-actions.js";
 import { handleCurrentPublishAction, saveWithProgress, unpublishCurrentPost } from "./25b-publish-actions.js";
 import { queueGpxUpload, queueUploads } from "./26-media.js";
@@ -25,12 +24,10 @@ import { openQueue } from "./27c-queue-render.js";
 import { refreshCurrent } from "./29-events.js";
 
 export function wireEditorEvents() {
+  // The list itself fetches the full text once a query needs it (renderEntryList
+  // in 25-entries.js) — search here is the exception, not the rule, so nothing
+  // downloads before the first real search term.
   els.searchInput.addEventListener("input", renderEntryList);
-  // The list itself asks for the full text once a query needs it. Fetching it
-  // already on focus only moves that request ahead of the first keystroke.
-  els.searchInput.addEventListener("focus", () => {
-    if (searchIndexStatus() === "idle") ensureSearchIndex().then(renderEntryList);
-  });
   els.refreshButton.addEventListener("click", refreshCurrent);
   els.refreshMediaButton.addEventListener("click", refreshCurrent);
   els.socialImageSelectButton?.addEventListener("click", startSocialImagePick);
