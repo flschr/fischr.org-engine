@@ -76,16 +76,18 @@
   }
   /* Same filled --accent marker as the web sidebar's .nav-link.is-active (see
      01a-shell.css) — the phone tab bar should mark "you are here" the same
-     way, not fall back to a fainter phone-only treatment. Sync has no
-     is-active state (it opens a queue, not a persistent collection) —
-     has-changes is its own, separate signal that something is waiting, not
-     "you are here". */
+     way, not fall back to a fainter phone-only treatment. Unlike on desktop
+     (where Sync sits apart from the collection tabs as its own destination),
+     it shares one row here with the other three, so it gets the same marker
+     when its own view is open — has-changes stays its own, weaker signal for
+     "something is waiting", overridden below when both apply at once. */
   /* :not(.is-active) so a stuck :hover — iOS Safari keeps an element
      hovered until the next tap elsewhere — can't tie on specificity with
-     .nav-link.is-active (01a-shell.css) and win on source order, reverting
-     the filled marker right after the tap that was supposed to show it. */
+     .is-active (01a-shell.css, and the mobile-only rule for .sync-button
+     below) and win on source order, reverting the filled marker right after
+     the tap that was supposed to show it. */
   .nav-link:not(.is-active):hover,
-  .sync-button:hover { background: transparent; color: var(--accent-ink); }
+  .sync-button:not(.is-active):hover { background: transparent; color: var(--accent-ink); }
   /* An inset rounded pill, not the button's own full-bleed square corner to
      corner — reads as a native iOS selection mark instead of a flat slab
      wedged into the tab strip. */
@@ -130,6 +132,17 @@
   .sync-button.has-changes .sync-count { display: inline-flex; }
   .sync-button.has-changes { color: var(--accent-ink); }
   .sync-button.has-changes > [data-icon] { color: var(--accent); }
+  /* Same inset rounded pill as .nav-link.is-active above — placed after
+     has-changes so the "you are here" marker wins the background/color tie
+     over the weaker pending-changes tint when both apply at once. The count
+     badge itself is untouched, so it still shows on top of the filled mark. */
+  .sync-button.is-active {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    margin: 0.3rem 0.25rem;
+    border-radius: var(--radius);
+  }
+  .sync-button.is-active > [data-icon] { color: var(--accent-contrast); }
 
   /* Everything fixed to the bottom edge floats over the content, so the
      workspace and the status toast both end above it. */
