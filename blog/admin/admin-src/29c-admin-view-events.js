@@ -1,3 +1,4 @@
+import { applyStaticTranslations, setLang } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { openSocialConfig } from "./14-social-settings.js";
@@ -85,6 +86,12 @@ export function wireAdminViewEvents() {
       zeile.hidden = false;
     });
     button.remove();
+  });
+  // A device preference, not part of the saved social config — takes effect
+  // immediately, no Speichern/Zurücksetzen of its own.
+  els.adminLangSelect?.addEventListener("change", () => {
+    setLang(els.adminLangSelect.value);
+    applyStaticTranslations();
   });
   els.socialConfigSave?.addEventListener("click", saveSocialConfig);
   els.socialConfigReset?.addEventListener("click", resetSocialConfig);

@@ -33,7 +33,7 @@ export const mediaService = window.RWMediaService.create({
 export const collections = {
   posts: {
     label: "Artikel",
-    title: "Articles",
+    titleKey: "viewTitle.articles",
     dir: "blog/posts",
     publicDir: "",
     // Order by the real post date (frontmatter for local edits, filename
@@ -43,14 +43,14 @@ export const collections = {
   },
   pages: {
     label: "Seite",
-    title: "Pages",
+    titleKey: "viewTitle.pages",
     dir: "blog/pages",
     publicDir: "",
     sort: (a, b) => a.path.localeCompare(b.path)
   },
   media: {
     label: "Medium",
-    title: "Media",
+    titleKey: "viewTitle.media",
     dir: "blog/assets/images",
     videoDir: "blog/assets/videos",
     gpxDir: "blog/assets/files/gpx",

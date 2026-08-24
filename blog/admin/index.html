@@ -74,7 +74,7 @@ eleventyExcludeFromCollections: true
           <!-- Library view: list of posts / pages -->
           <section id="libraryView" class="view library-view" aria-label="Inhalte">
             <div class="library-head view-head">
-              <h1 id="libraryTitle" class="view-title">Articles</h1>
+              <h1 id="libraryTitle" class="view-title" data-i18n="viewTitle.articles">Articles</h1>
               <div class="library-tools">
                 <input id="searchInput" class="search" type="search" autocomplete="off" placeholder="Suchen">
                 <select id="entryTypeSelect" aria-label="Inhaltstyp">
@@ -108,7 +108,7 @@ eleventyExcludeFromCollections: true
                reliable pure-web fix is known; this is a standing iOS quirk. -->
           <div id="editorForm" class="view editor-form" hidden>
             <div class="editor-head view-head">
-              <h1 id="editorViewTitle" class="view-title">New article</h1>
+              <h1 id="editorViewTitle" class="view-title" data-i18n="viewTitle.newArticle">New article</h1>
             </div>
             <!-- Two bars, split by what the buttons act on: one on the text,
                  one on the document. The split exists for the phone, where the
@@ -207,7 +207,7 @@ eleventyExcludeFromCollections: true
                       <span>Vorschaubild</span>
                       <div class="meta-input-action">
                         <input id="socialImageInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="/assets/images/...">
-                        <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library">
+                        <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library" data-i18n-aria="aria.choosePreviewImage" data-i18n-title="aria.chooseFromLibrary">
                           <span data-icon="image" aria-hidden="true"></span>
                         </button>
                       </div>
@@ -220,8 +220,8 @@ eleventyExcludeFromCollections: true
                 </form>
               </dialog>
 
-              <div id="editorMount" class="editor-mount" aria-label="Content"></div>
-              <div id="previewPanel" class="editor-preview" aria-label="Preview" hidden></div>
+              <div id="editorMount" class="editor-mount" aria-label="Content" data-i18n-aria="aria.editorContent"></div>
+              <div id="previewPanel" class="editor-preview" aria-label="Preview" hidden data-i18n-aria="aria.editorPreview"></div>
             </article>
           </div>
 
@@ -229,11 +229,11 @@ eleventyExcludeFromCollections: true
           <dialog id="publishDialog" class="publish-dialog" aria-label="Veröffentlichen">
             <div class="publish-dialog-inner">
               <div class="publish-dialog-head">
-                <h2 id="publishDialogTitle" class="publish-dialog-title" tabindex="-1" autofocus>Publish</h2>
+                <h2 id="publishDialogTitle" class="publish-dialog-title" tabindex="-1" autofocus data-i18n="dialog.publish">Publish</h2>
               </div>
 
               <section class="publish-section">
-                <h3 class="publish-section-title">Content type</h3>
+                <h3 class="publish-section-title" data-i18n="dialog.contentType">Content type</h3>
                 <label class="social-field">
                   <select id="contentTypeSelect">
                     <option value="">Normaler Beitrag</option>
@@ -256,7 +256,7 @@ eleventyExcludeFromCollections: true
               </section>
 
               <section class="publish-section" id="shareSection">
-                <h3 class="publish-section-title">Sharing</h3>
+                <h3 class="publish-section-title" data-i18n="dialog.sharing">Sharing</h3>
                 <p id="publishDialogSocialHint" class="social-hint" hidden>Bereits versendete Social-Posts werden bei einem Update nicht erneut gesendet. Falls dieser Beitrag noch nie geteilt wurde, wird das beim nächsten Sync nachgeholt.</p>
                 <label class="social-field">
                   <select id="categorySelect"></select>
@@ -293,7 +293,7 @@ eleventyExcludeFromCollections: true
 
           <dialog id="missingAltDialog" class="dialog">
             <form method="dialog">
-              <h2>Missing alt text</h2>
+              <h2 data-i18n="dialog.missingAltText">Missing alt text</h2>
               <p id="missingAltDialogText"></p>
               <menu>
                 <button type="submit" class="ghost" value="no">Trotzdem veröffentlichen</button>
@@ -305,7 +305,7 @@ eleventyExcludeFromCollections: true
           <!-- Media / gallery view -->
           <section id="mediaView" class="view media-view" aria-label="Medien" hidden>
             <div class="library-head view-head">
-              <h1 class="view-title">Media</h1>
+              <h1 class="view-title" data-i18n="viewTitle.media">Media</h1>
               <div class="library-tools">
                 <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Bilder durchsuchen">
                 <select id="mediaFilterInput" aria-label="Medienfilter">
@@ -339,7 +339,7 @@ eleventyExcludeFromCollections: true
                right), so this row does not need its own layout rules. -->
           <section id="queueView" class="view queue-view" hidden>
             <div class="library-head view-head">
-              <h1 class="view-title">Publish</h1>
+              <h1 class="view-title" data-i18n="viewTitle.queue">Sync</h1>
               <div class="library-tools">
                 <button id="pushButton" type="button" class="primary-action" disabled>
                   <span data-icon="send" aria-hidden="true"></span>
@@ -374,7 +374,7 @@ eleventyExcludeFromCollections: true
                D1 database, no third-party service is involved. -->
           <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
             <div class="library-head view-head stats-head">
-              <h1 class="view-title">Statistics</h1>
+              <h1 class="view-title" data-i18n="viewTitle.stats">Statistics</h1>
               <p id="statsRangeLabel" class="stats-range-label"></p>
               <div class="library-tools">
                 <!-- Die Presets und der freie Zeitraum sind eine Auswahl, keine

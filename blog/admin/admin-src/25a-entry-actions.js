@@ -1,4 +1,5 @@
 import { renameOriginsPath } from "./00-konstanten.js";
+import { t } from "./00a-i18n.js";
 import { buildDocument } from "./09-frontmatter.js";
 import { collections } from "./01-bootstrap.js";
 import { prepareRenameOriginChange } from "./01a-rename-origins.js";
@@ -31,7 +32,7 @@ export async function newEntry(forcedCollection) {
   // state would light up Pages while you write a post).
   if (forcedCollection) {
     state.collection = forcedCollection;
-    els.libraryTitle.textContent = collections[forcedCollection].title;
+    els.libraryTitle.textContent = t(collections[forcedCollection].titleKey);
     els.searchInput.placeholder = forcedCollection === "pages" ? "Seiten durchsuchen" : "Artikel durchsuchen";
   }
   const collection = state.collection === "media" ? "posts" : state.collection;

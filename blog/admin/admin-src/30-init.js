@@ -1,3 +1,4 @@
+import { applyStaticTranslations, t } from "./00a-i18n.js";
 import { collections, isTransientGitHubError } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -84,6 +85,9 @@ async function resumeView(target) {
 }
 
 async function init() {
+  // Before anything else renders, so the very first paint is already in the
+  // right language instead of flashing the markup's own (German) text first.
+  applyStaticTranslations();
   // Read before showView/replaceNav below overwrite it.
   const resumed = resumeTarget();
   renderFormatToolbar();
@@ -94,7 +98,7 @@ async function init() {
   if (state.token && els.tokenInput) els.tokenInput.value = state.token;
   updateConnectionState();
   updateNav();
-  els.libraryTitle.textContent = collections.posts.title;
+  els.libraryTitle.textContent = t(collections.posts.titleKey);
   showView("library");
   replaceNav();
 

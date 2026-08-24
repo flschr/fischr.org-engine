@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { collections } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -8,9 +9,11 @@ import { contentTypeChanged, editorInputChanged } from "./20-editor-fields.js";
 
 export function updateEditorViewTitle() {
   if (!els.editorViewTitle) return;
-  const noun = state.current?.collection === "pages" ? "page" : "article";
-  const verb = state.current?.isNew ? "New" : "Edit";
-  els.editorViewTitle.textContent = `${verb} ${noun}`;
+  const isPage = state.current?.collection === "pages";
+  const key = state.current?.isNew
+    ? (isPage ? "viewTitle.newPage" : "viewTitle.newArticle")
+    : (isPage ? "viewTitle.editPage" : "viewTitle.editArticle");
+  els.editorViewTitle.textContent = t(key);
 }
 
 export function collectEditorFields() {

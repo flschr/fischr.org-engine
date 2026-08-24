@@ -4,6 +4,7 @@
 // darum herum steht (Fortschritt, leere Zustände, fehlende Verbindung) ist eine andere Frage als
 // wie eine Zeile aussieht und was ihre Knöpfe tun.
 
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { istWirksam } from "./04c-queue-actions.js";
@@ -45,8 +46,8 @@ export function queueKarte(change, { publishLocked, mediaProcessing, erzwungen }
   discard.disabled = publishLocked || mediaProcessing;
   discard.addEventListener("click", async () => {
     const confirmed = await askDiscardAction({
-      title: "Discard change?",
-      text: `“${change.label || baseName(change.path)}” is permanently removed from the queue.`
+      title: t("dialog.discardChange"),
+      text: t("dialog.discardChangeBody", { item: change.label || baseName(change.path) })
     });
     if (!confirmed) return;
     try {

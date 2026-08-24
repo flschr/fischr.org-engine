@@ -1,3 +1,4 @@
+import { currentLang } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { hasGithubAccess } from "./05-github-auth.js";
@@ -56,6 +57,7 @@ export async function openSocialConfig() {
   replaceNav();
   // The GitHub connection section now lives in this view — refresh its state.
   updateConnectionState();
+  if (els.adminLangSelect) els.adminLangSelect.value = currentLang();
   setSocialConfigStatus("Konfiguration wird geladen …", "muted");
   try {
     await loadSocialConfig(true);

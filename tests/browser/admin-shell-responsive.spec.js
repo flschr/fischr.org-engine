@@ -23,7 +23,7 @@ test("mobile sections are reachable without opening anything", async ({ page }, 
   await page.getByRole("button", { name: "Artikel", exact: true }).click();
 
   await page.locator("#entryTypeSelect").selectOption("pages");
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   // The "Artikel" tab covers both posts and pages, so it stays marked current
   // for either — the type switcher inside the view is what tells them apart.
   await expect(page.locator('[data-collection="posts"]')).toHaveAttribute("aria-current", "page");
@@ -37,12 +37,12 @@ test("tabs are siblings in history, the editor is depth", async ({ page }) => {
   // Switching tabs replaces the entry — otherwise a back swipe would walk the
   // tab chain backwards instead of doing nothing.
   await page.locator("#entryTypeSelect").selectOption("pages");
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   await page.getByRole("button", { name: "Mediathek", exact: true }).click();
   await expect(page.locator("#mediaView")).toBeVisible();
   // The merged "Artikel" tab returns to Pages, the collection it left off on.
   await page.getByRole("button", { name: "Artikel", exact: true }).click();
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   expect(await depth()).toBe(start);
 
   // Opening an entry is the one move that goes deeper, so back leads out of it —
@@ -53,7 +53,7 @@ test("tabs are siblings in history, the editor is depth", async ({ page }) => {
 
   await page.goBack();
   await expect(page.locator("#editorForm")).toBeHidden();
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
 });
 
 test("a reload stays on the view it was on", async ({ page }) => {
@@ -69,16 +69,16 @@ test("a reload stays on the view it was on", async ({ page }) => {
 
   await page.getByRole("button", { name: "Artikel", exact: true }).click();
   await page.locator("#entryTypeSelect").selectOption("pages");
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   await page.reload();
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
 });
 
 test("a reloaded new draft keeps the collection it was started in", async ({ page }) => {
   await page.goto("/admin/");
 
   await page.locator("#entryTypeSelect").selectOption("pages");
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   await page.locator("#newEntryButtonLib").click();
   await expect(page.locator("#editorForm")).toBeVisible();
 
@@ -87,7 +87,7 @@ test("a reloaded new draft keeps the collection it was started in", async ({ pag
   // A draft with no path yet has nothing to derive its collection from, so the
   // restored entry has to carry it — or a new page comes back as a new post and
   // would save into blog/posts/.
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
   // The meta panel is collapsed, so ask which fields the editor configured for
   // this collection rather than which ones are on screen: pages get permalink,
   // posts get slug.
@@ -107,8 +107,8 @@ test("no view repeats what the navigation already says", async ({ page }) => {
   // the box rather than asking toBeHidden.)
   const title = page.locator("#libraryTitle");
   expect((await title.boundingBox()).height).toBeLessThanOrEqual(1);
-  await expect(title).toHaveText("Articles");
-  await expect(page.getByRole("heading", { name: "Articles", exact: true })).toBeAttached();
+  await expect(title).toHaveText("Artikel");
+  await expect(page.getByRole("heading", { name: "Artikel", exact: true })).toBeAttached();
 
   // The tools start at the workspace's inner edge, with no heading above them.
   // Measured from inside the padding, or the workspace's own inset counts too.
@@ -205,7 +205,7 @@ test("mobile editor hides the tab bar and leaves the way out to the platform", a
   await page.goBack();
 
   await expect(page.locator("#editorForm")).toBeHidden();
-  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  await expect(page.locator("#libraryTitle")).toHaveText("Artikel");
   await expect(page.locator("#sidebar")).toBeVisible();
 });
 
@@ -234,7 +234,7 @@ test("swiping back out of a dirty editor asks before discarding it", async ({ pa
 
   await page.locator("#unsavedDialog").getByRole("button", { name: "Verwerfen" }).click();
   await expect(page.locator("#editorForm")).toBeHidden();
-  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  await expect(page.locator("#libraryTitle")).toHaveText("Artikel");
 });
 
 test("desktop keeps the sidebar and needs no back button", async ({ page }, testInfo) => {
@@ -243,7 +243,7 @@ test("desktop keeps the sidebar and needs no back button", async ({ page }, test
 
   await expect(page.getByRole("button", { name: "Artikel", exact: true })).toBeVisible();
   await page.locator("#entryTypeSelect").selectOption("pages");
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
 
   await page.locator("#newEntryButtonLib").click();
   await expect(page.locator("#editorForm")).toBeVisible();
@@ -252,7 +252,7 @@ test("desktop keeps the sidebar and needs no back button", async ({ page }, test
   await expect(page.getByRole("button", { name: "Zurück zur Liste" })).toHaveCount(0);
 
   await page.goBack();
-  await expect(page.locator("#libraryTitle")).toHaveText("Pages");
+  await expect(page.locator("#libraryTitle")).toHaveText("Seiten");
 });
 
 test("mobile navigation works before startup requests finish", async ({ page }, testInfo) => {

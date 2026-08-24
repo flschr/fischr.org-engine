@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { collections } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -67,7 +68,7 @@ export function setCollection(collection) {
   }
 
   state.libraryCollection = collection;
-  els.libraryTitle.textContent = collections[collection].title;
+  els.libraryTitle.textContent = t(collections[collection].titleKey);
   els.searchInput.placeholder = collection === "pages" ? "Seiten durchsuchen" : "Artikel durchsuchen";
   if (els.entryTypeSelect) els.entryTypeSelect.value = collection;
   if (els.newEntryButtonLib) {

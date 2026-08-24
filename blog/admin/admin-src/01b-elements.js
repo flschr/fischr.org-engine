@@ -107,6 +107,7 @@ export const els = {
   socialConfigReset: document.getElementById("socialConfigReset"),
   socialConfigAdd: document.getElementById("socialConfigAdd"),
   socialCategoryList: document.getElementById("socialCategoryList"),
+  adminLangSelect: document.getElementById("adminLangSelect"),
   cfgGotosocialInstance: document.getElementById("cfgGotosocialInstance"),
   cfgDefaultCategory: document.getElementById("cfgDefaultCategory"),
   cfgMaxPostsPerRun: document.getElementById("cfgMaxPostsPerRun"),

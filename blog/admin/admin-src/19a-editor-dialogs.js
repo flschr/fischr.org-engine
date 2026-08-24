@@ -1,12 +1,13 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 
 // --- Editor confirmation dialogs ---------------------------------------
 
 export function askDeleteAction() {
-  const label = state.current?.collection === "pages" ? "Page" : "Article";
-  els.deleteDialogTitle.textContent = `Delete ${label.toLowerCase()}?`;
-  els.deleteDialogText.textContent = "The deletion is queued and only carried out when you publish.";
+  const isPage = state.current?.collection === "pages";
+  els.deleteDialogTitle.textContent = t(isPage ? "dialog.deletePage" : "dialog.deleteArticle");
+  els.deleteDialogText.textContent = t("dialog.deleteEntryBody");
   // Vor dem Öffnen zurücksetzen, sonst antwortet der Dialog mit der letzten Wahl.
   //
   // WebKit lässt returnValue beim Schliessen per Escape stehen, Chromium leert es. Gemessen:

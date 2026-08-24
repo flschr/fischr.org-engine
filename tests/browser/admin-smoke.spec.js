@@ -27,7 +27,7 @@ test("admin shell starts without browser errors", async ({ page }) => {
 
   await expect(page).toHaveTitle("fischr Admin");
   await expect(page.getByRole("main")).toBeVisible();
-  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  await expect(page.locator("#libraryTitle")).toHaveText("Artikel");
   await expect(page.locator("#newEntryButtonLib")).toBeVisible();
   await expect(page.locator("#connectionState")).toHaveText("nicht verbunden");
   expect(errors).toEqual([]);
@@ -39,7 +39,7 @@ test("article list defers editor and preview runtimes until needed", async ({ pa
     if (/vendor\/editor|vendor\/markdown-it|preview-renderer|markdown-conventions/.test(request.url())) runtimeRequests.push(request.url());
   });
   await page.goto("/admin/");
-  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
+  await expect(page.locator("#libraryTitle")).toHaveText("Artikel");
   expect(runtimeRequests).toEqual([]);
 
   await page.locator("#newEntryButtonLib").click();
@@ -76,7 +76,7 @@ test("authenticated admin opens the editor and publish dialog", async ({ page })
   await page.goto("/admin/");
   await page.locator("#newEntryButtonLib").click();
 
-  await expect(page.locator("#editorViewTitle")).toHaveText("New article");
+  await expect(page.locator("#editorViewTitle")).toHaveText("Neuer Artikel");
   const title = page.getByPlaceholder("Titel");
   await expect(title).toBeVisible();
   await title.fill("Browser smoke test");
