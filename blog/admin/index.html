@@ -130,13 +130,13 @@ eleventyExcludeFromCollections: true
               </nav>
 
               <nav class="editor-bar" aria-label="Artikel">
-                <!-- Starts absent: whether there is anything to send is a
-                     decision about the open article, and no article is open
-                     yet. syncPublishButton() makes it either way before the
-                     editor is ever shown. Leads the row now — it's the
-                     primary action here, not something to go hunting for at
-                     the far end of a right-pushed line. -->
-                <button id="publishButton" class="tb-btn tb-publish is-publish is-absent" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                <!-- Always visible, like Speichern next to it — a button that
+                     only shows up sometimes reads as broken. When there is
+                     nothing queued to send, clicking it is a safe no-op (see
+                     syncAfterSave in 25b-publish-actions.js); the label just
+                     falls back to the generic "Veröffentlichen" until
+                     syncPublishButton() has something more specific to say. -->
+                <button id="publishButton" class="tb-btn tb-publish is-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
                   <span data-icon="send" aria-hidden="true"></span>
                 </button>
                 <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">

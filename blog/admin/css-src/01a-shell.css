@@ -41,6 +41,14 @@
   line-height: 1;
 }
 .sync-button.has-changes .sync-count { background: var(--accent); color: var(--accent-contrast); }
+/* After has-changes in the cascade so a publish in flight always wins the
+   color, whether or not something is still queued behind it. */
+.sync-button.is-publishing {
+  border-color: transparent;
+  background: var(--green-weak);
+  color: var(--green);
+}
+.sync-button.is-publishing .sync-count { background: var(--green); color: #fff; }
 
 /* ---- Layout + sidebar -------------------------------------------------- */
 

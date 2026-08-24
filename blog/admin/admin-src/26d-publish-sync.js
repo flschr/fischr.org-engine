@@ -48,9 +48,12 @@ export function renderSyncState(changes) {
   const countEl = els.syncButton.querySelector(".sync-count");
   const labelEl = els.syncButton.querySelector(".sync-label");
   if (countEl) countEl.textContent = String(count);
-  if (labelEl) labelEl.textContent = state.publishInFlight
-    ? (state.publishStatus?.message || "Wird veröffentlicht …")
-    : "Sync";
+  // The label itself no longer carries the running step — that already lives
+  // in the publish overlay's own text, in full and on every platform. Two
+  // copies of the same progress drifted: this one truncated the message and
+  // stopped updating for stretches of a slow step, reading as finished while
+  // the deploy was still running.
+  if (labelEl) labelEl.textContent = "Sync";
   els.syncButton.setAttribute("aria-label", state.publishInFlight
     ? "Änderungen werden veröffentlicht"
     : (count === 1 ? "1 Änderung veröffentlichen" : `${count} Änderungen veröffentlichen`));

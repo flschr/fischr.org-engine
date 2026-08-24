@@ -50,37 +50,35 @@ export function renderEditorMetaLine() {
   syncPublishButton();
 }
 
-// One reading of "is the button there right now", so the shortcut below and
-// the write further down can never mean different things by it — they did for
-// one commit, when the shortcut still asked about the `hidden` attribute after
-// the write had already moved to a class.
-function publishButtonShown() {
-  return !els.publishButton.classList.contains("is-absent") && !els.publishButton.hidden;
+// One reading of "does the button already offer a real action", so the
+// shortcut below and the write further down can never mean different things
+// by it.
+function publishButtonOffersChange() {
+  return els.publishButton.dataset.state === "change";
 }
 
 // Kept apart from the meta line above because it runs on every keystroke: an
-// edit to a published article is what brings the button back, so waiting for
-// the next full re-render would leave it missing exactly while it is needed.
+// edit to a published article is what turns the button back into a real send
+// action, so waiting for the next full re-render would leave it stale exactly
+// while it is needed.
 //
-// `fromKeystroke` is what keeps that cheap. Once the button is up, no further
-// typing can take it down — only a save or reloading the article can, and both
-// re-render the meta line, which calls this without the flag. So on the
-// keystroke path there is nothing left to decide and the document never gets
-// serialised again.
+// `fromKeystroke` is what keeps that cheap. Once it already offers a change,
+// no further typing can undo that — only a save or reloading the article can,
+// and both re-render the meta line, which calls this without the flag. So on
+// the keystroke path there is nothing left to decide and the document never
+// gets serialised again.
 export function syncPublishButton({ fromKeystroke = false } = {}) {
   if (!els.publishButton || !state.current) return;
-  if (fromKeystroke && publishButtonShown()) return;
+  if (fromKeystroke && publishButtonOffersChange()) return;
   const affordance = currentPublishState();
-  // Absent, but still taking up its place. The button comes and goes with the
-  // first keystroke, and letting the row re-flow around it would shift every
-  // other button sideways under the pointer at exactly the moment the eye is
-  // on the text. `visibility` keeps it out of the tab order and out of the
-  // accessibility tree just as `hidden` would, without moving its neighbours.
-  els.publishButton.classList.toggle("is-absent", !affordance.visible);
-  if (!affordance.visible) return;
+  // Always visible, same as Speichern next to it: a button that only shows up
+  // sometimes reads as broken, not as "nothing to do". Clicking it with
+  // nothing queued is a safe no-op (see syncAfterSave in 25b-publish-actions.js).
+  els.publishButton.dataset.state = affordance.visible ? "change" : "idle";
   els.publishButton.innerHTML = ICON.send;
-  els.publishButton.setAttribute("aria-label", affordance.label);
-  els.publishButton.title = affordance.label;
+  const label = affordance.visible ? affordance.label : "Veröffentlichen";
+  els.publishButton.setAttribute("aria-label", label);
+  els.publishButton.title = label;
 }
 
 export function rememberEditorInputs() {

@@ -43,11 +43,6 @@
 /* Undo/redo belong to writing, but on one line they read better next to the
    article actions than pushed against the formatting they would undo. */
 .writing-bar-spacer { flex: 1 1 auto; }
-/* Keeps its slot while there is nothing to send, so the row does not shift
-   sideways on the keystroke that brings the button back. Not `hidden`: this
-   still has to leave the tab order and the accessibility tree, which
-   `visibility` does and a zero-opacity would not. */
-.tb-btn.is-absent { visibility: hidden; }
 .format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 
 .preview-gpx {

@@ -67,18 +67,21 @@ test("a keystroke never serialises the document just to place a button", () => {
   //
   // 1. The dirty check is only asked when its answer can change the outcome.
   assert.match(source, /const editorDirty = published && !hasQueuedChange \? editorIsDirty\(\) : false/);
-  // 2. Once the button is up, typing cannot take it down — only a save or a
-  //    reload can, and both re-render without the keystroke flag.
-  assert.match(source, /if \(fromKeystroke && publishButtonShown\(\)\) return/);
+  // 2. Once the button already offers a change, typing cannot undo that —
+  //    only a save or a reload can, and both re-render without the
+  //    keystroke flag.
+  assert.match(source, /if \(fromKeystroke && publishButtonOffersChange\(\)\) return/);
   assert.match(source, /syncPublishButton\(\{ fromKeystroke: true \}\)/);
 });
 
-test("the send button's presence is read and written through one predicate", () => {
+test("the send button's action state is read and written through one predicate", () => {
   const source = adminSource();
 
-  // These drifted apart once already: the write moved to a class while the
-  // shortcut still asked about the `hidden` attribute, so the button stopped
-  // coming back. Both sides go through publishButtonShown() now.
-  assert.match(source, /function publishButtonShown\(\)[\s\S]*?classList\.contains\("is-absent"\)/);
-  assert.match(source, /classList\.toggle\("is-absent", !affordance\.visible\)/);
+  // These drifted apart once already, back when presence itself was the
+  // signal: the write moved to a class while the shortcut still asked about
+  // the `hidden` attribute, so the button stopped coming back. Both sides go
+  // through publishButtonOffersChange() now — presence is no longer the
+  // question, since the button stays visible either way.
+  assert.match(source, /function publishButtonOffersChange\(\)[\s\S]*?dataset\.state === "change"/);
+  assert.match(source, /els\.publishButton\.dataset\.state = affordance\.visible \? "change" : "idle"/);
 });
