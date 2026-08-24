@@ -85,7 +85,9 @@ function normalizeRefHost(host) {
   if (!value) return value;
   const lower = value.toLowerCase();
   if (APP_REFERRER_HOSTS[lower]) return APP_REFERRER_HOSTS[lower];
-  if (lower === "google" || /^google\.[a-z.]+$/.test(lower)) return "google.com";
+  // Höchstens zwei kurze TLD-Teile (com, de, co.uk, com.br, …), sonst matchte
+  // das Muster auch eine fremde Domain wie "google.com.irgendwas-langes.tld".
+  if (/^google((\.[a-z]{2,3}){1,2})?$/.test(lower)) return "google.com";
   return value;
 }
 
@@ -244,4 +246,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { build, toSql, classifyPath, referrerHost, normalizeRefHost, normalizePath, berlinDay };
+module.exports = { build, toSql, classifyPath, referrerHost, normalizeRefHost, APP_REFERRER_HOSTS, normalizePath, berlinDay };

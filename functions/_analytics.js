@@ -228,7 +228,7 @@ export function feedReader(userAgent = "") {
 // GoatCounter-Import, ein bloßes Label ohne Adresse ("Google"). Ohne diese
 // Zusammenführung zählt "google.com", die App-Kennung und das Label als drei
 // Quellen in der Liste, wo es eine ist.
-const APP_REFERRER_HOSTS = {
+export const APP_REFERRER_HOSTS = {
   "com.google.android.googlequicksearchbox": "google.com"
 };
 
@@ -237,7 +237,9 @@ export function normalizeRefHost(host) {
   if (!value) return value;
   const lower = value.toLowerCase();
   if (APP_REFERRER_HOSTS[lower]) return APP_REFERRER_HOSTS[lower];
-  if (lower === "google" || /^google\.[a-z.]+$/.test(lower)) return "google.com";
+  // Höchstens zwei kurze TLD-Teile (com, de, co.uk, com.br, …), sonst matchte
+  // das Muster auch eine fremde Domain wie "google.com.irgendwas-langes.tld".
+  if (/^google((\.[a-z]{2,3}){1,2})?$/.test(lower)) return "google.com";
   return value;
 }
 

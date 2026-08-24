@@ -85,10 +85,16 @@ test("Google-Varianten werden zu einer Quelle zusammengeführt", () => {
   });
   assert.equal(analytics.normalizeRefHost("Google"), "google.com");
   assert.equal(analytics.normalizeRefHost("google.com"), "google.com");
+  assert.equal(analytics.normalizeRefHost("google.co.uk"), "google.com");
   // Andere Quellen bleiben unangetastet, auch wenn sie wie eine Reverse-Domain
   // aussehen — nur bekannte App-Kennungen werden aufgelöst.
   assert.equal(analytics.normalizeRefHost("org.joinmastodon.android"), "org.joinmastodon.android");
   assert.equal(analytics.normalizeRefHost(""), "");
+  // Das Muster darf nur echte Google-Domains treffen. Ohne die Begrenzung auf
+  // kurze TLD-Teile matchte es auch eine fremde Domain, die zufällig mit
+  // "google." beginnt.
+  assert.equal(analytics.normalizeRefHost("google.com.evilxtracker.com"), "google.com.evilxtracker.com");
+  assert.equal(analytics.normalizeRefHost("googleanalytics.com"), "googleanalytics.com");
 });
 
 test("Pfade werden vereinheitlicht, damit eine Seite eine Zeile bleibt", () => {
@@ -149,6 +155,10 @@ test("Importer und Live-Zählung führen Google-Varianten gleich zusammen", () =
       `Host "${host}" wird unterschiedlich zusammengeführt — dieselbe Quelle stünde zweimal in der Liste`
     );
   }
+  // Die App-Kennungen selbst, nicht nur eine Stichprobe: Eine Kennung, die nur
+  // in einer der beiden Dateien ergänzt wird, soll hier auffallen, nicht erst
+  // an einer Quelle, die in beiden Listen fehlt und deshalb gleich aussieht.
+  assert.deepEqual(importer.APP_REFERRER_HOSTS, analytics.APP_REFERRER_HOSTS);
 });
 
 test("Importer und Live-Zählung meinen denselben Tag", () => {
