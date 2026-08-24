@@ -156,8 +156,7 @@ export function fillEditor(fields, preserved, body, current, fieldBlocks = {}) {
 
   state.editorMode = "markdown";
   setFieldVisibility(current.collection);
-  els.metaPanel.hidden = true;
-  els.toggleMetaButton.setAttribute("aria-expanded", "false");
+  els.metaPanel.close();
 
   const editor = ensureEditor();
   if (editor) {

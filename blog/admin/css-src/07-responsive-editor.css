@@ -18,63 +18,45 @@
     overflow: hidden;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
-  /* Two tracks, not three: the writing bar is fixed below and therefore out of
-     flow, so it claims no row here. */
   .admin-body.is-editor-view .editor-form {
     gap: 0.75rem;
     grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
     height: 100%;
   }
-  /* The wrapper only exists to make one line out of the two bars on a wide
-     screen. Here the writing bar is fixed to the keyboard and therefore out of
-     flow, so the wrapper is left holding the article bar alone — and must not
-     keep the row layout, or that bar would be squeezed against a zero-width
-     sibling. */
+  /* Both bars stay together at the top, stacked (not the desktop single row —
+     13 icons combined does not fit a 375px width). Previously the writing bar
+     rode the keyboard via `position: fixed` + a `--keyboard-inset` transform,
+     which meant guessing how much extra clearance iOS 26's now-detached
+     keyboard accessory bar needs. Two rounds of real-device measurement never
+     converged: that extra height isn't something any web API can query, and
+     it wasn't even consistent between a Safari tab and the installed
+     home-screen PWA. Sitting at the top instead is immune to all of that —
+     nothing here is ever near the keyboard. The one cost is reach: the
+     formatting buttons are no longer right next to the thumb while typing. */
   .editor-bars {
-    display: block;
+    display: flex;
+    flex-direction: column;
     position: relative;
     top: auto;
     z-index: 2;
-    gap: 0;
+    gap: 0.35rem;
     margin-top: 0;
     padding: 0 0 0.35rem;
   }
-  .editor-bars .editor-bar {
+  .editor-bars .editor-bar,
+  .editor-bars .writing-bar {
     display: flex;
     width: 100%;
   }
-
-  /* The writing bar rides the keyboard. `--keyboard-inset` is published by
-     02d-keyboard-inset.js from the visual viewport; with the keyboard closed
-     it is 0 and the bar rests on the bottom safe area. Transform rather than
-     `bottom` so the move is composited and does not lag behind the keyboard. */
-  .admin-body.is-editor-view .writing-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 30;
-    gap: 0.35rem;
-    width: auto;
-    max-width: none;
-    margin: 0;
-    padding: 0.4rem max(0.6rem, env(safe-area-inset-left)) calc(0.4rem + env(safe-area-inset-bottom)) max(0.6rem, env(safe-area-inset-right));
-    border-top: 1px solid var(--line);
-    background: var(--panel);
-    transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
-  }
-  /* The keyboard already covers the home indicator, so the safe-area padding
-     would only add dead height while it is open. */
-  html.is-keyboard-open .admin-body.is-editor-view .writing-bar { padding-bottom: 0.4rem; }
-  /* Riding just --keyboard-inset lands this bar exactly where iOS 26's own
-     detached keyboard accessory bar renders (see --ios-keyboard-accessory-h
-     in 06-responsive.css) — native UI always wins compositing, so ours
-     disappeared behind it entirely instead of merely crowding it. Add the
-     same estimated clearance here too. */
-  html.is-keyboard-open .admin-body.is-editor-view .writing-bar {
-    transform: translateY(calc(-1 * (var(--keyboard-inset, 0px) + var(--ios-keyboard-accessory-h, 0px))));
-  }
+  /* DOM order is writing-bar then editor-bar (it's the reverse on desktop's
+     row layout, where writing-bar sits flush left) — stacked here that would
+     put formatting above the article actions. Flex `order` flips the visual
+     order without touching source order: the article-actions row (preview,
+     options, save, publish) belongs closest to the top edge, the same place
+     it always was; formatting sits right below it. */
+  .editor-bars .editor-bar { order: 1; }
+  .editor-bars .writing-bar { order: 2; }
   .admin-body.is-editor-view .writing-bar .format-toolbar { gap: 0.35rem; }
   .admin-body.is-editor-view .editor-article {
     min-height: 0;
@@ -82,10 +64,11 @@
     overflow-x: hidden;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
-    /* Let the last lines scroll clear of everything pinned to the bottom edge
-       — measured from the shared value rather than re-derived here, so the
-       article and the bar cannot drift apart. */
-    padding-bottom: calc(var(--bottom-chrome) + 0.6rem);
+    /* Only the on-screen keyboard itself can still cover the last lines now
+       — nothing of ours sits pinned to the bottom edge in editor view
+       anymore, so this no longer needs --bottom-chrome's tab-bar/writing-bar
+       terms, just the keyboard's own measured height. */
+    padding-bottom: calc(var(--keyboard-inset, 0px) + 0.6rem);
   }
 }
 
@@ -100,6 +83,12 @@
     margin: auto 0 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding-bottom: calc(1.35rem + env(safe-area-inset-bottom));
+    /* metaPanel's fields (Slug/Datum/…) make this sheet taller than the
+       button-list ones this rule was written for, and `dvh` already shrinks
+       with the keyboard on its own — no manual --keyboard-inset correction
+       needed the way the writing bar did. */
+    max-height: 90dvh;
+    overflow-y: auto;
   }
   .tb-sheet-button { min-height: 3rem; }
 }

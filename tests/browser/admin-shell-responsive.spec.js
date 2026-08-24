@@ -239,7 +239,7 @@ test("mobile navigation works before startup requests finish", async ({ page }, 
   await expect(page.getByRole("button", { name: "Mediathek", exact: true })).toBeVisible();
 });
 
-test("the writing bar sits at the bottom of a phone and the article bar at the top", async ({ page }, testInfo) => {
+test("the writing bar sits at the top of a phone alongside the article bar", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
   await page.goto("/admin/");
   await page.locator("#newEntryButtonLib").click();
@@ -250,12 +250,16 @@ test("the writing bar sits at the bottom of a phone and the article bar at the t
   const writing = await box("#writingBar");
   const article = await box(".editor-bar");
 
-  // The whole point of the split. While typing, the thumbs are at the bottom
-  // of the screen and so is the keyboard; formatting used to live at the very
-  // top, which is the furthest point from both.
-  expect(writing.y).toBeGreaterThan(viewport.height / 2);
-  expect(Math.round(writing.y + writing.height)).toBeLessThanOrEqual(viewport.height + 1);
+  // Both bars stay together at the top now, stacked — riding the keyboard at
+  // the bottom stopped being workable once iOS 26 gave the keyboard its own
+  // detached accessory bar: no web API can measure that native bar's height,
+  // and two rounds of real-device tuning never converged on a buffer that
+  // held up consistently between a Safari tab and the installed home-screen
+  // PWA. Sitting at the top is immune to all of that — nothing here is ever
+  // near the keyboard.
   expect(article.y).toBeLessThan(viewport.height / 4);
+  expect(writing.y).toBeGreaterThanOrEqual(article.y + article.height);
+  expect(writing.y).toBeLessThan(viewport.height / 3);
 
   // One row each, not sideways-scrolling strips: everything in both is
   // reachable without a swipe. The article bar carries six buttons now that
@@ -277,27 +281,21 @@ test("the writing bar sits at the bottom of a phone and the article bar at the t
   for (const name of ["Fett (⌘B)", "Kursiv (⌘I)", "Link (⌘K)", "Bild oder Video einfügen", "Weitere Einfügungen"]) {
     await expect(bar.getByRole("button", { name })).toBeVisible();
   }
-
-  // With no keyboard open the bar rests on the bottom edge, so the offset that
-  // lifts it is zero rather than absent — an unset variable would silently
-  // collapse the calc() that positions the article's bottom padding.
-  const inset = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue("--keyboard-inset").trim());
-  expect(inset).toBe("0px");
 });
 
-test("nothing pinned to the bottom edge lands on top of the writing bar", async ({ page }, testInfo) => {
+test("the status toast rests near the bottom edge, not floating mid-screen", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith("mobile"), "Mobile-only layout");
   await page.goto("/admin/");
   await page.locator("#newEntryButtonLib").click();
   await expect(page.locator("#editorForm")).toBeVisible();
 
-  // --bottom-chrome is the one value everything on the bottom edge measures
-  // from. The editor used to declare it as the home indicator alone, which was
-  // true until the writing bar moved down there — after that the status toast
-  // sat squarely on top of the link, image and "+" buttons.
-  const writing = await page.locator("#writingBar").boundingBox();
-
+  // Nothing is pinned to the bottom edge in editor view anymore — the writing
+  // bar moved to the top — so --bottom-chrome only needs to clear the safe
+  // area there. It used to also reserve space for the writing bar (plus an
+  // estimated extra clearance for iOS 26's keyboard accessory bar), which
+  // left the toast floating well above the bottom edge with body text
+  // visible underneath it even with no keyboard open.
+  const viewport = page.viewportSize();
   await page.evaluate(() => window.RWAdminTestStatus?.() ?? null);
   await page.locator("#statusBar").evaluate((el) => {
     el.textContent = "Testmeldung";
@@ -305,8 +303,8 @@ test("nothing pinned to the bottom edge lands on top of the writing bar", async 
   });
   const toast = await page.locator("#statusBar").boundingBox();
 
-  // The toast must end above where the bar begins.
-  expect(Math.round(toast.y + toast.height)).toBeLessThanOrEqual(Math.round(writing.y));
+  expect(toast.y).toBeGreaterThan(viewport.height * 0.75);
+  expect(Math.round(toast.y + toast.height)).toBeLessThanOrEqual(viewport.height + 1);
 });
 
 test("the media library toolbar fits one row and never pushes the page sideways", async ({ page }, testInfo) => {

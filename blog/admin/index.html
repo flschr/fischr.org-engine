@@ -134,7 +134,7 @@ eleventyExcludeFromCollections: true
                 <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
                   <span data-icon="eye" aria-hidden="true"></span>
                 </button>
-                <button id="toggleMetaButton" class="tb-btn" type="button" aria-expanded="false" aria-label="Artikeloptionen" title="Artikeloptionen">
+                <button id="toggleMetaButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Artikeloptionen" title="Artikeloptionen">
                   <span data-icon="sliders-horizontal" aria-hidden="true"></span>
                 </button>
                 <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen">
@@ -169,37 +169,50 @@ eleventyExcludeFromCollections: true
               <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel"></textarea>
               <p id="editorMetaLine" class="editor-meta"></p>
 
-              <div id="metaPanel" class="meta-panel" hidden>
-                <label data-field="slug">
-                  <span>Slug</span>
-                  <input id="slugInput" type="text" autocomplete="off" spellcheck="false">
-                </label>
-                <label data-field="permalink">
-                  <span>Permalink</span>
-                  <input id="permalinkInput" type="text" autocomplete="off" spellcheck="false">
-                </label>
-                <label data-field="date">
-                  <span>Datum</span>
-                  <input id="dateInput" type="datetime-local" autocomplete="off">
-                </label>
-                <label data-field="lang">
-                  <span>Sprache</span>
-                  <select id="langInput">
-                    <option value="de">Deutsch</option>
-                    <option value="en">Englisch</option>
-                  </select>
-                </label>
-                <label data-field="ogimage">
-                  <span>Vorschaubild</span>
-                  <div class="meta-input-action">
-                    <input id="socialImageInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="/assets/images/...">
-                    <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library">
-                      <span data-icon="image" aria-hidden="true"></span>
-                    </button>
+              <!-- A dialog, not an inline card: on a phone the fields below
+                   used to push the article text down by nearly a screenful.
+                   Same sheet treatment as docMenuDialog/moreCommandsDialog —
+                   see the comment there — so it opens over the article
+                   instead of shoving it aside. -->
+              <dialog id="metaPanel" class="dialog sheet-dialog" aria-label="Artikeloptionen">
+                <form method="dialog" class="sheet-form">
+                  <h2>Artikeloptionen</h2>
+                  <div class="meta-panel">
+                    <label data-field="slug">
+                      <span>Slug</span>
+                      <input id="slugInput" type="text" autocomplete="off" spellcheck="false">
+                    </label>
+                    <label data-field="permalink">
+                      <span>Permalink</span>
+                      <input id="permalinkInput" type="text" autocomplete="off" spellcheck="false">
+                    </label>
+                    <label data-field="date">
+                      <span>Datum</span>
+                      <input id="dateInput" type="datetime-local" autocomplete="off">
+                    </label>
+                    <label data-field="lang">
+                      <span>Sprache</span>
+                      <select id="langInput">
+                        <option value="de">Deutsch</option>
+                        <option value="en">Englisch</option>
+                      </select>
+                    </label>
+                    <label data-field="ogimage">
+                      <span>Vorschaubild</span>
+                      <div class="meta-input-action">
+                        <input id="socialImageInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="/assets/images/...">
+                        <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library">
+                          <span data-icon="image" aria-hidden="true"></span>
+                        </button>
+                      </div>
+                    </label>
+                    <input id="draftInput" type="checkbox" hidden>
                   </div>
-                </label>
-                <input id="draftInput" type="checkbox" hidden>
-              </div>
+                  <menu>
+                    <button class="ghost" value="cancel">Fertig</button>
+                  </menu>
+                </form>
+              </dialog>
 
               <div id="editorMount" class="editor-mount" aria-label="Content"></div>
               <div id="previewPanel" class="editor-preview" aria-label="Preview" hidden></div>

@@ -61,10 +61,8 @@ export function wireEditorEvents() {
   els.titleInput.addEventListener("input", syncFromKeystroke);
 
   els.toggleMetaButton.addEventListener("click", () => {
-    const expanded = els.toggleMetaButton.getAttribute("aria-expanded") === "true";
-    els.toggleMetaButton.setAttribute("aria-expanded", expanded ? "false" : "true");
-    els.metaPanel.hidden = expanded;
-    if (!expanded) syncAutoSlug();
+    syncAutoSlug();
+    els.metaPanel.showModal();
   });
 
   // No back button: the platform's own back — the browser's, or the edge-swipe

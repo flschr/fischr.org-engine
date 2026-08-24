@@ -21,42 +21,22 @@
      re-deriving it, so they can never drift apart. */
   :root {
     --tabbar-h: 3.4rem;
-    /* Measured, not guessed: 0.4rem padding above and below a 2.3rem button
-       plus its border comes to 3.16rem on a 16px root. */
-    --writingbar-h: 3.2rem;
     --bottom-chrome: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
-    /* iOS 26's keyboard accessory bar (Previous/Next/checkmark) floats
-       detached above the keyboard now instead of merging into its top edge,
-       but visualViewport.height — what --keyboard-inset (02d-keyboard-inset.js)
-       is measured from — doesn't shrink for it (a reported iOS 26
-       regression; nothing on the web platform exposes that bar's real
-       height). An ESTIMATE, not a measurement — nothing on the web platform
-       can size a native accessory view. First guess (44pt + 8px gap) left a
-       visible strip of body text floating between our bar and the native
-       one on a real device — the redesign is more minimal than a full 44pt
-       row, so this is revised down. Only ever added while
-       html.is-keyboard-open, so it costs nothing once the keyboard (and
-       with it, the native bar) is gone. Keep tuning against a real device;
-       drop it entirely if a future WebKit release folds the bar back into
-       visualViewport. */
-    --ios-keyboard-accessory-h: 36px;
   }
-  /* The editor hides the tab bar, but it is not empty down there: the writing
-     bar sits on the bottom edge and rides up with the keyboard. Anything else
-     pinned to that edge — the status toast, the publish overlay — has to start
-     above both, which is exactly what this value is for. Leaving it at the
-     home indicator alone is what put the toast on top of the writing bar. */
+  /* The editor hides the tab bar and — since the writing bar moved back to
+     the top alongside the article-actions bar (07-responsive-editor.css) —
+     no longer pins anything of its own to the bottom edge either. The status
+     toast and publish overlay only need to clear the safe area, or the
+     keyboard while one of the meta-panel/dialog fields has it open. This
+     used to also account for the writing bar riding the keyboard, plus an
+     estimated extra clearance for iOS 26's detached keyboard accessory bar
+     that never worked reliably (see git history) — both gone now that
+     nothing here rides the keyboard at all. */
   .admin-body.is-editor-view {
-    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px) + env(safe-area-inset-bottom));
+    --bottom-chrome: env(safe-area-inset-bottom);
   }
-  /* An open keyboard already covers the home indicator, so the bar drops its
-     safe-area padding and the chrome above it must drop the same amount.
-     It also rides up an extra --ios-keyboard-accessory-h to clear iOS 26's
-     native bar — see the token's own comment above — so anything using
-     --bottom-chrome to stay above the writing bar (status toast, publish
-     overlay) has to clear that too, not just the keyboard itself. */
   html.is-keyboard-open .admin-body.is-editor-view {
-    --bottom-chrome: calc(var(--writingbar-h) + var(--keyboard-inset, 0px) + var(--ios-keyboard-accessory-h));
+    --bottom-chrome: var(--keyboard-inset, 0px);
   }
 
   .admin-layout { display: block; }

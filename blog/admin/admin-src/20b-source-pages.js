@@ -25,7 +25,7 @@ export function setSourceModeUi(enabled) {
   // altTextButton now lives inside the writing bar (next to inserting an
   // image), so hiding that bar already takes it with it.
   if (els.writingBar) els.writingBar.hidden = sourceMode;
-  if (sourceMode) els.metaPanel.hidden = true;
+  if (sourceMode) els.metaPanel.close();
 }
 
 export function fillSourceEditor(content, current) {
@@ -41,8 +41,6 @@ export function fillSourceEditor(content, current) {
   state.bodyMarkdown = String(content || "");
   state.editorMode = "markdown";
   setSourceModeUi(true);
-  els.metaPanel.hidden = true;
-  els.toggleMetaButton.setAttribute("aria-expanded", "false");
   els.editorViewTitle.textContent = `${state.current.sourceTitle} bearbeiten`;
 
   const editor = ensureEditor();
