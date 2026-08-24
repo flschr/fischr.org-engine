@@ -306,8 +306,20 @@ test("the media library toolbar fits one row and never pushes the page sideways"
   const tools = page.locator(".media-view .library-tools");
   const overflows = await tools.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
   expect(overflows).toBe(false);
-  const docOverflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
-  expect(docOverflows).toBe(false);
+  // document.scrollWidth is not a reliable proxy here: html/body carry
+  // overflow-x: hidden (to keep the page from panning sideways at all), and
+  // that clips a bleed instead of reporting it as scrollable overflow — a
+  // row genuinely rendering 36px past the screen edge still measured
+  // scrollWidth === clientWidth + 1 locally in WebKit, so this check passed
+  // while the upload button was half off-screen. Comparing each control's
+  // own right edge against the viewport catches what scrollWidth missed.
+  const viewportWidth = page.viewportSize().width;
+  for (const id of ["#mediaSearchInput", "#mediaFilterInput"]) {
+    const box = await page.locator(id).boundingBox();
+    expect(box.x + box.width).toBeLessThanOrEqual(viewportWidth);
+  }
+  const uploadBox = await page.getByLabel("Medien hochladen").boundingBox();
+  expect(uploadBox.x + uploadBox.width).toBeLessThanOrEqual(viewportWidth);
 
   // And each visible control is still actually usable at that width, not
   // just technically present.

@@ -158,8 +158,18 @@
      spill onto a second line the moment their combined intrinsic width beat
      the screen — search alone kept a 8rem floor from its desktop rule. Forcing
      nowrap and giving every child room to actually shrink is what makes them
-     fit instead of overflow. */
-  .library-tools { flex: 1 1 100%; flex-wrap: nowrap; }
+     fit instead of overflow.
+     Explicit width, not align-items: stretch: .library-head switches to
+     flex-direction: column right above, and WebKit does not reliably stretch
+     a NESTED flex container's cross size down to its line box when that
+     container's own children (flex-wrap: nowrap, some with flex-shrink: 0)
+     want more room — align-self: stretch measurably failed to shrink this
+     row in testing, forcing it 36px past a 390px screen with nothing to show
+     for it (document.scrollWidth stayed put too, since html/body's own
+     overflow-x: hidden clips the bleed instead of reporting it as scrollable
+     — the row's own upload button was rendered but partly off-screen).
+     width: 100% sidesteps stretch entirely and reliably wins. */
+  .library-tools { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; width: 100%; }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }
