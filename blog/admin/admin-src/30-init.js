@@ -8,7 +8,6 @@ import { ensureDraftsBranch, loadAdminSnapshot } from "./04-drafts.js";
 import { loadChanges } from "./04a-draft-writes.js";
 import { githubConnectionError, hasGithubAccess, refreshSession, sessionHasGithubAccess, verifyStoredTokenAccess } from "./05-github-auth.js";
 import { loadSocialConfig } from "./10-social-editor.js";
-import { applyStatsTabVisibility, statsEnabled } from "./21-stats.js";
 import { backToLibrary, showView, updateNav } from "./23-routing.js";
 import { replaceNav, routeTo } from "./24-history.js";
 import { refreshEntries } from "./25-entries.js";
@@ -66,18 +65,8 @@ function resumeTarget() {
   return isDefaultList ? null : saved;
 }
 
-async function resumeView(target, configReady) {
+async function resumeView(target) {
   if (!target) return;
-  // Stats visibility is derived from the config, so it has to be loaded before
-  // we can tell whether this view may be entered at all. Settings does not
-  // need the wait — openSocialConfig re-fetches with force either way.
-  if (target.rw === "stats") {
-    await configReady;
-    // openStats() has no guard of its own: the hidden tab was what kept the
-    // view unreachable, and restoring bypasses the tab entirely. Without this
-    // a reload would land on stats with no tab marked to lead back out.
-    if (!statsEnabled()) return;
-  }
   // navigating: the view is being restored, not newly entered, so routeTo's
   // pushNav must not stack a second entry on top of the one we came back to.
   state.navigating = true;
@@ -109,13 +98,11 @@ async function init() {
   showView("library");
   replaceNav();
 
-  const configReady = hasGithubAccess()
-    ? loadSocialConfig().then(applyStatsTabVisibility).catch(() => {})
-    : Promise.resolve();
+  if (hasGithubAccess()) loadSocialConfig().catch(() => {});
 
   try {
     await loadInitialGithubContent();
-    await resumeView(resumed, configReady);
+    await resumeView(resumed);
     if (hasGithubAccess()) recoverPendingMediaOperations().catch((error) => {
       showStatus(`Wiederaufnahme der Bildverarbeitung fehlgeschlagen: ${error.message}`, "error");
     });

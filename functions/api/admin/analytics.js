@@ -11,7 +11,6 @@
 
 import { berlinDay, berlinHour, classifyFeed, feedReader, STUNDEN_TAGE, tagMinus } from "../../_analytics.js";
 import { jsonResponse, readSession } from "../../_admin-auth.js";
-import { readStatsConfig } from "../../_admin-settings.js";
 
 const LIMIT = 25;
 
@@ -85,15 +84,6 @@ export async function onRequest(context) {
   const session = await readSession(request, env);
   if (!session) return jsonResponse({ error: "unauthorized" }, { status: 401 });
   if (!env.ANALYTICS) return jsonResponse({ error: "Die Analytics-Datenbank ist nicht angebunden." }, { status: 503 });
-
-  // Der Schalter aus den Einstellungen. Ohne diese Prüfung würde das
-  // Abschalten der Statistik nur den Tab im Browser ausblenden, während der
-  // Endpunkt weiter Zahlen herausgibt — der Schalter verspräche mehr, als er
-  // hält.
-  const config = await readStatsConfig(env, session.token);
-  if (config.enabled === false) {
-    return jsonResponse({ error: "Die Statistik ist in den Einstellungen abgeschaltet." }, { status: 403 });
-  }
 
   const url = new URL(request.url);
   const startParam = url.searchParams.get("start");

@@ -46,7 +46,11 @@ test("saving the settings commits the social configuration onto the published br
   expect(refUpdates.map((request) => decodeURIComponent(request.url.split("/git/refs/heads/")[1]))).toEqual(["main"]);
 
   const upload = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
-  expect(JSON.parse(upload.body.content).social.gotosocialInstance).toBe("https://social.fischr.example");
+  const saved = JSON.parse(upload.body.content);
+  expect(saved.social.gotosocialInstance).toBe("https://social.fischr.example");
+  // The loaded fixture still carries the retired stats toggle — a save
+  // migrates it away rather than round-tripping it forever.
+  expect("stats" in saved).toBe(false);
 
   const tree = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/trees"));
   expect(tree.body.tree.map((entry) => entry.path)).toEqual(["automation/social-config.json"]);

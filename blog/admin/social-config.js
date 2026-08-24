@@ -24,9 +24,7 @@
     if (defaultTemplate) draft.social.defaultTemplate = defaultTemplate;
     else delete draft.social.defaultTemplate;
 
-    if (!draft.stats || typeof draft.stats !== "object") draft.stats = {};
-    draft.stats.enabled = draft.stats.enabled !== false;
-    delete draft.stats.url;
+    delete draft.stats;
     return draft;
   }
 
@@ -48,9 +46,7 @@
     if (defaultTemplate) draft.social.defaultTemplate = defaultTemplate;
     else delete draft.social.defaultTemplate;
 
-    draft.stats ||= {};
-    draft.stats.enabled = fields.statsEnabled;
-    delete draft.stats.url;
+    delete draft.stats;
     return draft;
   }
 

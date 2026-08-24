@@ -6,8 +6,7 @@ import { setBusy, showStatus } from "./03-status.js";
 import { hasGithubAccess, requireGithubAccess } from "./05-github-auth.js";
 import { isoFromDateInputValue } from "./08-encoding.js";
 import { normalizeRule, normalizeSocialConfigDraft, refreshDefaultCategoryOptions, renderSocialConfig, resolveDefaultTemplate, socialDeepClone } from "./14-social-settings.js";
-import { renderSocialCategoryCards } from "./14b-social-cards.js";
-import { applyStatsTabVisibility } from "./21-stats.js";
+import { markSocialCategoryOpen, renderSocialCategoryCards } from "./14b-social-cards.js";
 
 export function textControl(value, onInput, placeholder) {
   const input = document.createElement("input");
@@ -39,7 +38,12 @@ export function removeSocialCategory(index) {
 }
 
 export function addSocialCategory() {
-  state.socialConfigDraft.social.rules.push({ id: "", name: "Neuer Beitragstyp", template: "{title}" });
+  const rule = { id: "", name: "Neuer Beitragstyp", template: "{title}" };
+  state.socialConfigDraft.social.rules.push(rule);
+  // Open by default: every other card starts collapsed, but this one was
+  // just created and has nothing to hide yet — collapsing it immediately
+  // would hide the very fields you're about to fill in.
+  markSocialCategoryOpen(rule);
   renderSocialCategoryCards();
   refreshDefaultCategoryOptions();
   updateSocialConfigDirty();
@@ -58,8 +62,7 @@ export function collectSocialConfigDraft() {
     maxPostsPerRun: els.cfgMaxPostsPerRun.value,
     maxAgeDays: els.cfgMaxAgeDays.value,
     startAfter: els.cfgStartAfter.value.trim() ? isoFromDateInputValue(els.cfgStartAfter.value.trim()) : "",
-    defaultTemplate: els.cfgDefaultCategory?.value || "",
-    statsEnabled: els.cfgStatsEnabled ? els.cfgStatsEnabled.checked : true
+    defaultTemplate: els.cfgDefaultCategory?.value || ""
   }, {
     clone: socialDeepClone,
     normalizeRule,
@@ -124,7 +127,6 @@ export async function saveSocialConfig() {
     // normalized draft may carry optional keys that collectSocialConfigDraft()
     // intentionally omits.
     state.socialConfigLoaded = JSON.stringify(collectSocialConfigDraft());
-    applyStatsTabVisibility();
     state.statsCache.clear();
     showStatus("Social configuration saved.");
     setSocialConfigStatus("Gespeichert", "ok");

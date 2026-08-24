@@ -112,7 +112,6 @@ export const els = {
   cfgMaxPostsPerRun: document.getElementById("cfgMaxPostsPerRun"),
   cfgMaxAgeDays: document.getElementById("cfgMaxAgeDays"),
   cfgStartAfter: document.getElementById("cfgStartAfter"),
-  cfgStatsEnabled: document.getElementById("cfgStatsEnabled"),
   pushButton: document.getElementById("pushButton"),
   pushButtonLabel: document.getElementById("pushButtonLabel"),
   pushButtonCount: document.getElementById("pushButtonCount"),

@@ -92,7 +92,6 @@ export function wireAdminViewEvents() {
   [els.cfgGotosocialInstance, els.cfgMaxPostsPerRun, els.cfgMaxAgeDays, els.cfgStartAfter].forEach((input) => {
     input?.addEventListener("input", updateSocialConfigDirty);
   });
-  els.cfgStatsEnabled?.addEventListener("change", updateSocialConfigDirty);
   els.cfgDefaultCategory?.addEventListener("change", () => {
     // Mirror into the live draft so re-renders (add/remove rule) keep the pick.
     if (state.socialConfigDraft?.social) state.socialConfigDraft.social.defaultTemplate = els.cfgDefaultCategory.value;

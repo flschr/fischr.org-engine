@@ -21,6 +21,7 @@ test("normalization migrates the legacy Mastodon endpoint and removes targets", 
   assert.equal(config.social.gotosocialInstance, "https://social.example.org");
   assert.equal("mastodonInstance" in config.social, false);
   assert.equal("targets" in config.social, false);
+  assert.equal("stats" in config, false);
 });
 
 test("collection emits only the GoToSocial endpoint", () => {
@@ -35,11 +36,11 @@ test("collection emits only the GoToSocial endpoint", () => {
     maxPostsPerRun: "3",
     maxAgeDays: "14",
     startAfter: "",
-    defaultTemplate: "post",
-    statsEnabled: true
+    defaultTemplate: "post"
   }, helpers);
 
   assert.equal(config.social.gotosocialInstance, "https://social.example.org");
   assert.equal("mastodonInstance" in config.social, false);
   assert.equal("targets" in config.social, false);
+  assert.equal("stats" in config, false);
 });

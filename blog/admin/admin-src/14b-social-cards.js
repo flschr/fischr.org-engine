@@ -6,6 +6,19 @@ import { countTextCharacters } from "./09-frontmatter.js";
 import { ruleImageCount, socialFillTemplate } from "./10-social-editor.js";
 import { iconGhostButton, removeSocialCategory, textControl, updateSocialConfigDirty } from "./14a-social-controls.js";
 
+// Which rules are expanded, tracked by object identity rather than index: an
+// add/remove elsewhere shifts every later index, but the rule objects
+// themselves stay the same references across a renderSocialCategoryCards()
+// call, so this survives the rebuild without the list silently re-collapsing
+// cards the same edit session already opened. A fresh draft (reset, or the
+// new baseline after a save) creates fresh rule objects, so it starts
+// everything collapsed again — that reads as "tidied up", not as a bug.
+const openCategoryCards = new WeakSet();
+
+export function markSocialCategoryOpen(rule) {
+  openCategoryCards.add(rule);
+}
+
 export function renderSocialCategoryCards() {
   const list = els.socialCategoryList;
   const rules = state.socialConfigDraft?.social?.rules || [];
@@ -21,20 +34,46 @@ export function renderSocialCategoryCards() {
 }
 
 function buildSocialCategoryCard(rule, index) {
-  const card = document.createElement("div");
+  // <details>, not a plain div: a post type's template/options are the kind
+  // of detail worth hiding until asked for — a handful of them expanded at
+  // once was most of what made this page read as cluttered.
+  const card = document.createElement("details");
   card.className = "social-category-card";
+  card.open = openCategoryCards.has(rule);
+  card.addEventListener("toggle", () => {
+    if (card.open) openCategoryCards.add(rule);
+    else openCategoryCards.delete(rule);
+  });
+
+  const summary = document.createElement("summary");
+  summary.className = "social-category-summary";
+  const summaryName = document.createElement("span");
+  summaryName.className = "social-category-summary-name";
+  summaryName.textContent = rule.name || "Ohne Namen";
+  summary.append(summaryName);
+  card.append(summary);
+
+  const body = document.createElement("div");
+  body.className = "social-category-body";
 
   // Header: editable name + remove. (The id is derived from the name on save.)
+  // Lives in the collapsible body, not the summary — an <input>/<button>
+  // inside a <summary> would fight the native click-to-toggle behavior of
+  // the element around them.
   const head = document.createElement("div");
   head.className = "social-category-head";
-  const name = textControl(rule.name || "", (value) => { rule.name = value; updateSocialConfigDirty(); }, "Post type name");
+  const name = textControl(rule.name || "", (value) => {
+    rule.name = value;
+    summaryName.textContent = value || "Ohne Namen";
+    updateSocialConfigDirty();
+  }, "Post type name");
   name.classList.add("social-category-name");
   head.append(name);
   const remove = iconGhostButton("trash-2", "Remove post type");
   remove.classList.add("danger");
   remove.addEventListener("click", () => removeSocialCategory(index));
   head.append(remove);
-  card.append(head);
+  body.append(head);
 
   const tpl = document.createElement("label");
   tpl.className = "social-category-template";

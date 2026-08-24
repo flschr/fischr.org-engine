@@ -78,7 +78,6 @@ export function renderSocialConfig() {
   els.cfgMaxPostsPerRun.value = draft.maxPostsPerRun ?? "";
   els.cfgMaxAgeDays.value = draft.maxAgeDays ?? "";
   els.cfgStartAfter.value = draft.startAfter ? dateInputValueFromIso(draft.startAfter) : "";
-  if (els.cfgStatsEnabled) els.cfgStatsEnabled.checked = draft.stats?.enabled !== false;
   renderSocialCategoryCards();
   refreshDefaultCategoryOptions();
   updateSocialConfigDirty();

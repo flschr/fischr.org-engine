@@ -48,29 +48,6 @@ test("article list defers editor and preview runtimes until needed", async ({ pa
   expect(runtimeRequests.some((url) => url.includes("markdown-it"))).toBe(false);
 });
 
-test("a reload does not restore a view the settings turned off", async ({ page }) => {
-  const configSha = "social-config-sha";
-  const disabled = Buffer.from(JSON.stringify({ stats: { enabled: false } }), "utf8").toString("base64");
-  await mockAuthenticatedGithub(page, [], [
-    { path: "automation/social-config.json", sha: configSha, type: "blob" }
-  ], { blobs: { [configSha]: { content: disabled } } });
-
-  await page.goto("/admin/");
-  await expect(page.locator("#libraryTitle")).toHaveText("Articles");
-  // The tab is the only thing keeping stats unreachable when they are off.
-  await expect(page.locator("#statsNav")).toBeHidden();
-
-  // Simulate having been on stats before the setting was flipped: the restore
-  // path bypasses the tab, so it needs its own guard or it lands the reader in
-  // a view with no tab marked and no way back through the navigation.
-  await page.evaluate(() => history.replaceState({ rw: "stats" }, ""));
-  await page.reload();
-
-  await expect(page.locator("#statsView")).toBeHidden();
-  await expect(page.locator("#libraryView")).toBeVisible();
-  await expect(page.locator("#statsNav")).toBeHidden();
-});
-
 test("editor runtime can be retried after a failed download", async ({ page }) => {
   let attempts = 0;
   await page.route(/\/admin\/vendor\/editor\/editor\.js(?:\?.*)?$/, (route) => {

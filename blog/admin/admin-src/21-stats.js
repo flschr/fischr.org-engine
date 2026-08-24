@@ -5,7 +5,7 @@ import { statsPanelRahmen, statsZeileSichtbar, statsZeilenTeile } from "./21a-st
 import { statsPeriodBounds, statsPeriodKey, statsPeriodLabel } from "./21b-stats-period.js";
 import { renderStats } from "./21c-stats-render.js";
 import { closeStatsPicker } from "./21f-stats-picker.js";
-import { setCollection, showView } from "./23-routing.js";
+import { showView } from "./23-routing.js";
 import { replaceNav } from "./24-history.js";
 
 // --- Statistik ------------------------------------------------------------
@@ -19,18 +19,6 @@ import { replaceNav } from "./24-history.js";
 // Null — eine Null würde behaupten, es sei niemand da gewesen.
 
 export const numberFormat = new Intl.NumberFormat("en-US");
-
-// The Stats tab is shown unless settings explicitly turn it off (default on).
-export function statsEnabled() {
-  const stats = state.socialConfig?.stats;
-  return !stats || stats.enabled !== false;
-}
-
-export function applyStatsTabVisibility() {
-  if (els.statsNav) els.statsNav.hidden = !statsEnabled();
-  // If the tab gets turned off while it's open, fall back to the library.
-  if (!statsEnabled() && state.view === "stats") setCollection("posts");
-}
 
 export async function openStats() {
   // Always land on the last seven days, regardless of the last range picked.
@@ -118,10 +106,6 @@ export async function loadStats(force = false) {
     }
     if (error.status === 503) {
       els.statsBody.innerHTML = `<p class="stats-state">Die Analytics-Datenbank ist noch nicht angebunden.</p>`;
-      return;
-    }
-    if (error.status === 403) {
-      els.statsBody.innerHTML = `<p class="stats-state">Die Statistik ist in den Einstellungen deaktiviert.</p>`;
       return;
     }
     els.statsBody.innerHTML = `<p class="stats-state stats-state-error">Statistik konnte nicht geladen werden: ${escapeHtml(error.message)}</p>`;

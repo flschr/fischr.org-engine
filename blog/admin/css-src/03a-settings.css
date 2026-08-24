@@ -103,14 +103,41 @@
 }
 .social-config-categories-head .section-title { margin: 0; }
 .social-category-list { display: grid; gap: 0.55rem; margin-top: 0.7rem; }
+/* <details>, not a plain div: template + options expanded for every post type
+   at once was most of what made this page read as cluttered. Collapsed to
+   just its name by default; a newly added one (14a-social-controls.js)
+   starts open since there's nothing to hide yet. */
 .social-category-card {
-  display: grid;
-  gap: 0.5rem;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--panel);
 }
+.social-category-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  list-style: none;
+}
+.social-category-summary::-webkit-details-marker { display: none; }
+.social-category-summary-name { flex: 1 1 auto; font-weight: 600; }
+/* Same chevron as .settings-advanced (Erweitert) above, so both collapsible
+   patterns on this page read as the same control. */
+.social-category-summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.2rem;
+  border-right: 2px solid var(--ink-faint);
+  border-bottom: 2px solid var(--ink-faint);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.social-category-card[open] > .social-category-summary::after { transform: rotate(-135deg); }
+.social-category-card[open] > .social-category-summary { margin-bottom: 0.6rem; }
+.social-category-body { display: grid; gap: 0.5rem; }
 .social-category-head {
   display: flex;
   align-items: center;
