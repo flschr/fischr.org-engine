@@ -44,10 +44,10 @@
 /* Title-only thoughts and pure quotes read like a passing thought, not a
    bold section heading: a touch larger than body text, italic, normal weight. */
 .stream-entry--thought .stream-entry-header h2,
-.stream-entry--quote .stream-entry-header h2 {
+.stream-entry--quote .stream-entry-header h2,
+body.post .post-entry--thought .post-header > h1 {
   padding-left: 1.1rem;
   border-left: 2px solid var(--quote-border);
-  font-size: 1.15em;
   font-weight: 450;
   font-style: italic;
   line-height: 1.45;
@@ -55,28 +55,23 @@
   color: var(--quote-color);
 }
 
+.stream-entry--thought .stream-entry-header h2,
+.stream-entry--quote .stream-entry-header h2 {
+  font-size: 1.15em;
+}
+
+body.post .post-entry--thought .post-header > h1 {
+  font-size: 1.35em;
+}
+
 .stream-entry--thought .stream-entry-header .post-meta,
-.stream-entry--quote .stream-entry-header .post-meta {
+.stream-entry--quote .stream-entry-header .post-meta,
+body.post .post-entry--thought .post-header .post-meta {
   margin-left: calc(1.1rem + 2px);
 }
 
 .stream-entry-header .post-meta {
   margin: 0.35rem 0 0.9rem;
-}
-
-body.post .post-entry--thought .post-header > h1 {
-  padding-left: 1.1rem;
-  border-left: 2px solid var(--quote-border);
-  font-size: 1.35em;
-  font-weight: 450;
-  font-style: italic;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--quote-color);
-}
-
-body.post .post-entry--thought .post-header .post-meta {
-  margin-left: calc(1.1rem + 2px);
 }
 
 .post-footer {

@@ -27,6 +27,8 @@
   --radius: 12px;
   --radius-small: 6px;
   --border: rgba(0, 0, 0, 0.10);
+  --card-bg: rgba(127, 127, 127, 0.045);
+  --focus-ring: 2px solid currentColor;
   --background-color: #fffff8;
   --heading-color: #111;
   --text-color: #222;

@@ -155,9 +155,15 @@ pre code {
   cursor: pointer;
 }
 
-.embed-load-button:hover,
-.embed-load-button:focus-visible {
+.embed-load-button:hover {
   outline: 0;
   opacity: 0.85;
   text-decoration-thickness: 2px;
+}
+
+.embed-load-button:focus-visible {
+  opacity: 0.85;
+  text-decoration-thickness: 2px;
+  outline: var(--focus-ring);
+  outline-offset: 0.18rem;
 }

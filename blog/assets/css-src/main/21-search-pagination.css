@@ -6,25 +6,8 @@
   font-size: 0.85em;
 }
 
-.tag-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.85rem;
-  margin: 1.5rem 0;
-  padding: 0;
-  list-style: none;
-}
-
 .search-form {
   margin: 0 0 0.9rem;
-}
-
-.search-label {
-  display: block;
-  margin: 0 0 0.35rem;
-  color: var(--muted);
-  font-size: 0.82em;
-  font-style: italic;
 }
 
 .search-input-row {
@@ -60,7 +43,7 @@
 
 .search-input:focus-visible,
 .search-button:focus-visible {
-  outline: 2px solid currentColor;
+  outline: var(--focus-ring);
   outline-offset: 0.18rem;
 }
 

@@ -7,24 +7,32 @@
   gap: 0;
 }
 
-.author-card {
+.author-card,
+.about-hero {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
-  gap: 1.35rem;
   align-items: start;
   margin: 1.5rem 0 4rem;
-  padding: 1.35rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(127, 127, 127, 0.045);
+  background: var(--card-bg);
 }
 
-.author-card-photo {
+.author-card-photo,
+.about-portrait {
   display: block;
-  width: 5.5rem;
   aspect-ratio: 1;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.author-card {
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 1.35rem;
+  padding: 1.35rem;
+}
+
+.author-card-photo {
+  width: 5.5rem;
 }
 
 .author-card h1,

@@ -6,7 +6,7 @@
   border-left: 4px solid var(--adm-accent);
   border-radius: var(--radius);
   color: var(--text-color);
-  background: rgba(127, 127, 127, 0.045);
+  background: var(--card-bg);
   font-style: normal;
 }
 

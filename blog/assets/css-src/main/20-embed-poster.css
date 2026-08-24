@@ -1,8 +1,3 @@
-.embed-load-button:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 0.18rem;
-}
-
 .embed-poster-button {
   position: relative;
   display: block;
@@ -69,7 +64,7 @@
 }
 
 .embed-poster-button:focus-visible {
-  outline: 2px solid currentColor;
+  outline: var(--focus-ring);
   outline-offset: 0.18rem;
 }
 

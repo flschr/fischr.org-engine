@@ -63,7 +63,7 @@
 }
 
 .page-start-link:focus-visible {
-  outline: 2px solid currentColor;
+  outline: var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -93,19 +93,6 @@
 
 .site-title a:hover,
 .site-title a:focus-visible {
-  text-decoration: underline;
-}
-
-.site-tagline {
-  margin: 0.35rem 0 0;
-  color: var(--muted);
-  font-size: 0.9em;
-  font-style: italic;
-  line-height: 1.45;
-}
-
-.site-tagline a {
-  color: inherit;
   text-decoration: underline;
 }
 

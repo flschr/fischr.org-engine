@@ -12,14 +12,22 @@
     max-width: 22rem;
   }
 
-  .author-card {
+  .author-card,
+  .about-hero {
     display: flow-root;
     margin: 1rem 0 3.25rem;
+  }
+
+  .author-card-photo,
+  .about-portrait {
+    float: left;
+  }
+
+  .author-card {
     padding: 1rem;
   }
 
   .author-card-photo {
-    float: left;
     width: 4.5rem;
     margin: 0 1rem 0 0;
   }
@@ -29,13 +37,10 @@
   }
 
   .about-hero {
-    display: flow-root;
-    margin: 1rem 0 3.25rem;
     padding: 1.25rem;
   }
 
   .about-portrait {
-    float: left;
     width: 5.5rem;
     margin: 0 1rem 0.5rem 0;
   }
