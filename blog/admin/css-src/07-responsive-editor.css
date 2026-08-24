@@ -49,14 +49,9 @@
     display: flex;
     width: 100%;
   }
-  /* DOM order is writing-bar then editor-bar (it's the reverse on desktop's
-     row layout, where writing-bar sits flush left) — stacked here that would
-     put formatting above the article actions. Flex `order` flips the visual
-     order without touching source order: the article-actions row (preview,
-     options, save, publish) belongs closest to the top edge, the same place
-     it always was; formatting sits right below it. */
-  .editor-bars .editor-bar { order: 1; }
-  .editor-bars .writing-bar { order: 2; }
+  /* order:1/2 (03-editor.css) already puts the article-actions row first —
+     same as the shared desktop row now — so stacked here it lands closest to
+     the top edge with formatting right below it, with no extra rule needed. */
   .admin-body.is-editor-view .writing-bar .format-toolbar { gap: 0.35rem; }
   .admin-body.is-editor-view .editor-article {
     min-height: 0;

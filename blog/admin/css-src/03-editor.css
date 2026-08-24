@@ -10,8 +10,11 @@
 /* One line on a wide screen. The two bars exist because a phone needs the
    writing half down at the keyboard; here there is no keyboard to ride and
    room to spare, so splitting them across two rows would only cost height and
-   make the eye travel twice. Writing on the left, where the text begins;
-   the document's own actions right-aligned at the far end. */
+   make the eye travel twice. The article's own actions — Veröffentlichen
+   leading — sit first, where the primary action belongs; writing tools fill
+   the rest of the line. `order` reorders the shared row without touching DOM
+   order, which the phone's stacked layout (07-responsive-editor.css) also
+   relies on for the same reason. */
 .editor-bars {
   position: sticky;
   top: var(--topbar-h);
@@ -34,8 +37,9 @@
   padding: 0;
   background: none;
 }
-/* Pushes the article's actions to the far end of the shared line. */
-.editor-bars .writing-bar { flex: 1 1 auto; min-width: 0; }
+.editor-bars .editor-bar { order: 1; }
+/* Grows to fill the rest of the shared line, after the article actions. */
+.editor-bars .writing-bar { order: 2; flex: 1 1 auto; min-width: 0; }
 /* Undo/redo belong to writing, but on one line they read better next to the
    article actions than pushed against the formatting they would undo. */
 .writing-bar-spacer { flex: 1 1 auto; }
