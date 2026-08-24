@@ -34,6 +34,38 @@ function measure() {
   });
 }
 
+// Temporary, ?kbdebug=1 only: prints the raw numbers this module measures
+// and draws a line exactly at the unbuffered keyboard-top it computes, so a
+// single screenshot shows precisely how far off --ios-keyboard-accessory-h
+// (06-responsive.css) is from where iOS 26's native accessory bar actually
+// sits — instead of guessing a pixel value blind and re-testing each time.
+// Remove once that number is confirmed correct on-device.
+let kbDebugLabel = null;
+let kbDebugLine = null;
+
+function ensureKbDebugUi() {
+  if (kbDebugLabel) return;
+  kbDebugLabel = document.createElement("div");
+  kbDebugLabel.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff0044;color:#fff;font:11px/1.4 monospace;padding:4px 6px;white-space:pre-wrap;pointer-events:none;";
+  document.body.appendChild(kbDebugLabel);
+  kbDebugLine = document.createElement("div");
+  kbDebugLine.style.cssText = "position:fixed;left:0;right:0;height:2px;background:#39ff14;z-index:99999;pointer-events:none;";
+  document.body.appendChild(kbDebugLine);
+}
+
+function updateKbDebugUi(inset) {
+  if (typeof window === "undefined" || !new URLSearchParams(window.location.search).has("kbdebug")) return;
+  ensureKbDebugUi();
+  const viewport = window.visualViewport;
+  kbDebugLabel.textContent = [
+    `innerHeight=${window.innerHeight}`,
+    `vvHeight=${viewport?.height}`,
+    `vvOffsetTop=${viewport?.offsetTop}`,
+    `--keyboard-inset=${inset}px  (green line = this, unbuffered)`
+  ].join("\n");
+  kbDebugLine.style.bottom = `${inset}px`;
+}
+
 function publish() {
   frame = 0;
   const inset = measure();
@@ -42,6 +74,7 @@ function publish() {
   // Lets CSS distinguish "keyboard open" from "merely at the bottom" — the bar
   // drops its safe-area padding while the keyboard covers that area anyway.
   root.classList.toggle("is-keyboard-open", inset > 0);
+  updateKbDebugUi(inset);
 }
 
 function schedule() {
