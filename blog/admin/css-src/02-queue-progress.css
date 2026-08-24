@@ -54,16 +54,16 @@
   align-items: center;
   gap: 0.85rem;
   padding: 1rem 1.1rem;
-  border: 1px solid var(--accent-weak-2);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--accent-weak);
-  color: var(--accent-ink);
+  background: var(--panel);
+  color: var(--ink-soft);
 }
 .queue-progress-spinner {
   flex: 0 0 auto;
   width: 1.25rem;
   height: 1.25rem;
-  border: 2px solid var(--accent-weak-2);
+  border: 2px solid var(--line-2);
   border-top-color: var(--accent);
   border-radius: 999px;
   animation: save-spin 700ms linear infinite;
@@ -91,7 +91,7 @@
   margin-top: 0.3rem;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--accent-weak-2);
+  background: var(--line-2);
 }
 .queue-progress-track > span {
   display: block;
@@ -101,7 +101,7 @@
   background: var(--accent);
   transition: width 300ms ease;
 }
-.queue-progress-text a { color: inherit; font-size: 0.8rem; font-weight: 650; }
+.queue-progress-text a { color: var(--accent); font-size: 0.8rem; font-weight: 650; }
 .queue-progress.is-error { border-color: var(--red-line); background: var(--red-weak); color: var(--red-ink); }
 .queue-progress.is-error > svg { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; }
 @media (prefers-reduced-motion: reduce) { .queue-progress-spinner { animation: none; } }

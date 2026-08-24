@@ -148,7 +148,7 @@ export async function syncOutbox() {
     });
     request.workflowId = gestartet?.id || "";
     state.publishInFlight = true;
-    state.publishStartedCount = changes.length;
+    state.publishStartedCount = gesendeteAnzahl;
     state.publishStartedSignatures = new Set(changes.map(changeSignature));
     state.publishStatus = { state: "queued", message: "Waiting for GitHub to accept the publish request" };
     persistPublishRequest(request);

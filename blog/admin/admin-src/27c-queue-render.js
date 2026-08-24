@@ -2,7 +2,7 @@ import { publishRequestKey } from "./00-konstanten.js";
 
 import { els } from "./01b-elements.js";
 import { queueKarte } from "./27h-queue-card.js";
-import { AKTIONS_TEXTE, erzwungeneMedien } from "./04c-queue-actions.js";
+import { AKTIONS_TEXTE, erzwungeneMedien, istWirksam } from "./04c-queue-actions.js";
 import { state } from "./01c-state.js";
 import { hasGithubAccess } from "./05-github-auth.js";
 import { medienJeAenderung, orphanMediaChanges } from "./15a-media-reference-index.js";
@@ -62,6 +62,13 @@ export function renderQueue() {
   const mediaProcessing = hasActiveMediaWork();
   const publishCount = state.publishStartedCount || visibleChanges.length;
   const publishPlan = window.RWPublishPlan.plan(changes);
+  // Was der Klick tatsächlich mitnimmt — nicht, was in der Liste steht. Ohne diese Zahl blieb
+  // eine Abwahl per Checkbox unsichtbar: Der Knopf zeigte weiter die volle Menge, als hätte der
+  // Klick nichts bewirkt.
+  const wirksameAlle = changes.filter((change) => istWirksam(change.aktion ?? "medien"));
+  const selectedCount = state.queueAbgewaehlt.size
+    ? wirksameAlle.filter((change) => !state.queueAbgewaehlt.has(change.path)).length
+    : visibleChanges.length;
 
   if (els.publishPlan) {
     els.publishPlan.textContent = changes.length ? `${publishPlan.label}: ${publishPlan.detail}` : "";
@@ -78,7 +85,7 @@ export function renderQueue() {
     if (els.cleanupOrphansCount) els.cleanupOrphansCount.textContent = String(orphanCount);
   }
   els.pushButtonLabel.textContent = state.publishInFlight ? "Wird veröffentlicht …" : "Veröffentlichen";
-  els.pushButtonCount.textContent = String(state.publishInFlight ? publishCount : visibleChanges.length);
+  els.pushButtonCount.textContent = String(state.publishInFlight ? publishCount : selectedCount);
   els.pushButtonCount.hidden = !state.publishInFlight && visibleChanges.length === 0;
 
   els.queueList.innerHTML = "";

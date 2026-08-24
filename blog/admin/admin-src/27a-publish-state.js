@@ -84,11 +84,20 @@ async function refreshPublishRequest(request, signal) {
   state.publishInFlight = status.state === "queued" || status.state === "running";
 
   if (status.state === "success") {
-    const changes = await refreshPublishState();
+    // GitHub hat den Lauf abgeschlossen — das ist die Neuigkeit, und sie steht sofort fest.
+    // Was an neuen Entwürfen inzwischen nachgekommen ist, weiss erst der Refresh danach; den
+    // Toast darauf warten zu lassen, meldete einen längst abgeschlossenen Erfolg erst nach der
+    // vollen, seriellen Neuladung von Bäumen, Einträgen und Medien — spürbar später, als die
+    // Veröffentlichung tatsächlich fertig war.
     clearPublishTracking();
     state.publishStatus = status;
-    renderSyncState(changes);
-    showStatus(changes.length ? "Veröffentlicht. Neuere Änderungen bleiben in der Warteschlange." : status.message);
+    showStatus(status.message);
+    refreshPublishState()
+      .then((changes) => {
+        renderSyncState(changes);
+        if (changes.length) showStatus("Veröffentlicht. Neuere Änderungen bleiben in der Warteschlange.");
+      })
+      .catch(() => {});
     return status;
   }
 
