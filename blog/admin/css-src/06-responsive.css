@@ -197,8 +197,15 @@
      select that can shrink to fit — nowrap here would just push them off the
      right edge instead of fitting them. flex-start too: with flex-end, the one
      button that wraps to its own line strands on the right, alone, instead of
-     reading as a continuation of the row above it. */
-  .queue-view .library-tools { flex-wrap: wrap; justify-content: flex-start; }
+     reading as a continuation of the row above it. Wrap stays as the fallback
+     for the rare fourth button (Unbenutzte verwerfen); the tighter gap and
+     padding below are what keep the common three-button row on one line
+     instead of relying on wrap for it. */
+  .queue-view .library-tools { flex-wrap: wrap; justify-content: flex-start; gap: 0.35rem; }
+  .queue-view .library-tools .primary-action,
+  .queue-view .library-tools .ghost {
+    padding-inline: 0.5rem;
+  }
   /* Spalte: ohne nowrap richtet sich die Kopfzeile nach dem breitesten Kind
      statt nach der Spalte — die Zeitraum-Pille stand so über den Rand. */
   .stats-head { flex-wrap: nowrap; }
