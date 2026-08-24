@@ -13,7 +13,7 @@
    * across the screen from the button that revealed them.
    *
    * `display: contents` on .sidebar-nav lifts the three collection buttons out
-   * of their wrapper so they share one row with Veröffentlichen. That drops the
+   * of their wrapper so they share one row with Queue. That drops the
    * wrapper from the accessibility tree, which is why the landmark lives on
    * the <aside role="navigation"> around it and the wrapper is a plain div. */
   /* How much fixed chrome the bottom edge is carrying right now. The bar and
@@ -74,14 +74,19 @@
     letter-spacing: -0.015em;
     box-shadow: none;
   }
-  /* A filled pill reads as a button; in a tab bar the accent alone reads as
-     "you are here" and keeps the row calm. Veröffentlichen has no is-active
-     state (it opens a queue, not a persistent collection) — has-changes is
-     its own, separate signal that something is waiting, not "you are here". */
-  .nav-link.is-active,
-  .nav-link:hover,
+  /* Same filled --accent marker as the web sidebar's .nav-link.is-active (see
+     01a-shell.css) — the phone tab bar should mark "you are here" the same
+     way, not fall back to a fainter phone-only treatment. Queue has no
+     is-active state (it opens a queue, not a persistent collection) —
+     has-changes is its own, separate signal that something is waiting, not
+     "you are here". */
+  /* :not(.is-active) so a stuck :hover — iOS Safari keeps an element
+     hovered until the next tap elsewhere — can't tie on specificity with
+     .nav-link.is-active (01a-shell.css) and win on source order, reverting
+     the filled marker right after the tap that was supposed to show it. */
+  .nav-link:not(.is-active):hover,
   .sync-button:hover { background: transparent; color: var(--accent-ink); }
-  .nav-link.is-active .nav-icon { color: var(--accent); }
+  .nav-link.is-active .nav-icon { color: var(--accent-contrast); }
   .nav-link .nav-icon { flex: 0 0 auto; }
   .nav-link .nav-icon svg,
   .sync-button svg { width: 1.35rem; height: 1.35rem; }
@@ -91,9 +96,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* Reset the desktop row layout's flex-grow: in this column layout it
+       stretched the label to fill the button's leftover height, which pulled
+       the icon out of vertical alignment with the other three tabs. */
+    flex: 0 1 auto;
   }
   /* The count used to sit in a wide floating pill next to the label ("3
-     Veröffentlichen"); in the narrow tab column it moves onto the icon as a
+     Queue"); in the narrow tab column it moves onto the icon as a
      small corner badge instead, and disappears rather than sit there as a
      standing "0" — nothing to publish is the common case, not news. Anchored
      off the icon's own (fixed) width, not the button's, so it lands on the

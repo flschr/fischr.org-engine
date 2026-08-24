@@ -60,7 +60,7 @@ eleventyExcludeFromCollections: true
                fourth and last stop, not a fifth. -->
           <button id="syncButton" class="sync-button" type="button">
             <span data-icon="refresh-cw" aria-hidden="true"></span>
-            <span class="sync-label">Veröffentlichen</span>
+            <span class="sync-label">Queue</span>
             <span class="sync-count">0</span>
           </button>
         </aside>
@@ -93,13 +93,19 @@ eleventyExcludeFromCollections: true
           </section>
 
           <!-- Editor view -->
-          <!-- A <div>, not a <form>: iOS Safari shows its native
-               Previous/Next/Done accessory bar above the keyboard whenever a
-               <form> holds several text-navigable fields, which this one does
-               (title, slug, permalink, date, image path). That bar ate a
-               second row above the writing bar on a screen already short on
-               height. Enter-to-save on the metadata fields below is now wired
-               explicitly instead of relying on native form submission. -->
+          <!-- A <div>, not a <form>: keeps native form submission out of the
+               way so Enter-to-save on the metadata fields below has to be
+               wired explicitly instead.
+               That does NOT stop iOS Safari's native Previous/Next/Done
+               accessory bar above the keyboard, though — WebKit shows it
+               whenever 2+ text-editable elements are reachable anywhere on
+               the page, regardless of a shared <form> ancestor, and title,
+               slug, permalink, date, image path and the CM6 body all qualify.
+               A focus-driven "disable every other field" workaround was
+               tried and reverted: disabled fields never receive pointerdown
+               on any platform, so a direct tap couldn't re-focus one once
+               something else had taken over, and it broke Tab order too. No
+               reliable pure-web fix is known; this is a standing iOS quirk. -->
           <div id="editorForm" class="view editor-form" hidden>
             <div class="editor-head view-head">
               <h1 id="editorViewTitle" class="view-title">New article</h1>

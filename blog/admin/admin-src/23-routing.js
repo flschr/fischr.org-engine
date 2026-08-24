@@ -18,8 +18,10 @@ export function showView(name) {
   if (els.statsView) els.statsView.hidden = name !== "stats";
   if (els.socialConfigView) els.socialConfigView.hidden = name !== "social";
   if (els.statsNav) els.statsNav.classList.toggle("is-active", name === "stats");
-  // Social and Stats aren't tied to a content collection.
-  if (name === "social" || name === "stats") els.navButtons.forEach((button) => button.classList.remove("is-active"));
+  // Social, Stats and the Queue aren't tied to a content collection — leaving
+  // the previous collection's tab marked active would misrepresent "you are
+  // here" once its own tab bar row doesn't get a marker of its own.
+  if (name === "social" || name === "stats" || name === "queue") els.navButtons.forEach((button) => button.classList.remove("is-active"));
   else updateNav();
 }
 

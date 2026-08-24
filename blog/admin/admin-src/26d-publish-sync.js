@@ -50,7 +50,7 @@ export function renderSyncState(changes) {
   if (countEl) countEl.textContent = String(count);
   if (labelEl) labelEl.textContent = state.publishInFlight
     ? (state.publishStatus?.message || "Wird veröffentlicht …")
-    : "Veröffentlichen";
+    : "Queue";
   els.syncButton.setAttribute("aria-label", state.publishInFlight
     ? "Änderungen werden veröffentlicht"
     : (count === 1 ? "1 Änderung veröffentlichen" : `${count} Änderungen veröffentlichen`));
