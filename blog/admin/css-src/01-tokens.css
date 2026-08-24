@@ -26,22 +26,18 @@
   /* Same as --accent, as a triplet: for `rgb(var(--accent-rgb) / alpha)`
      where a fixed hex can't carry a variable alpha (shadows, focus rings). */
   --accent-rgb: 17 17 17;
-  /* Text/icon color to put ON a filled --accent surface. White reads on the
-     black light-mode fill; white text on the yellow dark-mode fill would fail
-     contrast, so dark mode overrides this to a near-black instead. */
-  --accent-contrast: #ffffff;
+  /* Text/icon color to put ON a filled --accent surface — every filled
+     button, badge and "you are here" nav item uses this ONE token, so a
+     black-filled control is never white-on-black in one place and
+     yellow-on-black in another. It's always the favicon's OTHER color: the
+     fill is black, so the text is yellow (light mode) or the fill is
+     already yellow, so the text is near-black (dark mode, below). */
+  --accent-contrast: var(--accent-weak-2);
   /* A translucent version of --accent-contrast, for a badge that sits on top
-     of an --accent fill (a white wash in light mode, over black; a dark wash
-     in dark mode, over yellow — never a fixed white that would vanish on the
-     yellow fill). */
-  --accent-contrast-weak: rgb(255 255 255 / 0.25);
-  /* Text/icon on a filled --accent surface that marks "you are here" (the
-     current nav destination), not an action — the one place that gets to
-     show both favicon colors at once instead of --accent-contrast's plain
-     white. In dark mode the fill is already yellow, so this collapses back
-     to --accent-contrast there (near-black on yellow is the same "both
-     colors together" mark, just with the roles already swapped). */
-  --accent-mark-ink: var(--accent-weak-2);
+     of an --accent fill — a yellow wash in light mode, over black; a dark
+     wash in dark mode, over yellow. Same color as --accent-contrast itself,
+     just faded, for the same reason: one rule, not a color chosen per spot. */
+  --accent-contrast-weak: rgb(253 224 71 / 0.25);
   --green: #15803d;
   --green-weak: #ecfdf3;
   /* Red carries two jobs that pull in opposite directions, so it is two tokens.
@@ -125,7 +121,6 @@
     --accent-rgb: 253 224 71;
     --accent-contrast: #14120c;
     --accent-contrast-weak: rgb(20 18 12 / 0.28);
-    --accent-mark-ink: var(--accent-contrast);
     --cm-selection: #443c1c;
     --green: #41c059;
     --green-weak: #1c3024;
