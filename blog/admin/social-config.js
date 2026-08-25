@@ -35,7 +35,6 @@
     delete draft.social.mastodonInstance;
     delete draft.social.targets;
 
-    setOptionalNumber(draft, "maxPostsPerRun", fields.maxPostsPerRun);
     setOptionalNumber(draft, "maxAgeDays", fields.maxAgeDays);
     if (fields.startAfter) draft.startAfter = fields.startAfter;
     else delete draft.startAfter;

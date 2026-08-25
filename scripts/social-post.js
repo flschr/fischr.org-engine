@@ -10,7 +10,6 @@ const {
   writeJson,
   listPublishedPosts,
   keepLive,
-  positiveInteger,
   resolveRule,
   renderPostText,
   getLocalImages
@@ -20,6 +19,13 @@ const { fetchWithTimeout, HttpResponseError, responseText } = require("./lib/htt
 const stateFile = path.join(root, "automation/social-posts.json");
 const gotosocialLimit = 500;
 const gotosocialMaxImageSize = 8 * 1024 * 1024;
+// Not user-configurable (the admin used to expose this as "Max posts per
+// run" — removed, see PR #183): the Sync view's pause toggle means a backlog
+// can build up while paused, and resuming must never fire an unbounded burst
+// of posts at GoToSocial in one run. maxAgeDays already bounds staleness;
+// this bounds count — a fixed backstop for the case neither maxAgeDays nor a
+// human pausing in advance catches.
+const socialPostBurstLimit = 10;
 
 if (require.main === module) {
   main().catch((error) => {
@@ -31,13 +37,16 @@ if (require.main === module) {
 async function main() {
   const config = loadConfig();
   const socialConfig = config.social || {};
+  // The admin's Sync view can pause GoToSocial posting on its own, independent
+  // of the site build/deploy — for a planned bulk operation (e.g. renaming a
+  // batch of old slugs, which the "already posted" ledger below is keyed by
+  // and would otherwise lose track of).
+  if (socialConfig.enabled === false) {
+    console.log("Social posting is paused (social.enabled is false in social-config.json).");
+    return;
+  }
   const state = readJson(stateFile, {});
   const posts = listPublishedPosts(config);
-  const maxPosts = positiveInteger(
-    process.env.SOCIAL_MAX_POSTS_PER_RUN ?? config.maxPostsPerRun,
-    3,
-    "SOCIAL_MAX_POSTS_PER_RUN"
-  );
   const candidates = [];
 
   for (const post of posts) {
@@ -62,13 +71,13 @@ async function main() {
 
   // Don't syndicate a link before the page is live (a just-due scheduled post may
   // not be deployed yet) — it would 404 on the social network's link preview.
-  // Filter by liveness *before* applying the per-run cap, so a persistently
-  // unreachable post can't occupy a cap slot every run and starve a healthy one.
+  // Filter by liveness *before* applying the burst limit, so a persistently
+  // unreachable post can't occupy a slot every run and starve a healthy one.
   const liveCandidates = (
     await keepLive(candidates, (candidate) => candidate.post.url, {
       getDate: (candidate) => candidate.post.date
     })
-  ).slice(0, maxPosts);
+  ).slice(0, socialPostBurstLimit);
   requireLiveCandidates(candidates, liveCandidates, process.env.RETRY_UNREACHABLE_POSTS === "1");
   if (liveCandidates.length === 0) {
     console.log("No live posts ready for social posting yet.");

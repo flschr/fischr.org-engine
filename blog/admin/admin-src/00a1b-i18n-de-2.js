@@ -87,8 +87,6 @@ export const dictDe2 = {
   "settings.publishDestinationHint": "Wohin neue Beiträge veröffentlicht werden.",
   "common.advanced": "Erweitert",
   "settings.advancedHint": "Zeitplan-Einstellungen – die Vorgaben passen meistens",
-  "settings.maxPostsPerRun": "Maximale Beiträge pro Lauf",
-  "settings.maxPostsPerRunHint": "Anzahl der Beiträge pro geplantem Lauf.",
   "settings.maxAgeDays": "Maximales Alter in Tagen",
   "settings.maxAgeDaysHint": "Ältere Beiträge überspringen.",
   "settings.startAfter": "Nicht veröffentlichen vor",

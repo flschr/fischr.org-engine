@@ -365,6 +365,17 @@ eleventyExcludeFromCollections: true
                 </button>
               </div>
             </div>
+            <!-- Independent of the publish queue below: flips
+                 social.enabled in automation/social-config.json straight
+                 away (same instant-commit mechanism as Settings → Distribution),
+                 not part of the drafts/queue flow. For a planned bulk
+                 operation that renames post URLs in one go — the "already
+                 posted" ledger is keyed by URL and would otherwise lose
+                 track of them (see docs/social.md). -->
+            <label class="social-sync-toggle">
+              <input type="checkbox" id="socialSyncToggle" checked disabled>
+              <span data-i18n="queue.socialSyncToggle">Social sync active</span>
+            </label>
             <p id="publishPlan" class="social-hint" role="status"></p>
             <ol id="queueList" class="entry-list"></ol>
           </section>

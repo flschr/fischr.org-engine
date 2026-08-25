@@ -86,8 +86,6 @@ export const dictEn2 = {
   "settings.publishDestinationHint": "Where new posts are published to.",
   "common.advanced": "Advanced",
   "settings.advancedHint": "Schedule settings — the defaults usually fit",
-  "settings.maxPostsPerRun": "Max posts per run",
-  "settings.maxPostsPerRunHint": "Number of posts per scheduled run.",
   "settings.maxAgeDays": "Max age in days",
   "settings.maxAgeDaysHint": "Skip older posts.",
   "settings.startAfter": "Don't publish before",

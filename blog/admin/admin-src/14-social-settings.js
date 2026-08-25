@@ -59,11 +59,9 @@ export async function openSocialConfig() {
   updateConnectionState();
   if (els.adminLangSelect) els.adminLangSelect.value = currentLang();
   setSocialConfigStatus(t("settings.socialLoading"), "muted");
-  try {
-    await loadSocialConfig(true);
-  } catch {
-    // loadSocialConfig already falls back to an empty config.
-  }
+  // loadSocialConfig() never rejects — on a failed fetch it resolves to {}
+  // internally instead, so there's nothing here to catch.
+  await loadSocialConfig(true);
   state.socialConfigDraft = normalizeSocialConfigDraft(state.socialConfig);
   renderSocialConfig();
   // Baseline = the canonical serialized form (from the now-populated inputs),
@@ -77,7 +75,6 @@ export function renderSocialConfig() {
   const draft = state.socialConfigDraft;
   if (!draft) return;
   els.cfgGotosocialInstance.value = draft.social.gotosocialInstance || "";
-  els.cfgMaxPostsPerRun.value = draft.maxPostsPerRun ?? "";
   els.cfgMaxAgeDays.value = draft.maxAgeDays ?? "";
   els.cfgStartAfter.value = draft.startAfter ? dateInputValueFromIso(draft.startAfter) : "";
   renderSocialCategoryCards();

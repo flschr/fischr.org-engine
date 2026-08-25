@@ -33,7 +33,6 @@ test("collection emits only the GoToSocial endpoint", () => {
     }
   }, {
     gotosocialInstance: "https://social.example.org",
-    maxPostsPerRun: "3",
     maxAgeDays: "14",
     startAfter: "",
     defaultTemplate: "post"

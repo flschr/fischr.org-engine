@@ -1,5 +1,9 @@
 // Continuation of 00a2c-i18n-en-3.js — see 00a1d-i18n-de-4.js for what this split covers.
 export const dictEn4 = {
+  "queue.socialSyncToggle": "Social sync active",
+  "queue.socialSyncPaused": "Social sync paused.",
+  "queue.socialSyncResumed": "Social sync resumed.",
+  "queue.socialSyncLoadFailed": "Couldn't load — please try again.",
   "queue.fastContentPublishDetail": "Content and media are built and checked; unchanged code and browser tests are skipped.",
   "queue.fullValidationDetailForFile": "Code check because of {file}; browser tests run weekly and on demand.",
   "queue.fullValidationDetailGeneric": "Code check, because no unambiguous content change was detected.",

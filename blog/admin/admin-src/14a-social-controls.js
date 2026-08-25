@@ -60,7 +60,6 @@ export function addSocialCategory() {
 export function collectSocialConfigDraft() {
   return window.RWSocialConfig.collect(state.socialConfigDraft, {
     gotosocialInstance: els.cfgGotosocialInstance.value,
-    maxPostsPerRun: els.cfgMaxPostsPerRun.value,
     maxAgeDays: els.cfgMaxAgeDays.value,
     startAfter: els.cfgStartAfter.value.trim() ? isoFromDateInputValue(els.cfgStartAfter.value.trim()) : "",
     defaultTemplate: els.cfgDefaultCategory?.value || ""
@@ -69,10 +68,6 @@ export function collectSocialConfigDraft() {
     normalizeRule,
     resolveDefaultTemplate
   });
-}
-
-function socialConfigSerialized() {
-  return `${JSON.stringify(collectSocialConfigDraft(), null, 2)}\n`;
 }
 
 export function socialConfigDirty() {
@@ -104,30 +99,61 @@ export function resetSocialConfig() {
 
 // Commit a single text file straight onto the published branch, retrying if the branch
 // head moved (mirrors commitToDrafts, but targets main and leaves the cached drafts tree
-// alone — nothing on main belongs to it).
-async function commitFileToPublished(path, content, message) {
+// alone — nothing on main belongs to it). Returns the new blob's sha so the caller can
+// track what it just wrote.
+async function commitFileToPublished(path, content, message, expectedBlobs) {
   const blob = await draftRepository.createBlob(content);
   const entry = { path, mode: "100644", type: "blob", sha: blob.sha };
-  const result = await draftRepository.commit([entry], message, { branch: repo.publishBranch });
-  return result.commitSha;
+  await draftRepository.commit([entry], message, { branch: repo.publishBranch, expectedBlobs });
+  return blob.sha;
+}
+
+// Shared by the Settings form's Save button and the Sync view's standalone
+// social-sync toggle (27f-social-sync-toggle.js) — both commit the whole
+// config file straight to main, just built from a different source (the
+// Settings draft vs. state.socialConfig with only `enabled` flipped).
+//
+// Two independent, uncoordinated writers of the same file need the same
+// compare-and-swap every other writer of shared state already gets
+// (04a-draft-writes.js, 25a-entry-actions.js, ...): expectedBlobs makes a
+// commit built from a config one of them already knows is stale fail loudly
+// (DRAFT_CONFLICT) instead of silently overwriting what the other just wrote.
+export async function commitSocialConfig(config, message = "Update social config [skip ci]") {
+  const content = `${JSON.stringify(config, null, 2)}\n`;
+  const expectedBlobs = state.socialConfigSha ? { [socialConfigPath]: state.socialConfigSha } : null;
+  state.socialConfigSha = await commitFileToPublished(socialConfigPath, content, message, expectedBlobs);
+  state.socialConfig = JSON.parse(content);
+  return state.socialConfig;
 }
 
 export async function saveSocialConfig() {
   if (!requireGithubAccess(t("action.savingSettings"))) return;
   if (!socialConfigDirty()) return;
-  const content = socialConfigSerialized();
+  // Without a confirmed successful load, the draft this would serialize could
+  // be built on loadSocialConfig()'s {} fallback (it never throws — see
+  // openSocialConfig()) rather than the real file: committing it would wipe
+  // automation/social-config.json instead of updating it. Same guard as the
+  // Sync view's standalone toggle (27f-social-sync-toggle.js).
+  if (!state.socialConfigSha) {
+    showStatus(t("queue.socialSyncLoadFailed"), "error");
+    setSocialConfigStatus(t("settings.errorSaving"), "off");
+    return;
+  }
   setBusy(true);
   setSocialConfigStatus(t("settings.saving"), "muted");
   try {
-    await commitFileToPublished(socialConfigPath, content, "Update social config [skip ci]");
+    await commitSocialConfig(collectSocialConfigDraft());
     // Adopt the saved config as the new baseline + refresh the per-post catalog.
-    state.socialConfig = JSON.parse(content);
     state.socialConfigDraft = normalizeSocialConfigDraft(state.socialConfig);
     renderSocialConfig();
     // Use the same canonical representation as socialConfigDirty(): the
     // normalized draft may carry optional keys that collectSocialConfigDraft()
     // intentionally omits.
     state.socialConfigLoaded = JSON.stringify(collectSocialConfigDraft());
+    // Settings can change fields stats rendering reads (e.g. siteUrl, used for
+    // outbound links in 21a-stats-details.js) — the toggle in 27f never can,
+    // it only flips `enabled`, so this stays here rather than in the shared
+    // commitSocialConfig().
     state.statsCache.clear();
     showStatus(t("settings.savedToast"));
     setSocialConfigStatus(t("settings.saved"), "ok");

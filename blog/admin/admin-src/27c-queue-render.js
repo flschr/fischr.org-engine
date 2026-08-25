@@ -11,12 +11,15 @@ import { showView } from "./23-routing.js";
 import { replaceNav } from "./24-history.js";
 import { hasActiveMediaWork, refreshQueueFromGitHub, visibleQueueChanges } from "./26d-publish-sync.js";
 import { publishProgressMeta, publishTimingLabel } from "./26g-publish-progress-text.js";
+import { refreshSocialSyncToggle } from "./27f-social-sync-toggle.js";
 
 export async function openQueue() {
   showView("queue");
   renderQueue();
   replaceNav();
-  await refreshQueueFromGitHub();
+  // Independent GitHub reads (drafts/changes vs. social-config.json) — no
+  // ordering dependency, so they overlap instead of stacking their latency.
+  await Promise.all([refreshQueueFromGitHub(), refreshSocialSyncToggle()]);
 }
 
 // Was diese Zeile am öffentlichen Blog bewirkt.

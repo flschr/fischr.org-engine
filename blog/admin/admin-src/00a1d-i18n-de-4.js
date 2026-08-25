@@ -4,6 +4,10 @@
 // vorbeiliefen — Kennzahlen, Panel-Titel, Zeitraum-Beschriftungen, Kalender-Hinweise, Karten-
 // Metadaten und Statusmeldungen.
 export const dictDe4 = {
+  "queue.socialSyncToggle": "Social-Sync aktiv",
+  "queue.socialSyncPaused": "Social-Sync pausiert.",
+  "queue.socialSyncResumed": "Social-Sync fortgesetzt.",
+  "queue.socialSyncLoadFailed": "Konnte nicht geladen werden — bitte erneut versuchen.",
   "queue.fastContentPublishDetail": "Inhalte und Medien werden gebaut und geprüft; unveränderter Code und Browsertests entfallen.",
   "queue.fullValidationDetailForFile": "Codeprüfung wegen {file}; Browsertests laufen wöchentlich und auf Knopfdruck.",
   "queue.fullValidationDetailGeneric": "Codeprüfung, weil keine eindeutige Inhaltsänderung erkannt wurde.",

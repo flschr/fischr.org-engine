@@ -21,6 +21,7 @@ import { renderMedia } from "./26b-media-render.js";
 import { syncOutbox } from "./27b-publish-actions.js";
 import { discardAllChanges, discardUnusedMedia } from "./27d-discard-changes.js";
 import { openQueue } from "./27c-queue-render.js";
+import { toggleSocialSync } from "./27f-social-sync-toggle.js";
 import { refreshCurrent } from "./29-events.js";
 
 export function wireEditorEvents() {
@@ -158,6 +159,7 @@ export function wireEditorEvents() {
   els.pushButton.addEventListener("click", syncOutbox);
   els.discardAllButton.addEventListener("click", discardAllChanges);
   els.cleanupOrphansButton?.addEventListener("click", discardUnusedMedia);
+  els.socialSyncToggle?.addEventListener("change", toggleSocialSync);
   els.titleInput.addEventListener("input", () => {
     syncAutoSlug();
     if (state.current?.collection === "pages" && (!els.permalinkInput.value || state.current.isNew)) {

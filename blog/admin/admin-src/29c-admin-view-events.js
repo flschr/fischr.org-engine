@@ -108,7 +108,7 @@ export function wireAdminViewEvents() {
   els.socialConfigSave?.addEventListener("click", saveSocialConfig);
   els.socialConfigReset?.addEventListener("click", resetSocialConfig);
   els.socialConfigAdd?.addEventListener("click", addSocialCategory);
-  [els.cfgGotosocialInstance, els.cfgMaxPostsPerRun, els.cfgMaxAgeDays, els.cfgStartAfter].forEach((input) => {
+  [els.cfgGotosocialInstance, els.cfgMaxAgeDays, els.cfgStartAfter].forEach((input) => {
     input?.addEventListener("input", updateSocialConfigDirty);
   });
   els.cfgDefaultCategory?.addEventListener("change", () => {
