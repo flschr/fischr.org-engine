@@ -33,8 +33,21 @@ const dict = { de: dictDe, en: dictEn };
 export function t(key, vars) {
   const table = dict[currentLang()] || dict.de;
   let text = table[key] ?? dict.de[key] ?? key;
-  if (vars) for (const name of Object.keys(vars)) text = text.replaceAll(`{${name}}`, vars[name]);
+  // The replacement is a function, not vars[name] itself: a plain string
+  // second argument treats $&, $$, $` and $' in it as special substitution
+  // patterns (per spec), so external content (a GitHub error message, a
+  // user-typed article title) containing one of those sequences would
+  // corrupt the output. A function's return value is always inserted
+  // literally.
+  if (vars) for (const name of Object.keys(vars)) text = text.replaceAll(`{${name}}`, () => String(vars[name]));
   return text;
+}
+
+// Picks singular/plural once instead of repeating the same ternary at every
+// call site — six call sites had copy-pasted `count === 1 ? t(base +
+// "Singular") : t(base + "Plural", {count})` before this existed.
+export function tn(base, count, vars) {
+  return t(`${base}${count === 1 ? "Singular" : "Plural"}`, { count, ...vars });
 }
 
 // Läuft beim Start einmal über das ganze Dokument und danach erneut, sobald

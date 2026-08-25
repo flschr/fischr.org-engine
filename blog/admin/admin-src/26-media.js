@@ -1,5 +1,5 @@
 import { maxVideoUploadBytes } from "./00-konstanten.js";
-import { t } from "./00a-i18n.js";
+import { t, tn } from "./00a-i18n.js";
 import { collections, draftRepository, gpxUploadService, mediaService } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -179,8 +179,8 @@ export async function queueUploads(files, insertIntoEditor) {
       state.mediaUploadItems.set(item.change.path, item);
     });
     writeAutosave();
-    const skipped = rejectedVideos.length ? t(rejectedVideos.length === 1 ? "media.videosSkippedSingular" : "media.videosSkippedPlural", { count: rejectedVideos.length }) : "";
-    const processing = t(selected.length === 1 ? "media.uploadsProcessingSingular" : "media.uploadsProcessingPlural", { count: selected.length });
+    const skipped = rejectedVideos.length ? tn("media.videosSkipped", rejectedVideos.length) : "";
+    const processing = tn("media.uploadsProcessing", selected.length);
     showStatus(`${processing}${skipped}`, rejectedVideos.length ? "error" : undefined);
 
     startMediaJobs(pending);

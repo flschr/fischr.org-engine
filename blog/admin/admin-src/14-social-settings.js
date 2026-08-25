@@ -1,4 +1,4 @@
-import { currentLang } from "./00a-i18n.js";
+import { currentLang, t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { hasGithubAccess } from "./05-github-auth.js";
@@ -58,7 +58,7 @@ export async function openSocialConfig() {
   // The GitHub connection section now lives in this view — refresh its state.
   updateConnectionState();
   if (els.adminLangSelect) els.adminLangSelect.value = currentLang();
-  setSocialConfigStatus("Konfiguration wird geladen …", "muted");
+  setSocialConfigStatus(t("settings.socialLoading"), "muted");
   try {
     await loadSocialConfig(true);
   } catch {
@@ -70,7 +70,7 @@ export async function openSocialConfig() {
   // so a freshly opened config is never "dirty" until the user changes it.
   state.socialConfigLoaded = JSON.stringify(collectSocialConfigDraft());
   updateSocialConfigDirty();
-  setSocialConfigStatus(hasGithubAccess() ? "" : "Nur Lesen – GitHub-Verbindung fehlt.", hasGithubAccess() ? "" : "muted");
+  setSocialConfigStatus(hasGithubAccess() ? "" : t("settings.readOnlyNoGithub"), hasGithubAccess() ? "" : "muted");
 }
 
 export function renderSocialConfig() {

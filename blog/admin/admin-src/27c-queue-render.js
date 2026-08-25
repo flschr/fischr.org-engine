@@ -1,8 +1,8 @@
 import { publishRequestKey } from "./00-konstanten.js";
-
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { queueKarte } from "./27h-queue-card.js";
-import { AKTIONS_TEXTE, erzwungeneMedien, istWirksam } from "./04c-queue-actions.js";
+import { AKTIONS_SCHLUESSEL, erzwungeneMedien, istWirksam } from "./04c-queue-actions.js";
 import { state } from "./01c-state.js";
 import { hasGithubAccess } from "./05-github-auth.js";
 import { medienJeAenderung, orphanMediaChanges } from "./15a-media-reference-index.js";
@@ -26,9 +26,10 @@ export async function openQueue() {
 // unsichtbar bleibt; „Geändert" konnte eine Aktualisierung sein oder ein Zurückziehen. Die
 // Aktion steht seit der Ableitung in 04c-queue-actions.js an der Änderung selbst.
 export function queueChangeLabel(change) {
-  if (change.kind === "technical-repair") return "Reparatur";
-  if (change.aktion === "medien") return change.kind === "delete" ? "Medium löschen" : "Upload";
-  return AKTIONS_TEXTE[change.aktion] || (change.kind === "delete" ? "Löschen" : "Geändert");
+  if (change.kind === "technical-repair") return t("queue.actionRepair");
+  if (change.aktion === "medien") return t(change.kind === "delete" ? "queue.actionDeleteMedium" : "queue.actionUpload");
+  const key = AKTIONS_SCHLUESSEL[change.aktion];
+  return key ? t(key) : t(change.kind === "delete" ? "queue.actionDelete" : "queue.actionChanged");
 }
 
 export function changeSignature(change) {
@@ -105,11 +106,16 @@ export function renderQueue() {
     const progressText = state.publishStatus?.phaseIndex != null && state.publishStatus?.phaseCount
       ? `Schritt ${state.publishStatus.phaseIndex} von ${state.publishStatus.phaseCount}`
       : "Fortschritt wird ermittelt";
+    // Re-resolved via t() here, not read off state.publishStatus.message
+    // directly: that field is a snapshot taken whenever GitHub was last
+    // polled, and without messageKey a language switch mid-publish would
+    // leave it frozen in whatever language it was in when it was written.
+    const statusMessage = state.publishStatus?.messageKey ? t(state.publishStatus.messageKey) : state.publishStatus?.message;
     card.innerHTML = [
       '<span class="queue-progress-spinner" aria-hidden="true"></span>',
       '<span class="queue-progress-text">',
       `<strong>${escapeHtml(label)}${state.publishRequest?.validationMode ? ` · ${escapeHtml(state.publishRequest.validationMode === "content" ? "Schneller Content-Publish" : "Publish mit Codeprüfung")}` : ""}</strong>`,
-      `<span${shouldAnnounce ? ' role="status" aria-live="polite"' : ""}>${escapeHtml(state.publishStatus?.message || "Warten auf den Start durch GitHub")}</span>`,
+      `<span${shouldAnnounce ? ' role="status" aria-live="polite"' : ""}>${escapeHtml(statusMessage || "Warten auf den Start durch GitHub")}</span>`,
       progressMeta ? `<span class="queue-progress-meta" aria-hidden="true">${escapeHtml(progressMeta)}</span>` : "",
       state.publishStatus?.slowContent ? '<span class="queue-progress-meta">Warnung: Dieser Content-Publish dauert länger als 90 Sekunden.</span>' : "",
       `<span class="queue-progress-track" role="progressbar" aria-label="Veröffentlichungsfortschritt" aria-valuetext="${escapeHtml(progressText)}"${progressValue == null ? "" : ` aria-valuenow="${progressValue}"`} aria-valuemin="0" aria-valuemax="100"><span${progressValue == null ? "" : ` style="width:${progressValue}%"`}></span></span>`,

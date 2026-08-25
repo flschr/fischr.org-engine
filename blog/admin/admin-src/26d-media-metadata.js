@@ -142,7 +142,7 @@ export async function queueMediaDelete(item) {
   if (!requireGithubAccess(t("action.deletingMedia"))) return;
 
   await waitForMediaCommits();
-  if (!guardMediaIdle(t("action.deleting"))) return;
+  if (!guardMediaIdle(t("action.deletingThis"))) return;
 
   const existing = await getChange(item.path);
   if (item.mediaKind === "video") {

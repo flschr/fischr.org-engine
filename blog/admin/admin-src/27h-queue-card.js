@@ -52,7 +52,7 @@ export function queueKarte(change, { publishLocked, mediaProcessing, erzwungen }
     if (!confirmed) return;
     try {
       const confirmedChanges = await loadFreshChanges();
-      if (!guardMediaIdle(t("action.discard"))) return;
+      if (!guardMediaIdle(t("action.discardingThis"))) return;
       const confirmedVisibleChanges = visibleQueueChanges(confirmedChanges);
       const confirmedChange = confirmedVisibleChanges.find((candidate) => candidate.path === change.path);
       if (!confirmedChange || changeSignature(confirmedChange) !== changeSignature(change)) {

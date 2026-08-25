@@ -1,5 +1,5 @@
 import { gotosocialTextLimit } from "./00-konstanten.js";
-import { t } from "./00a-i18n.js";
+import { t, tn } from "./00a-i18n.js";
 import { findMarkdownImages, markdownAltHasText } from "./15a-media-reference-index.js";
 
 import { els } from "./01b-elements.js";
@@ -66,7 +66,7 @@ export function openPublishDialog(reopened) {
   syncContentTypeFields();
   updateSocialPanel();
   if (els.publishDialogTitle) els.publishDialogTitle.textContent = t("dialog.publish");
-  if (els.publishDialogConfirm) els.publishDialogConfirm.textContent = "Veröffentlichen";
+  if (els.publishDialogConfirm) els.publishDialogConfirm.textContent = t("dialog.publish");
   if (els.publishDialogSocialHint) els.publishDialogSocialHint.hidden = true;
   els.publishDialog.showModal();
   // showModal() auto-focuses the first control (the content-type <select>),
@@ -100,9 +100,7 @@ export async function confirmPublishDialog() {
 
 function askMissingAltTextAction(count) {
   if (!els.missingAltDialog || !els.missingAltDialogText) return Promise.resolve(false);
-  els.missingAltDialogText.textContent = count === 1
-    ? t("dialog.missingAltTextSingular")
-    : t("dialog.missingAltTextPlural", { count });
+  els.missingAltDialogText.textContent = tn("dialog.missingAltText", count);
   els.missingAltDialog.returnValue = "no";
   return new Promise((resolve) => {
     const resolveWithValue = () => resolve(els.missingAltDialog.returnValue === "generate");

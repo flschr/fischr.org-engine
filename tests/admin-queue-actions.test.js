@@ -39,10 +39,10 @@ test("was den Blog verkleinert, wird benannt statt zusammengefasst", () => {
 
 // Vier Wirkungen, vier Namen. Eine gemeinsame Beschriftung („Änderung") war der Grund, warum in
 // der Warteschlange nicht zu sehen war, was das Senden anrichtet.
-test("jede Aktion hat einen eigenen Text", () => {
-  const texte = new Set(aktionen.AKTIONEN.map((name) => aktionen.AKTIONS_TEXTE[name]));
-  assert.equal(texte.size, aktionen.AKTIONEN.length, "keine zwei Aktionen teilen sich einen Text");
-  aktionen.AKTIONEN.forEach((name) => assert.ok(aktionen.AKTIONS_TEXTE[name], `${name} ohne Text`));
+test("jede Aktion hat einen eigenen i18n-Schlüssel", () => {
+  const schluessel = new Set(aktionen.AKTIONEN.map((name) => aktionen.AKTIONS_SCHLUESSEL[name]));
+  assert.equal(schluessel.size, aktionen.AKTIONEN.length, "keine zwei Aktionen teilen sich einen Schlüssel");
+  aktionen.AKTIONEN.forEach((name) => assert.ok(aktionen.AKTIONS_SCHLUESSEL[name], `${name} ohne Schlüssel`));
 });
 
 test("istWirksam trennt genau das Unwirksame ab", () => {

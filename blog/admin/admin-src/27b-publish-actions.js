@@ -151,7 +151,9 @@ export async function syncOutbox() {
     state.publishInFlight = true;
     state.publishStartedCount = gesendeteAnzahl;
     state.publishStartedSignatures = new Set(changes.map(changeSignature));
-    state.publishStatus = { state: "queued", message: t("queue.waitingForGithub") };
+    // messageKey lets renderQueue() re-resolve this on a language switch — see
+    // the comment next to the same pattern in 27a-publish-state.js.
+    state.publishStatus = { state: "queued", message: t("queue.waitingForGithub"), messageKey: "queue.waitingForGithub" };
     persistPublishRequest(request);
     state.publishPollToken += 1;
     const pollToken = state.publishPollToken;

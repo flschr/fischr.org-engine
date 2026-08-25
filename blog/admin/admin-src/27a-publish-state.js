@@ -194,7 +194,10 @@ export async function resumePublish() {
     request.visibleChangeCount || visibleQueueChanges(Array.from(state.changes.values())).length || request.changeCount || 0
   );
   state.publishStartedSignatures = new Set(request.signatures || []);
-  state.publishStatus = { state: "queued", message: t("queue.restoringStatus") };
+  // messageKey, not just the resolved message: renderQueue() re-resolves it via
+  // t() on every render, so a language switch while this status is still on
+  // screen doesn't leave it stuck in the language it was first shown in.
+  state.publishStatus = { state: "queued", message: t("queue.restoringStatus"), messageKey: "queue.restoringStatus" };
   state.publishPollToken += 1;
   renderSyncState(Array.from(state.changes.values()));
   pollPublishCompletion(state.publishPollToken, request);

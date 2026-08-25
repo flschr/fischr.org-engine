@@ -20,12 +20,14 @@ export const OHNE_WIRKUNG = "ohne-wirkung";
 // erweitert, zuletzt, was sie verkleinert.
 export const AKTIONEN = ["veroeffentlichen", "aktualisieren", "zurueckziehen", "loeschen", "medien"];
 
-export const AKTIONS_TEXTE = {
-  veroeffentlichen: "Veröffentlichen",
-  aktualisieren: "Aktualisieren",
-  zurueckziehen: "Zurückziehen",
-  loeschen: "Löschen",
-  medien: "Medien"
+// i18n-Schlüssel, keine fertigen Texte — 27c-queue-render.js löst sie über t()
+// auf, damit die Pille dieselbe Sprache trägt wie der Rest der Zeile.
+export const AKTIONS_SCHLUESSEL = {
+  veroeffentlichen: "queue.actionPublish",
+  aktualisieren: "queue.actionUpdate",
+  zurueckziehen: "queue.actionRetract",
+  loeschen: "queue.actionDelete",
+  medien: "queue.actionMedia"
 };
 
 // `warOeffentlich` und `wirdOeffentlich` sind je dreiwertig: true, false, oder null für „gibt es

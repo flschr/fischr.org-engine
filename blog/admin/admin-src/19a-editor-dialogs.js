@@ -23,7 +23,7 @@ export function askDeleteAction() {
   });
 }
 
-export function askDiscardAction({ title, text, actionLabel = "Verwerfen" }) {
+export function askDiscardAction({ title, text, actionLabel = t("action.discard") }) {
   els.discardDialogTitle.textContent = title;
   els.discardDialogText.textContent = text;
   els.discardDialogAction.textContent = actionLabel;

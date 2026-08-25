@@ -5,7 +5,7 @@
 // und wie beginnt eine. Verwerfen ist der dritte Fall — und der einzige, der Arbeit wegwirft.
 
 import { repo } from "./00-konstanten.js";
-import { t } from "./00a-i18n.js";
+import { t, tn } from "./00a-i18n.js";
 import { github } from "./01-bootstrap.js";
 import { state } from "./01c-state.js";
 import { setBusy, showStatus } from "./03-status.js";
@@ -23,15 +23,13 @@ export async function discardAllChanges() {
   await waitForMediaCommits();
   const changes = await getAllChanges();
   if (!changes.length) return;
-  if (!guardMediaIdle(t("action.discardAllChanges"))) return;
+  if (!guardMediaIdle(t("action.discardingAllChanges"))) return;
   const confirmedChangeSet = changeSetSignature(changes);
   const confirmedDraftHead = state.treeHeadSha;
   const visibleCount = visibleQueueChanges(changes).length;
   const confirmed = await askDiscardAction({
     title: t("queue.discardAllTitle"),
-    text: visibleCount === 1
-      ? t("queue.discardAllBodySingular")
-      : t("queue.discardAllBodyPlural", { count: visibleCount }),
+    text: tn("queue.discardAllBody", visibleCount),
     actionLabel: t("queue.discardAllAction")
   });
   if (!confirmed) return;
@@ -39,7 +37,7 @@ export async function discardAllChanges() {
   try {
     const confirmedChanges = await loadFreshChanges();
     if (!confirmedChanges.length) return;
-    if (!guardMediaIdle(t("action.discardAllChanges"))) return;
+    if (!guardMediaIdle(t("action.discardingAllChanges"))) return;
     if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedChanges) !== confirmedChangeSet) {
       showStatus(t("queue.staleQueueError"), "error");
       return;
@@ -89,14 +87,12 @@ export async function discardUnusedMedia() {
   if (!changes.length) return;
   const orphans = orphanMediaChanges();
   if (!orphans.length) return;
-  if (!guardMediaIdle(t("action.discardUnusedUploads"))) return;
+  if (!guardMediaIdle(t("action.discardingUnusedUploads"))) return;
   const confirmedOrphanSet = changeSetSignature(orphans);
   const confirmedDraftHead = state.treeHeadSha;
   const confirmed = await askDiscardAction({
     title: t("queue.discardUnusedTitle"),
-    text: orphans.length === 1
-      ? t("queue.discardUnusedBodySingular")
-      : t("queue.discardUnusedBodyPlural", { count: orphans.length }),
+    text: tn("queue.discardUnusedBody", orphans.length),
     actionLabel: t("action.discard")
   });
   if (!confirmed) return;
@@ -104,7 +100,7 @@ export async function discardUnusedMedia() {
   try {
     const confirmedChanges = await loadFreshChanges();
     if (!confirmedChanges.length) return;
-    if (!guardMediaIdle(t("action.discardUnusedUploads"))) return;
+    if (!guardMediaIdle(t("action.discardingUnusedUploads"))) return;
     const confirmedOrphans = orphanMediaChanges();
     if (!confirmedOrphans.length) return;
     if (state.treeHeadSha !== confirmedDraftHead || changeSetSignature(confirmedOrphans) !== confirmedOrphanSet) {
@@ -114,7 +110,7 @@ export async function discardUnusedMedia() {
     await discardUnusedMediaChanges(confirmedOrphans);
     await loadChanges();
     await refreshCurrentSilent();
-    showStatus(confirmedOrphans.length === 1 ? t("queue.unusedRemovedSingular") : t("queue.unusedRemovedPlural", { count: confirmedOrphans.length }));
+    showStatus(tn("queue.unusedRemoved", confirmedOrphans.length));
   } catch (error) {
     showStatus(t("queue.discardFailedShort", { error: error.message }), "error");
   } finally {
