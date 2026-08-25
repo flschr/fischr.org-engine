@@ -33,7 +33,7 @@ export async function newEntry(forcedCollection) {
   if (forcedCollection) {
     state.collection = forcedCollection;
     els.libraryTitle.textContent = t(collections[forcedCollection].titleKey);
-    els.searchInput.placeholder = forcedCollection === "pages" ? "Seiten durchsuchen" : "Artikel durchsuchen";
+    els.searchInput.placeholder = t(forcedCollection === "pages" ? "entry.searchPages" : "entry.searchArticles");
   }
   const collection = state.collection === "media" ? "posts" : state.collection;
   const fields = collection === "posts"
