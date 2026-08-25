@@ -37,14 +37,17 @@
     // template take 7:37 against 1:59 for merging the identical change. It now runs weekly and on
     // demand, for publishes as for everything else.
     const mode = paths.length > 0 && fullValidationPaths.length === 0 ? "content" : "deploy";
+    // Keys statt fertigem Text: Dieses Modul lädt als eigenes <script> vor dem
+    // Admin-Bündel (siehe Kommentar am Dateikopf von 00a-i18n.js) und läuft
+    // ausserdem in Node (scripts/lib/publish-validation.js) — beide können
+    // t() nicht aufrufen. Wer das Ergebnis anzeigt, hat t() und löst auf.
     return {
       mode,
-      label: mode === "content" ? "Schneller Content-Publish" : "Publish mit Codeprüfung",
-      detail: mode === "content"
-        ? "Inhalte und Medien werden gebaut und geprüft; unveränderter Code und Browsertests entfallen."
-        : fullValidationPaths.length
-          ? `Codeprüfung wegen ${fullValidationPaths[0]}; Browsertests laufen wöchentlich und auf Knopfdruck.`
-          : "Codeprüfung, weil keine eindeutige Inhaltsänderung erkannt wurde.",
+      labelKey: mode === "content" ? "queue.fastContentPublish" : "queue.publishWithCodeCheck",
+      detailKey: mode === "content"
+        ? "queue.fastContentPublishDetail"
+        : fullValidationPaths.length ? "queue.fullValidationDetailForFile" : "queue.fullValidationDetailGeneric",
+      detailVars: fullValidationPaths.length ? { file: fullValidationPaths[0] } : undefined,
       fullValidationPaths
     };
   }

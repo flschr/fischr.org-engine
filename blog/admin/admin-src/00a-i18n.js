@@ -15,9 +15,11 @@
 import { dictDe } from "./00a1-i18n-de.js";
 import { dictDe2 } from "./00a1b-i18n-de-2.js";
 import { dictDe3 } from "./00a1c-i18n-de-3.js";
+import { dictDe4 } from "./00a1d-i18n-de-4.js";
 import { dictEn } from "./00a2-i18n-en.js";
 import { dictEn2 } from "./00a2b-i18n-en-2.js";
 import { dictEn3 } from "./00a2c-i18n-en-3.js";
+import { dictEn4 } from "./00a2d-i18n-en-4.js";
 
 export const langStorageKey = "rw-admin-lang";
 
@@ -29,10 +31,20 @@ export function setLang(lang) {
   localStorage.setItem(langStorageKey, lang === "en" ? "en" : "de");
 }
 
+// For the handful of spots that build their own Intl.DateTimeFormat (the
+// stats view's calendar and axis labels) instead of routing through t() —
+// those need a BCP-47 locale, not the "de"/"en" pair t() works with.
+export function currentLocale() {
+  return currentLang() === "en" ? "en-US" : "de-DE";
+}
+
 // de ist die Vorgabe UND der Ausweich, falls ein Schlüssel im gewählten
 // Wörterbuch fehlt — deshalb schreibfehlerfest gegenüber einem vergessenen
 // en-Eintrag, nie gegenüber einem vergessenen de-Eintrag.
-const dict = { de: { ...dictDe, ...dictDe2, ...dictDe3 }, en: { ...dictEn, ...dictEn2, ...dictEn3 } };
+const dict = {
+  de: { ...dictDe, ...dictDe2, ...dictDe3, ...dictDe4 },
+  en: { ...dictEn, ...dictEn2, ...dictEn3, ...dictEn4 }
+};
 
 export function t(key, vars) {
   const table = dict[currentLang()] || dict.de;

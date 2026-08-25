@@ -12,6 +12,12 @@ const path = require("node:path");
 const test = require("node:test");
 
 const adminStatsSource = require("./helpers/admin-stats-source");
+const adminI18nStub = require("./helpers/admin-i18n-stub");
+
+let adminI18n;
+test.before(async () => {
+  adminI18n = await adminI18nStub();
+});
 
 // Nur die Statistik-Bausteine: Der vollständige Admin-Quelltext führt beim
 // Auswerten seinen Startcode aus und verlangt Dinge, die es hier nicht gibt.
@@ -28,7 +34,8 @@ function statsAnsicht(namen, els = {}) {
     },
     fetch: () => Promise.reject(new Error("nicht benutzt")),
     showView: () => {}, pushNav: () => {}, setCollection: () => {},
-    document: { querySelector: () => null, getElementById: () => null }
+    document: { querySelector: () => null, getElementById: () => null },
+    t: adminI18n.t, currentLocale: adminI18n.currentLocale
   };
   const fn = new Function(...Object.keys(kontext), `${quelle}\nreturn { ${namen.join(", ")} };`);
   const modul = fn(...Object.values(kontext));

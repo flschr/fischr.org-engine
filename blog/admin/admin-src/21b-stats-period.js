@@ -15,6 +15,8 @@
 // dazukommen. Ein freier Zeitraum ist deshalb kein Sonderfall, sondern nur ein
 // weiteres Paar Datumsgrenzen.
 
+import { currentLocale, t } from "./00a-i18n.js";
+
 // Die Fensterlänge zählt den heutigen Tag mit: "7 Tage" beginnt vor sechs
 // Tagen um 0 Uhr und endet jetzt.
 //
@@ -23,11 +25,14 @@
 // daraus ein Invalid Date, das erst im toISOString auffliegt.
 const STATS_WINDOWS = new Map([["1d", 1], ["7d", 7], ["30d", 30], ["90d", 90], ["365d", 365]]);
 const STATS_PRESETS = [...STATS_WINDOWS.keys(), "custom"];
-const statsDayFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-export const statsShortDayFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" });
+// Funktionen statt Konstanten: Die Sprache kann wechseln, während die Seite
+// offen bleibt (00a-i18n.js, applyStaticTranslations), ein einmal gebautes
+// Intl.DateTimeFormat behielte sein Gebietsschema aber für immer.
+const statsDayFormat = () => new Intl.DateTimeFormat(currentLocale(), { day: "2-digit", month: "2-digit", year: "numeric" });
+export const statsShortDayFormat = () => new Intl.DateTimeFormat(currentLocale(), { day: "numeric", month: "short" });
 // Ein Fenster über 365 Tage beginnt im Vorjahr. Ohne Jahreszahl läse sich
 // "25. Aug – 24. Aug" wie ein einziger Tag mit Tippfehler.
-const statsShortYearFormat = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" });
+const statsShortYearFormat = () => new Intl.DateTimeFormat(currentLocale(), { day: "numeric", month: "short", year: "numeric" });
 
 export function statsIsPreset(value) {
   return STATS_PRESETS.includes(value);
@@ -93,18 +98,18 @@ export function statsPeriodLabel(period) {
   const days = STATS_WINDOWS.get(period.preset);
   if (days) {
     const from = statsWindowStart(now, days);
-    const format = from.getFullYear() === now.getFullYear() ? statsShortDayFormat : statsShortYearFormat;
+    const format = from.getFullYear() === now.getFullYear() ? statsShortDayFormat() : statsShortYearFormat();
     // "Letzte 1 Tage" zählt nicht als Satz. Ein Fenster von einem Tag ist
     // ohnehin immer heute, eine Spanne daneben sagte das noch einmal.
-    if (days === 1) return `Heute · ${format.format(now)}`;
-    return `Letzte ${days} Tage · ${format.format(from)} – ${format.format(now)}`;
+    if (days === 1) return t("stats.todayLabel", { date: format.format(now) });
+    return t("stats.lastNDaysLabel", { days, from: format.format(from), to: format.format(now) });
   }
   if (period.preset === "custom") {
     const from = statsParseDate(period.from);
     const to = statsParseDate(period.to);
-    if (!from || !to) return "Freier Zeitraum · bitte Von und Bis wählen";
-    if (from > to) return "Freier Zeitraum · Von liegt nach Bis";
-    return `${statsDayFormat.format(from)} – ${statsDayFormat.format(to)}`;
+    if (!from || !to) return t("stats.customIncomplete");
+    if (from > to) return t("stats.customReversed");
+    return `${statsDayFormat().format(from)} – ${statsDayFormat().format(to)}`;
   }
   return "";
 }

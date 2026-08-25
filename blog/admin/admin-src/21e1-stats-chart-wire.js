@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { statsPunktWert } from "./21e-stats-chart.js";
 
 // --- Der Verlauf, bedient ---------------------------------------------------
@@ -39,7 +40,7 @@ function verdrahteVerlauf(chart) {
   const art = chart.querySelector(".stats-chart-read-kind");
   const tag = chart.querySelector(".stats-chart-read-day");
   const wert = chart.querySelector(".stats-chart-read-value");
-  const einheit = chart.dataset.einheit || "Aufrufe";
+  const einheit = chart.dataset.einheit || t("stats.viewsLabel");
   let aktiv = spitze;
 
   const zeigen = (index) => {

@@ -1,3 +1,4 @@
+import { currentLocale, t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { state } from "./01c-state.js";
@@ -18,8 +19,8 @@ import { statsPeriodBounds, statsShortDayFormat, statsTagString } from "./21b-st
 // zweiten Klick: Wer sich vertippt — verklickt —, soll die Auswahl noch
 // verwerfen können, ohne dass die Ansicht dahinter schon gesprungen ist.
 
-const MONATSFORMAT = new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" });
-const TAGFORMAT = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const MONATSFORMAT = () => new Intl.DateTimeFormat(currentLocale(), { month: "long", year: "numeric" });
+const TAGFORMAT = () => new Intl.DateTimeFormat(currentLocale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 // Auswahl und angezeigter Monat leben im Modul, nicht in Formularfeldern —
 // ein Kalendertag ist kein Eingabewert, den ein <input> mitführen könnte.
@@ -71,9 +72,9 @@ export function statsRangeKlick(aktuell, tag) {
 }
 
 function statsBereichText() {
-  if (!auswahl.von) return "Ersten Tag wählen";
-  if (!auswahl.bis) return `${statsShortDayFormat.format(statsDatum(auswahl.von))} – letzten Tag wählen`;
-  return `${statsShortDayFormat.format(statsDatum(auswahl.von))} – ${statsShortDayFormat.format(statsDatum(auswahl.bis))}`;
+  if (!auswahl.von) return t("stats.pickFirstDay");
+  if (!auswahl.bis) return t("stats.pickLastDay", { from: statsShortDayFormat().format(statsDatum(auswahl.von)) });
+  return `${statsShortDayFormat().format(statsDatum(auswahl.von))} – ${statsShortDayFormat().format(statsDatum(auswahl.bis))}`;
 }
 
 function renderKalender() {
@@ -98,11 +99,11 @@ function renderKalender() {
     }
     if (istEndpunkt) klassen.push("is-endpoint");
     return `<button type="button" class="${klassen.join(" ")}" data-tag="${wert}" aria-pressed="${istEndpunkt}"` +
-      ` aria-label="${escapeHtml(TAGFORMAT.format(tag))}">${tag.getDate()}</button>`;
+      ` aria-label="${escapeHtml(TAGFORMAT().format(tag))}">${tag.getDate()}</button>`;
   }).join("");
 
   els.statsCalGrid.innerHTML = zellen;
-  if (els.statsCalMonth) els.statsCalMonth.textContent = MONATSFORMAT.format(monat);
+  if (els.statsCalMonth) els.statsCalMonth.textContent = MONATSFORMAT().format(monat);
   if (els.statsCalRange) els.statsCalRange.textContent = statsBereichText();
   if (els.statsCustomApply) els.statsCustomApply.disabled = !(auswahl.von && auswahl.bis);
 }
@@ -188,7 +189,7 @@ function setStatsPickerHint(text) {
 // aufgerufen wird, nicht einen Klick, der über die Bedienung gar nicht mehr
 // möglich ist.
 export function applyStatsPicker() {
-  if (!auswahl.von || !auswahl.bis) return setStatsPickerHint("Wähle den ersten und den letzten Tag im Kalender.");
+  if (!auswahl.von || !auswahl.bis) return setStatsPickerHint(t("stats.pickFromTo"));
   state.statsPeriod = { preset: "custom", from: auswahl.von, to: auswahl.bis };
   closeStatsPicker({ focusToggle: true });
   setStatsRangeButtons();

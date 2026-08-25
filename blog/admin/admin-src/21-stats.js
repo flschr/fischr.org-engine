@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
@@ -67,7 +68,7 @@ function sharedStatsRequest(period, force = false) {
       // verwerfen und nur den Status zu zeigen, verschenkt genau die
       // Auskunft, die weiterhilft.
       const grund = await response.json().then((body) => body?.error).catch(() => null);
-      const error = new Error(grund || `Statistikanfrage fehlgeschlagen (${response.status})`);
+      const error = new Error(grund || t("stats.requestFailed", { status: response.status }));
       error.status = response.status;
       throw error;
     }
@@ -86,7 +87,7 @@ export async function loadStats(force = false) {
   if (!els.statsBody) return;
   const request = ++state.statsRequest;
 
-  els.statsBody.innerHTML = `<p class="stats-state">Wird geladen …</p>`;
+  els.statsBody.innerHTML = `<p class="stats-state">${t("stats.loading")}</p>`;
   try {
     const data = await sharedStatsRequest(state.statsPeriod, force);
     if (request !== state.statsRequest) return;
@@ -97,18 +98,18 @@ export async function loadStats(force = false) {
     // Freier Zeitraum noch unvollständig oder verdreht: keine Fehlermeldung,
     // die Beschriftung über der Fläche sagt bereits, was fehlt.
     if (error.incompleteRange) {
-      els.statsBody.innerHTML = `<p class="stats-state">Wähle einen Von- und einen Bis-Tag.</p>`;
+      els.statsBody.innerHTML = `<p class="stats-state">${t("stats.chooseFromTo")}</p>`;
       return;
     }
     if (error.status === 401) {
-      els.statsBody.innerHTML = `<p class="stats-state">Melde dich über die Einstellungen bei GitHub an, um die Statistik zu sehen.</p>`;
+      els.statsBody.innerHTML = `<p class="stats-state">${t("stats.signInToView")}</p>`;
       return;
     }
     if (error.status === 503) {
-      els.statsBody.innerHTML = `<p class="stats-state">Die Analytics-Datenbank ist noch nicht angebunden.</p>`;
+      els.statsBody.innerHTML = `<p class="stats-state">${t("stats.dbNotConnected")}</p>`;
       return;
     }
-    els.statsBody.innerHTML = `<p class="stats-state stats-state-error">Statistik konnte nicht geladen werden: ${escapeHtml(error.message)}</p>`;
+    els.statsBody.innerHTML = `<p class="stats-state stats-state-error">${t("stats.loadFailed", { error: escapeHtml(error.message) })}</p>`;
   }
 }
 
@@ -146,6 +147,6 @@ export function statsExpandablePanel(title, rows) {
           `</li>`
         ].join("");
       })
-    : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
+    : [`<li class="stats-row stats-row-empty">${t("common.noData")}</li>`];
   return statsPanelRahmen(title, body);
 }

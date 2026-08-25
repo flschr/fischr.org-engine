@@ -33,7 +33,7 @@ export function renderMedia() {
     const empty = document.createElement("p");
     empty.className = "entry-empty";
     empty.textContent = !hasGithubAccess()
-      ? "Verbinde GitHub, um Medien zu laden."
+      ? t("media.connectGithubToLoad")
       : query ? t("media.noMatches") : t("media.noMediaYet");
     els.mediaGrid.append(empty);
     return;
@@ -88,7 +88,7 @@ export function renderMedia() {
       card.classList.add("is-picking");
       card.setAttribute("role", "button");
       card.tabIndex = 0;
-      card.setAttribute("aria-label", `Als Vorschaubild auswählen: ${item.name}`);
+      card.setAttribute("aria-label", t("media.chooseAsPreviewAria", { name: item.name }));
       const choose = () => chooseSocialImage(item);
       card.addEventListener("click", choose);
       card.addEventListener("keydown", (event) => {
@@ -119,7 +119,7 @@ export function renderMedia() {
       try {
         await copyMediaMarkdown(item);
       } catch (error) {
-        showStatus(`Kopieren fehlgeschlagen: ${error.message}`, "error");
+        showStatus(t("media.copyFailed", { error: error.message }), "error");
       } finally {
         copyButton.disabled = false;
       }
@@ -129,14 +129,14 @@ export function renderMedia() {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "ghost danger";
-    deleteButton.textContent = "Löschen";
+    deleteButton.textContent = t("queue.actionDelete");
     deleteButton.disabled = hasActiveMediaWork();
     deleteButton.addEventListener("click", async () => {
       deleteButton.disabled = true;
       try {
         await queueMediaDelete(item);
       } catch (error) {
-        showStatus(`Löschen fehlgeschlagen: ${error.message}`, "error");
+        showStatus(t("media.deleteFailed", { error: error.message }), "error");
       } finally {
         deleteButton.disabled = hasActiveMediaWork();
       }

@@ -17,11 +17,11 @@ export function mediaMetaText(item, isPendingDelete = false) {
   const hasPendingChange = item.pending || isPendingDelete;
   return [
     item.entryDate || "",
-    item.references?.length ? `${item.references.length}x verwendet` : "",
+    item.references?.length ? t("media.usedCount", { count: item.references.length }) : "",
     formatBytes(item.size),
-    item.mediaKind === "video" ? "Video" : "",
-    item.duplicate ? "Duplikat" : "",
-    isPendingDelete ? "Vorgemerkt: Löschen" : hasPendingChange ? "Vorgemerkt" : ""
+    item.mediaKind === "video" ? t("media.videoLabel") : "",
+    item.duplicate ? t("media.duplicateLabel") : "",
+    isPendingDelete ? t("media.pendingDelete") : hasPendingChange ? t("media.pending") : ""
   ].filter(Boolean).join(" · ");
 }
 
@@ -147,13 +147,13 @@ export async function queueMediaDelete(item) {
   const existing = await getChange(item.path);
   if (item.mediaKind === "video") {
     await queueVideoDelete(item, existing);
-    showStatus(existing?.kind === "upsert" ? "Upload entfernt." : "Löschung vorgemerkt.");
+    showStatus(existing?.kind === "upsert" ? t("media.uploadRemoved") : t("media.deleteQueued"));
     await refreshMedia(false);
     return;
   }
   if (existing && existing.kind === "upsert") {
     await deleteChange(item.path, existing.sha);
-    showStatus("Upload entfernt.");
+    showStatus(t("media.uploadRemoved"));
   } else if (item.sha) {
     await putChange({
       path: item.path,
@@ -167,14 +167,14 @@ export async function queueMediaDelete(item) {
       updatedAt: new Date().toISOString(),
       summary: "Delete"
     });
-    showStatus("Löschung vorgemerkt.");
+    showStatus(t("media.deleteQueued"));
   } else if (await commitMediaManifestDelete(item)) {
     // No blob anywhere: the file lives in R2 and its manifest entry is the thing that gets
     // removed. It leaves the gallery immediately and travels to main with the next publish,
     // which carries automation/media-manifest.json as a managed path.
-    showStatus("Löschung vorgemerkt.");
+    showStatus(t("media.deleteQueued"));
   } else {
-    throw new Error(`${item.name} liegt weder im Repository noch im Medien-Manifest.`);
+    throw new Error(t("media.notFoundAnywhere", { name: item.name }));
   }
   await refreshMedia(false);
 }

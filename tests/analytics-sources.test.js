@@ -12,11 +12,14 @@ const path = require("node:path");
 const test = require("node:test");
 
 const adminStatsSource = require("./helpers/admin-stats-source");
+const adminI18nStub = require("./helpers/admin-i18n-stub");
 const { DatabaseSync } = require("node:sqlite");
 
 let eineQuelle;
+let adminI18n;
 test.before(async () => {
   ({ eineQuelle } = await import("../functions/api/admin/analytics.js"));
+  adminI18n = await adminI18nStub();
 });
 
 function datenbank() {
@@ -419,7 +422,8 @@ function statsBausteine(...namen) {
       socialConfig: { siteUrl: "https://example.com" }
     },
     fetch: () => Promise.reject(new Error("nicht benutzt")),
-    showView: () => {}, pushNav: () => {}, setCollection: () => {}, document: { querySelector: () => null }
+    showView: () => {}, pushNav: () => {}, setCollection: () => {}, document: { querySelector: () => null },
+    t: adminI18n.t, currentLocale: adminI18n.currentLocale
   };
   const fn = new Function(...Object.keys(kontext), `${quelle}\nreturn { ${namen.join(", ")} };`);
   return fn(...Object.values(kontext));

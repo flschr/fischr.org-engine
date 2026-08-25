@@ -10,12 +10,21 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
+const adminI18nStub = require("./helpers/admin-i18n-stub");
+
 // Das Modul wird als Text gelesen und in eine Funktion gehüllt, damit `Date` überdeckt werden
-// kann (siehe moduleAt). Dafür müssen die ESM-Schlüsselwörter weg — die Datei ist ein Blatt und
-// importiert nichts, es bleibt also beim Abstreifen des vorangestellten `export`.
+// kann (siehe moduleAt). Dafür müssen die ESM-Schlüsselwörter weg — der Import von t()/
+// currentLocale() (00a-i18n.js) reicht der Test als Parameter herein, wie admin-stats-source.js
+// es für die übrigen Stats-Module schon tut.
 const SOURCE = fs
   .readFileSync(path.join(__dirname, "../blog/admin/admin-src/21b-stats-period.js"), "utf8")
+  .replace(/^import[^\n]*\n/gm, "")
   .replace(/^export /gm, "");
+
+let adminI18n;
+test.before(async () => {
+  adminI18n = await adminI18nStub();
+});
 
 // Das Part liegt im Browser in einer großen Closure. Für den Test wird es in
 // eine Funktion gehüllt, deren Parameter `Date` die globale Klasse überdeckt —
@@ -31,10 +40,10 @@ function moduleAt(iso) {
     }
   }
   const factory = new Function(
-    "Date",
+    "Date", "t", "currentLocale",
     `${SOURCE}\nreturn { statsPeriodBounds, statsPeriodKey, statsPeriodLabel, statsIsPreset };`
   );
-  return factory(FixedDate);
+  return factory(FixedDate, adminI18n.t, adminI18n.currentLocale);
 }
 
 const local = (iso) => {

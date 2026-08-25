@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat } from "./21-stats.js";
 import { statsShortDayFormat } from "./21b-stats-period.js";
@@ -27,9 +28,9 @@ import { statsShortDayFormat } from "./21b-stats-period.js";
 export function statsWebsiteKennzahlen(total, besucherAb, range) {
   const gemessen = besucherAb && range?.end >= besucherAb;
   return [
-    { label: "Aufrufe", value: numberFormat.format(Number(total.hits) || 0) },
+    { label: t("stats.viewsLabel"), value: numberFormat.format(Number(total.hits) || 0) },
     {
-      label: "Besucher",
+      label: t("stats.visitorsLabel"),
       // Ein Strich, keine Null: Vor der Umstellung wurde niemand gezählt —
       // das heißt nicht, dass niemand da war.
       value: gemessen ? numberFormat.format(Number(total.visitors) || 0) : "–"
@@ -39,7 +40,7 @@ export function statsWebsiteKennzahlen(total, besucherAb, range) {
 
 export function statsTagKurz(day) {
   const datum = new Date(`${day}T12:00:00`);
-  return Number.isNaN(datum.getTime()) ? day : statsShortDayFormat.format(datum);
+  return Number.isNaN(datum.getTime()) ? day : statsShortDayFormat().format(datum);
 }
 
 // Ein Punkt der stündlichen Kurve trägt seine Stunde im Schlüssel selbst
@@ -60,10 +61,10 @@ export function statsStundeKurz(hour) {
 export function statsFeedKennzahlen(total) {
   return [
     {
-      label: "Abrufe",
+      label: t("stats.fetchesLabel"),
       value: numberFormat.format(Number(total.feed) || 0),
       hint: Number(total.feedBots) > 0
-        ? `${numberFormat.format(Number(total.feedBots))} Crawler ausgefiltert`
+        ? t("stats.crawlersFiltered", { count: numberFormat.format(Number(total.feedBots)) })
         : ""
     },
     abonnentenZelle(total)
@@ -86,10 +87,10 @@ function abonnentenZelle(total) {
   const gemeldet = Number(total.abosGemeldet) || 0;
   const installationen = Number(total.abosInstallationen) || 0;
   const summe = gemeldet + installationen;
-  if (!summe) return { label: "Abonnenten", value: "–" };
+  if (!summe) return { label: t("stats.subscribersLabel"), value: "–" };
   return {
-    label: "Abonnenten",
+    label: t("stats.subscribersLabel"),
     value: `≈ ${numberFormat.format(summe)}`,
-    hint: `${numberFormat.format(gemeldet)} gemeldet, ${numberFormat.format(installationen)} Installationen`
+    hint: t("stats.subscribersHint", { reported: numberFormat.format(gemeldet), installs: numberFormat.format(installationen) })
   };
 }

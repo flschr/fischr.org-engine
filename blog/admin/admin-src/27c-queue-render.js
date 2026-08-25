@@ -72,7 +72,9 @@ export function renderQueue() {
     : visibleChanges.length;
 
   if (els.publishPlan) {
-    els.publishPlan.textContent = changes.length ? `${publishPlan.label}: ${publishPlan.detail}` : "";
+    els.publishPlan.textContent = changes.length
+      ? `${t(publishPlan.labelKey)}: ${t(publishPlan.detailKey, publishPlan.detailVars)}`
+      : "";
     els.publishPlan.hidden = changes.length === 0;
   }
 

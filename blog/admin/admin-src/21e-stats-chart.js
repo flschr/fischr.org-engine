@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat } from "./21-stats.js";
 import { statsStundeKurz, statsTagKurz } from "./21d-stats-kennzahlen.js";
@@ -108,7 +109,7 @@ export function statsPunktWert(wert, einheit) {
 
 const STATS_CHART_HOEHE = 40;
 
-export function statsChart(series, einheit = "Aufrufe", granularity = "day") {
+export function statsChart(series, einheit = t("stats.viewsLabel"), granularity = "day") {
   const punkte = (series || []).map((punkt) => ({
     label: statsPunktLabel(punkt, granularity),
     wert: Number(punkt.daily) || 0
@@ -138,10 +139,10 @@ export function statsChart(series, einheit = "Aufrufe", granularity = "day") {
 
   return [
     `<figure class="stats-chart" tabindex="0" role="img" style="--x:${daten[spitze].x}%"`,
-    ` aria-label="Verlauf der ${escapeHtml(einheit)}. Höchster Wert: ${escapeHtml(punkte[spitze].label)}, ${escapeHtml(statsPunktWert(punkte[spitze].wert, einheit))}."`,
+    ` aria-label="${escapeHtml(t("stats.chartAriaLabel", { unit: einheit, day: punkte[spitze].label, value: statsPunktWert(punkte[spitze].wert, einheit) }))}"`,
     ` data-punkte="${escapeHtml(JSON.stringify(daten))}" data-spitze="${spitze}" data-einheit="${escapeHtml(einheit)}">`,
     `<figcaption class="stats-chart-read">`,
-    `<span class="stats-chart-read-kind">Höchster Wert</span>`,
+    `<span class="stats-chart-read-kind">${escapeHtml(t("stats.highestValue"))}</span>`,
     `<span class="stats-chart-read-day">${escapeHtml(punkte[spitze].label)}</span>`,
     `<span class="stats-chart-read-value">${escapeHtml(statsPunktWert(punkte[spitze].wert, einheit))}</span>`,
     `</figcaption>`,

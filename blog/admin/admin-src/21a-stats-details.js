@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { state } from "./01c-state.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat } from "./21-stats.js";
@@ -15,15 +16,15 @@ export async function toggleStatsRowDrill(event) {
   if (expanded || panel.dataset.state === "loaded" || panel.dataset.state === "loading") return;
 
   panel.dataset.state = "loading";
-  panel.innerHTML = `<p class="stats-substate">Wird geladen …</p>`;
+  panel.innerHTML = `<p class="stats-substate">${t("stats.loading")}</p>`;
   try {
     const bounds = statsPeriodBounds(state.statsPeriod);
-    if (!bounds) throw new Error("Zeitraum unvollständig");
+    if (!bounds) throw new Error(t("stats.periodIncomplete"));
     const { start, end } = bounds;
     const drill = `${toggle.dataset.drillKey}=${encodeURIComponent(toggle.dataset.drillId)}`;
     const query = `${drill}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
     const response = await fetch(`/api/admin/analytics?${query}`, { credentials: "same-origin", headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Anfrage fehlgeschlagen (${response.status})`);
+    if (!response.ok) throw new Error(t("stats.requestFailed", { status: response.status }));
     const data = await response.json();
     panel.innerHTML = statsBesucherZeile(data.visitors) + statsSubList(data.rows || [], toggle.dataset.drillKey);
     panel.dataset.state = "loaded";
@@ -46,7 +47,7 @@ export async function toggleStatsRowDrill(event) {
 function statsBesucherZeile(besucher) {
   const zahl = Number(besucher);
   if (!Number.isFinite(zahl) || zahl <= 0) return "";
-  return `<p class="stats-substate stats-subvisitors">${numberFormat.format(zahl)} Besucher</p>`;
+  return `<p class="stats-substate stats-subvisitors">${t("stats.visitorsCount", { count: numberFormat.format(zahl) })}</p>`;
 }
 
 // Was eine Unterzeile bedeutet, hängt daran, was aufgeklappt wurde:
@@ -66,18 +67,18 @@ function statsUnterzeilenUrl(key, name) {
 // Unter einer Seite stehen Quellen, das erklärt sich. Eine Liste roher
 // Programmkennungen tut das nicht.
 const STATS_UNTERHINWEIS = {
-  reader: "Kennungen ohne erkanntes Leseprogramm — daraus wächst die Erkennung"
+  reader: () => t("stats.readerHint")
 };
 
 function statsSubList(rows, key) {
   const items = (rows || [])
     .filter((row) => Number(row.count) > 0)
     .map((row) => ({
-      name: row.name || "(unbekannt)",
+      name: row.name || t("stats.unknownName"),
       count: Number(row.count),
       href: statsUnterzeilenUrl(key, row.name)
     }));
-  if (!items.length) return `<p class="stats-substate">Keine weiteren Angaben.</p>`;
+  if (!items.length) return `<p class="stats-substate">${t("stats.noFurtherDetails")}</p>`;
   const max = items.reduce((peak, row) => Math.max(peak, row.count), 0);
   const list = items.map((row) => {
     const teile = statsZeilenTeile(row, max);
@@ -85,7 +86,7 @@ function statsSubList(rows, key) {
       `${teile.bar}${teile.text}${teile.value}${teile.link}</li>`;
   }).join("");
   const hinweis = STATS_UNTERHINWEIS[key]
-    ? `<p class="stats-substate">${escapeHtml(STATS_UNTERHINWEIS[key])}</p>`
+    ? `<p class="stats-substate">${escapeHtml(STATS_UNTERHINWEIS[key]())}</p>`
     : "";
   return `${hinweis}<ol class="stats-rows stats-subrows">${list}</ol>`;
 }
@@ -112,7 +113,7 @@ export function statsQuellenUrl(host) {
 function statsOeffnenLink(href, name) {
   if (!href) return "";
   return `<a class="stats-row-open" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"` +
-    ` title="Öffnen" aria-label="${escapeHtml(name)} in neuem Tab öffnen">` +
+    ` title="${escapeHtml(t("stats.openLinkTitle"))}" aria-label="${escapeHtml(t("stats.openInNewTabAria", { name }))}">` +
     `<span data-icon="external-link" aria-hidden="true"></span></a>`;
 }
 
@@ -151,7 +152,7 @@ export function statsPanelRahmen(title, zeilen) {
     index < STATS_ZEILEN ? zeile : zeile.replace("<li ", `<li hidden data-stats-mehr="1" `)
   ).join("");
   const mehr = versteckt
-    ? `<button type="button" class="stats-more">${versteckt} weitere anzeigen</button>`
+    ? `<button type="button" class="stats-more">${escapeHtml(t("stats.showMore", { count: versteckt }))}</button>`
     : "";
   // Kein Platz für eine Zeile Erklärung unter dem Titel: Jede Liste hier
   // heißt nach dem, was in ihr steht, und was die Zahlen genau zählen, steht
@@ -170,6 +171,6 @@ export function statsBreakdownPanel(title, rows) {
         return `<li class="stats-row${teile.link ? " stats-row-linked" : ""}">` +
           `${teile.bar}${teile.text}${teile.value}${teile.link}</li>`;
       })
-    : [`<li class="stats-row stats-row-empty">Keine Daten</li>`];
+    : [`<li class="stats-row stats-row-empty">${t("common.noData")}</li>`];
   return statsPanelRahmen(title, body);
 }

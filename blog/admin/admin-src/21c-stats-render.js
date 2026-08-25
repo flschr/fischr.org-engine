@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { escapeHtml } from "./16a-alt-text-actions.js";
 import { numberFormat, statsExpandablePanel } from "./21-stats.js";
@@ -23,8 +24,8 @@ export function renderStats(data) {
   const total = data.total || {};
 
   els.statsBody.innerHTML = [
-    statsSection("Website", statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
-      statsChart(statsSeries(data.series, data.range, data.granularity), "Aufrufe", data.granularity)
+    statsSection(t("stats.websiteSection"), statsWebsiteKennzahlen(total, data.besucherAb, data.range), [
+      statsChart(statsSeries(data.series, data.range, data.granularity), t("stats.viewsLabel"), data.granularity)
     ], statsWebsitePanels(data)),
     // Der Feed bekommt denselben Verlauf, weil er dieselbe Frage hat: Die
     // Zahl darüber sagt, wie viel — nicht, wann. Beschriftet mit "Abrufe",
@@ -33,8 +34,8 @@ export function renderStats(data) {
     // Fehlt die Reihe — eine ältere Antwort aus dem Zwischenspeicher —,
     // bleibt die Stelle leer. Eine Kurve aus lauter Nullen behauptete einen
     // Feed, den niemand geholt hat.
-    statsSection("Feed", statsFeedKennzahlen(total), Array.isArray(data.feedSeries)
-      ? [statsChart(statsSeries(data.feedSeries, data.range, data.granularity), "Abrufe", data.granularity)]
+    statsSection(t("stats.feedSection"), statsFeedKennzahlen(total), Array.isArray(data.feedSeries)
+      ? [statsChart(statsSeries(data.feedSeries, data.range, data.granularity), t("stats.fetchesLabel"), data.granularity)]
       : [], statsFeedPanels(data))
   ].join("");
   // The page rows carry chevron icons rendered after innerHTML — inject them.
@@ -59,7 +60,7 @@ function statsSection(titel, zellen, extras, panels) {
 
 function statsWebsitePanels(data) {
   return [
-    statsExpandablePanel("Seiten", (data.pages || []).map((page) => ({
+    statsExpandablePanel(t("stats.pagesTitle"), (data.pages || []).map((page) => ({
       name: page.path || "/",
       title: page.title,
       count: page.hits,
@@ -72,7 +73,7 @@ function statsWebsitePanels(data) {
     // Die Gegenrichtung, aus derselben Tabelle: Welche Seiten hat diese
     // Quelle gebracht? Auch "(direkt)" klappt auf — dort steht, was ohne
     // erkennbare Quelle aufgerufen wurde, und das ist die größte Zeile.
-    statsExpandablePanel("Quellen", (data.refs || []).map((ref) => ({
+    statsExpandablePanel(t("stats.sourcesTitle"), (data.refs || []).map((ref) => ({
       name: ref.name,
       count: ref.hits,
       href: statsQuellenUrl(ref.host),
@@ -85,8 +86,8 @@ function statsWebsitePanels(data) {
     // (Aufrufe), und dass die importierte Historie keine Länder kennt, sieht
     // man an den Zahlen selbst, sobald der Zeitraum weit genug zurückreicht.
     ...((data.countries || []).length
-      ? [statsBreakdownPanel("Länder", data.countries.map((row) => ({
-          name: row.country || "ohne Land", count: row.hits
+      ? [statsBreakdownPanel(t("stats.countriesTitle"), data.countries.map((row) => ({
+          name: row.country || t("stats.noCountry"), count: row.hits
         })))]
       : [])
   ];
@@ -104,7 +105,7 @@ function statsFeedPanels(data) {
     // es nicht mehr. Der Sammelpfad der importierten Historie fällt deshalb
     // schon in der Abfrage weg.
     ...((data.feedPages || []).length
-      ? [statsBreakdownPanel("Beiträge im Reader", data.feedPages.map((row) => ({
+      ? [statsBreakdownPanel(t("stats.readerPostsTitle"), data.feedPages.map((row) => ({
           name: row.path, title: row.title, count: row.hits, href: statsSeitenUrl(row.path)
         })))]
       : []),
@@ -114,7 +115,7 @@ function statsFeedPanels(data) {
     // es ist eine Fußnote und keine Überschrift: Die Reihenfolge stimmt auch
     // ohne sie, und die Reihenfolge ist, was man hier liest.
     ...((data.feedCountries || []).length
-      ? [statsBreakdownPanel("Länder", data.feedCountries.map((row) => ({
+      ? [statsBreakdownPanel(t("stats.countriesTitle"), data.feedCountries.map((row) => ({
           name: row.country, count: row.hits
         })))]
       : [])
@@ -141,8 +142,8 @@ function statsFeedPanel(readers, totalFeed) {
   const rows = readers.map((reader) => ({
     name: reader.reader,
     title: reader.subscribers
-      ? `gemeldet · ${numberFormat.format(reader.hits)} Abrufe`
-      : `${numberFormat.format(reader.hits)} Abrufe`,
+      ? t("stats.reportedFetches", { count: numberFormat.format(reader.hits) })
+      : t("stats.fetchesCount", { count: numberFormat.format(reader.hits) }),
     count: reader.abos || 0,
     // Ein Programm, das am stärksten Tag nicht dabei war, hat für diesen
     // Zeitraum keine Schätzung. Ein Strich sagt das; eine Null behauptete,
@@ -152,6 +153,6 @@ function statsFeedPanel(readers, totalFeed) {
     // Leseprogramm ist bereits das Ergebnis der Zuordnung.
     drill: reader.reader === "unbekannt" ? { key: "reader", id: "unbekannt" } : null
   }));
-  if (!rows.length && totalFeed) rows.push({ name: "ohne erkennbaren Leser", count: totalFeed });
-  return statsExpandablePanel("Feed-Leser (geschätzt)", rows);
+  if (!rows.length && totalFeed) rows.push({ name: t("stats.noRecognizedReader"), count: totalFeed });
+  return statsExpandablePanel(t("stats.feedReadersTitle"), rows);
 }
