@@ -4,6 +4,7 @@
 // kein DOM. Stand bis hierher in 26d-publish-sync.js, das damit drei Dinge tat: den Stand der
 // Warteschlange ermitteln, die Medien-Bereitschaft bewachen und nebenbei Zeiten formatieren.
 
+import { t } from "./00a-i18n.js";
 import { state } from "./01c-state.js";
 
 function publishElapsedLabel() {
@@ -18,7 +19,7 @@ function publishElapsedLabel() {
 export function publishProgressMeta() {
   const status = state.publishStatus || {};
   const phase = status.phaseIndex != null && status.phaseCount
-    ? `Schritt ${status.phaseIndex} von ${status.phaseCount}`
+    ? t("queue.stepProgress", { phaseIndex: status.phaseIndex, phaseCount: status.phaseCount })
     : "";
   return [phase, publishElapsedLabel()].filter(Boolean).join(" · ");
 }
@@ -32,9 +33,9 @@ function formatPublishDuration(milliseconds) {
 export function publishTimingLabel() {
   const timings = state.publishStatus?.timings || {};
   return [
-    ["Warten", timings.waitingMs],
-    ["Vorbereitung", timings.preparationMs],
-    ["Prüfung", timings.validationMs],
-    ["Deployment", timings.deploymentMs]
+    [t("queue.timingWaiting"), timings.waitingMs],
+    [t("queue.timingPreparation"), timings.preparationMs],
+    [t("queue.timingValidation"), timings.validationMs],
+    [t("queue.timingDeployment"), timings.deploymentMs]
   ].filter(([, value]) => Number.isFinite(value)).map(([label, value]) => `${label} ${formatPublishDuration(value)}`).join(" · ");
 }

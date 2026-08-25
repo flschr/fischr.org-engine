@@ -14,8 +14,10 @@
 
 import { dictDe } from "./00a1-i18n-de.js";
 import { dictDe2 } from "./00a1b-i18n-de-2.js";
+import { dictDe3 } from "./00a1c-i18n-de-3.js";
 import { dictEn } from "./00a2-i18n-en.js";
 import { dictEn2 } from "./00a2b-i18n-en-2.js";
+import { dictEn3 } from "./00a2c-i18n-en-3.js";
 
 export const langStorageKey = "rw-admin-lang";
 
@@ -30,7 +32,7 @@ export function setLang(lang) {
 // de ist die Vorgabe UND der Ausweich, falls ein Schlüssel im gewählten
 // Wörterbuch fehlt — deshalb schreibfehlerfest gegenüber einem vergessenen
 // en-Eintrag, nie gegenüber einem vergessenen de-Eintrag.
-const dict = { de: { ...dictDe, ...dictDe2 }, en: { ...dictEn, ...dictEn2 } };
+const dict = { de: { ...dictDe, ...dictDe2, ...dictDe3 }, en: { ...dictEn, ...dictEn2, ...dictEn3 } };
 
 export function t(key, vars) {
   const table = dict[currentLang()] || dict.de;

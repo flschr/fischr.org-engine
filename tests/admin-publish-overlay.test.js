@@ -53,8 +53,9 @@ test("a publish that failed without ever producing a run is over, not pending", 
   assert.equal(failed.indeterminate, false, "a finished publish never spins");
   assert.equal(failed.ringLabel, "!");
   assert.equal(failed.url, "", "no run, no link");
-  assert.match(failed.phase, /Der freigegebene Stand ist nicht mehr aktuell/);
-  assert.match(failed.phase, /bleiben in der Warteschlange/);
+  assert.equal(failed.headlineKey, "queue.publishFailedGeneric");
+  assert.equal(failed.phaseKey, "queue.overlayFailedPhase");
+  assert.equal(failed.phaseVars.message, "Der freigegebene Stand ist nicht mehr aktuell");
 });
 
 test("a failed publish that does have a run links to it", async () => {

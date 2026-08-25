@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { publishOverlayView } from "./27e-publish-overlay-view.js";
@@ -49,7 +50,7 @@ function ensureNodes(overlay) {
     '<div class="publish-overlay-text">',
     '<strong class="publish-overlay-headline"></strong>',
     '<span class="publish-overlay-phase" role="status" aria-live="polite"></span>',
-    '<a class="publish-overlay-link" target="_blank" rel="noopener noreferrer" hidden>Details in GitHub öffnen</a>',
+    `<a class="publish-overlay-link" target="_blank" rel="noopener noreferrer" hidden>${t("queue.openInGithub")}</a>`,
     "</div>"
   ].join("");
   nodes = {
@@ -65,6 +66,17 @@ function ensureNodes(overlay) {
 export function renderPublishOverlay() {
   const overlay = els.publishOverlay;
   if (!overlay) return;
+
+  // Resolved here, not left for publishOverlayView() to read: that module stays
+  // import-free on purpose (see 27e-publish-overlay-view.js), so it only wraps
+  // an already-final message string, never a key. Mutated in place rather than
+  // wrapped in a new object — the "success" dismissed check further down
+  // compares this exact status object by reference, and a fresh copy on every
+  // render would make that comparison never match, so the overlay would never
+  // stop reappearing after being dismissed.
+  if (state.publishStatus?.messageKey) {
+    state.publishStatus.message = t(state.publishStatus.messageKey, state.publishStatus.messageVars);
+  }
 
   const view = publishOverlayView({
     publishInFlight: state.publishInFlight,
@@ -86,8 +98,12 @@ export function renderPublishOverlay() {
 
   ring.setAttribute("stroke-dashoffset", (view.progress == null ? CIRCUMFERENCE * 0.75 : CIRCUMFERENCE * (1 - view.progress)).toFixed(2));
   ringLabel.textContent = view.ringLabel;
-  headline.textContent = view.headline;
-  phase.textContent = view.phase;
+  headline.textContent = t(view.headlineKey);
+  phase.textContent = view.phaseKey ? t(view.phaseKey, view.phaseVars) : (view.phase || "");
+  // Re-set every render, not just in ensureNodes(): the link text is otherwise
+  // baked into the cached DOM at first build and would stay frozen in whatever
+  // language was active then, the same bug class the rest of this round fixed.
+  link.textContent = t("queue.openInGithub");
   link.hidden = !view.url;
   if (view.url) link.href = view.url;
 

@@ -49,7 +49,7 @@ function auswahlPfade(changes) {
 
 export async function syncOutbox() {
   if (state.publishInFlight) {
-    showStatus("Die Veröffentlichung läuft bereits auf GitHub.");
+    showStatus(t("queue.alreadyPublishing"));
     return;
   }
   await waitForMediaCommits();
@@ -151,9 +151,7 @@ export async function syncOutbox() {
     state.publishInFlight = true;
     state.publishStartedCount = gesendeteAnzahl;
     state.publishStartedSignatures = new Set(changes.map(changeSignature));
-    // messageKey lets renderQueue() re-resolve this on a language switch — see
-    // the comment next to the same pattern in 27a-publish-state.js.
-    state.publishStatus = { state: "queued", message: t("queue.waitingForGithub"), messageKey: "queue.waitingForGithub" };
+    state.publishStatus = { state: "queued", messageKey: "queue.waitingForGithub" };
     persistPublishRequest(request);
     state.publishPollToken += 1;
     const pollToken = state.publishPollToken;

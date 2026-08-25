@@ -3,6 +3,14 @@
 // No imports, on purpose — same reason as 00-konstanten.js. This is the whole
 // decision the overlay makes, and keeping it free of the element map is what
 // lets it be tested without a browser. 27f-publish-overlay.js does the writing.
+//
+// headlineKey/phaseKey are i18n keys, not resolved text — same "return a key,
+// let the caller translate" contract as 20c-publish-affordance.js, for the
+// same reason: no t() import here without giving up the browser-free test.
+// status.message is the one exception: 27f-publish-overlay.js resolves it
+// from state.publishStatus (which itself carries messageKey/messageVars, see
+// 27a-publish-state.js) before calling in here, so by the time it arrives
+// it's already plain, final text — this module only wraps it.
 
 // What the card should say, derived from nothing but the publish status. Kept
 // pure and exported so the shapes `publish-status.js` can hand us are covered
@@ -48,15 +56,17 @@ export function publishOverlayView({ publishInFlight, status, view, dismissed } 
     // whether or not it ever produced a phase to report.
     indeterminate: tone === "running" && progress == null,
     ringLabel: tone === "failed" ? "!" : progress == null ? "" : `${Math.round(progress * 100)}%`,
-    headline: tone === "failed"
-      ? "Veröffentlichung fehlgeschlagen"
-      : tone === "success" ? "Veröffentlicht" : "Wird veröffentlicht",
-    phase: tone === "failed"
-      ? `${status?.message || "Veröffentlichung fehlgeschlagen"}. Die Änderungen bleiben in der Warteschlange.`
-      : tone === "success" ? "Die Website ist auf dem neuen Stand."
-        : (status?.message || "Wird bei GitHub vorgemerkt"),
+    headlineKey: tone === "failed"
+      ? "queue.publishFailedGeneric"
+      : tone === "success" ? "queue.publishedHeadline" : "queue.publishingHeadline",
+    // "failed"/"success" wrap a fixed sentence around (or replace) the status
+    // message, so they need a key + var; "running" just shows the status
+    // message as-is (already resolved by the caller), no key needed.
+    phaseKey: tone === "failed" ? "queue.overlayFailedPhase" : tone === "success" ? "queue.siteUpToDate" : null,
+    phaseVars: tone === "failed" ? { message: status?.message || "" } : undefined,
+    phase: tone === "running" ? status?.message : undefined,
     // A failure with no Actions run has no page to link to, and an empty link
-    // reading "Details in GitHub öffnen" is worse than none.
+    // is worse than none.
     url: tone === "failed" ? status?.url || "" : ""
   };
 }

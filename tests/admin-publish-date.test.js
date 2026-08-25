@@ -209,5 +209,5 @@ test("admin forgets a completed failed publish after showing it", () => {
 
   assert.match(failedBlock, /RWPublishService\.clearRequest\(localStorage, publishRequestKey\)/);
   assert.match(failedBlock, /state\.publishRequest\s*=\s*null/);
-  assert.match(failedBlock, /showStatus\(status\.message, "error"\)/);
+  assert.match(failedBlock, /showStatus\(publishStatusMessage\(status\), "error"\)/);
 });

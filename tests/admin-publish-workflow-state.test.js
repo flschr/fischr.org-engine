@@ -41,7 +41,7 @@ test("ein veralteter Workflow endet sofort mit einer wahren Meldung", async () =
 
   assert.deepEqual(gefragt, ["wf-1"]);
   assert.equal(status.state, "failed");
-  assert.match(status.message, /nicht mehr aktuell/);
+  assert.equal(status.messageKey, "queue.staleCheckedState");
 });
 
 test("ein abgebrochener Workflow wird als Abbruch gemeldet, nicht als Warten", async () => {
@@ -49,7 +49,8 @@ test("ein abgebrochener Workflow wird als Abbruch gemeldet, nicht als Warten", a
   const status = await fn(vorgemerkt, { workflowId: "wf-1" });
 
   assert.equal(status.state, "failed");
-  assert.match(status.message, /GitHub 502/);
+  assert.equal(status.messageKey, "queue.publishAborted");
+  assert.match(status.messageVars.detail, /GitHub 502/);
 });
 
 test("ein noch laufender Workflow lässt das Warten unverändert", async () => {

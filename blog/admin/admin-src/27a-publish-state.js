@@ -10,6 +10,18 @@ import { refreshCurrentPublishedState } from "./25c-entry-opening.js";
 import { refreshMedia } from "./26a-media-library.js";
 import { renderSyncState, visibleQueueChanges } from "./26d-publish-sync.js";
 import { clearPublishTracking } from "./27c-queue-render.js";
+import { persistPublishRequest, workflowGeprueft } from "./27g-publish-workflow-check.js";
+
+export { persistPublishRequest };
+
+// Every publishStatus shape (from describeRun(), from the endpoints below, or
+// built locally) carries messageKey/messageVars in preference to a resolved
+// message: a resolved string would freeze in whatever language it was built
+// in, and renderQueue() already re-resolves via this same rule on a language
+// switch (see 27c-queue-render.js).
+export function publishStatusMessage(status) {
+  return status?.messageKey ? t(status.messageKey, status.messageVars) : status?.message || "";
+}
 
 export async function refreshCurrentSilent() {
   try {
@@ -68,11 +80,6 @@ function storedPublishRequest() {
   return request;
 }
 
-export function persistPublishRequest(request) {
-  state.publishRequest = request;
-  window.RWPublishService.persistRequest(localStorage, publishRequestKey, request);
-}
-
 async function refreshPublishRequest(request, signal) {
   const publishGithub = signal
     ? (endpoint, options = {}) => github(endpoint, { ...options, signal })
@@ -92,11 +99,11 @@ async function refreshPublishRequest(request, signal) {
     // Veröffentlichung tatsächlich fertig war.
     clearPublishTracking();
     state.publishStatus = status;
-    showStatus(status.message);
+    showStatus(publishStatusMessage(status));
     refreshPublishState()
       .then((changes) => {
         renderSyncState(changes);
-        if (changes.length) showStatus("Veröffentlicht. Neuere Änderungen bleiben in der Warteschlange.");
+        if (changes.length) showStatus(t("queue.publishedNewerChangesRemain"));
       })
       .catch(() => {});
     return status;
@@ -109,51 +116,12 @@ async function refreshPublishRequest(request, signal) {
     state.publishRequest = null;
     state.publishInFlight = false;
     renderSyncState(Array.from(state.changes.values()));
-    showStatus(status.message, "error");
+    showStatus(publishStatusMessage(status), "error");
     return status;
   }
 
   renderSyncState(Array.from(state.changes.values()));
   return status;
-}
-
-// Ein „vorgemerkt" ohne Lauf kann zweierlei heissen: Der Lauf ist noch nicht sichtbar, oder er
-// wird nie kommen, weil der Workflow entschieden hat, gar nicht zu bauen. Nur der Workflow kann
-// die beiden auseinanderhalten — bis ein Lauf existiert, ist er die einzige Quelle.
-async function workflowGeprueft(status, request) {
-  if (status.state !== "queued" || status.runId || !request.workflowId) return status;
-  const lauf = await window.RWPublishService.fetchWorkflowState(request.workflowId);
-  if (!lauf) return status;
-
-  // Sobald das Buch den Lauf kennt, merkt sich die Anfrage seine Nummer. Ab dann wird er direkt
-  // abgefragt, und diese Abzweigung greift nicht mehr.
-  if (lauf.lauf?.id && lauf.lauf.id !== request.runId) {
-    request.runId = lauf.lauf.id;
-    persistPublishRequest(request);
-  }
-
-  if (lauf.output?.status === "veraltet") {
-    return { state: "failed", message: "Der geprüfte Stand war nicht mehr aktuell. Bitte neu laden und erneut veröffentlichen." };
-  }
-  if (lauf.status === "errored" || lauf.status === "terminated") {
-    return { state: "failed", message: `Die Veröffentlichung wurde abgebrochen: ${lauf.error?.message || lauf.status}` };
-  }
-  // Ist die Instanz durch, ohne dass je ein Lauf sichtbar wurde, kennt nur sie den Ausgang.
-  // Ohne diesen Fall bliebe die Karte auf „vorgemerkt" stehen, bis das Warten abläuft — und
-  // meldete dann eine Zeitüberschreitung für etwas längst Abgeschlossenes.
-  if (lauf.status === "complete" && lauf.output?.status) {
-    return ausgangDerInstanz(lauf.output);
-  }
-  return status;
-}
-
-function ausgangDerInstanz(ausgang) {
-  if (ausgang.status === "fertig") return { state: "success", message: "Veröffentlicht und verteilt" };
-  return {
-    state: "failed",
-    message: ausgang.grund || "Die Veröffentlichung ist nicht durchgelaufen.",
-    url: ausgang.lauf?.url
-  };
 }
 
 export async function pollPublishCompletion(token, request) {
@@ -174,7 +142,7 @@ export async function pollPublishCompletion(token, request) {
     onError: async (error) => {
       if (error?.name === "AbortError" || controller.signal.aborted) return true;
       if (!isTransientGitHubError(error)) {
-        state.publishStatus = { state: "failed", message: `Veröffentlichungsstatus konnte nicht gelesen werden: ${error.message}` };
+        state.publishStatus = { state: "failed", messageKey: "queue.statusReadFailed", messageVars: { error: error.message } };
         state.publishInFlight = false;
         renderSyncState(Array.from(state.changes.values()));
         return true;
@@ -194,10 +162,7 @@ export async function resumePublish() {
     request.visibleChangeCount || visibleQueueChanges(Array.from(state.changes.values())).length || request.changeCount || 0
   );
   state.publishStartedSignatures = new Set(request.signatures || []);
-  // messageKey, not just the resolved message: renderQueue() re-resolves it via
-  // t() on every render, so a language switch while this status is still on
-  // screen doesn't leave it stuck in the language it was first shown in.
-  state.publishStatus = { state: "queued", message: t("queue.restoringStatus"), messageKey: "queue.restoringStatus" };
+  state.publishStatus = { state: "queued", messageKey: "queue.restoringStatus" };
   state.publishPollToken += 1;
   renderSyncState(Array.from(state.changes.values()));
   pollPublishCompletion(state.publishPollToken, request);

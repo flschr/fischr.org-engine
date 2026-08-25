@@ -4,24 +4,30 @@
   // Keep this order aligned with the user-visible steps in admin-publish.yml.
   // It provides honest phase progress without pretending that GitHub runtimes
   // are predictable enough for a remaining-time estimate.
+  //
+  // The second element of each pair is an i18n key, not display text: this
+  // module loads as a plain <script> before the admin bundle (see index.html),
+  // so it has no access to t() — same reason 20c-publish-affordance.js and
+  // 27e-publish-overlay-view.js hand back keys instead of resolved strings.
+  // Whoever reads describeRun()'s result (27a-publish-state.js) resolves them.
   const phases = [
-    ["Check out repository", "Geprüften Stand vorbereiten"],
-    ["Set up Node.js", "Build-Umgebung vorbereiten"],
-    ["Install dependencies", "Abhängigkeiten installieren"],
-    ["Prepare final publish commit", "Veröffentlichung prüfen"],
-    ["Check out prepared publish commit", "Geprüftes Ergebnis fixieren"],
-    ["Validate production site", "Website bauen und prüfen"],
-    ["Push published commit to main", "Geprüfte Website übernehmen"],
-    ["Publish build media to R2", "Medien zu R2 übertragen"],
-    ["Return to the main branch before persisting automation state", "Veröffentlichten Stand übernehmen"],
-    ["Commit updated media manifest", "Medien-Manifest aktualisieren"],
-    ["Check the published commit is still main's tip", "Prüfen, ob der Stand noch aktuell ist"],
-    ["Prepare the Worker bundle", "Auslieferung vorbereiten"],
-    ["Deploy to Cloudflare Workers", "Website zu Cloudflare übertragen"],
-    ["Rebuild main instead of deploying stale output", "Neuen Build anstoßen statt veralteten Stand zu übertragen"],
-    ["Sync drafts to deployed commit", "Neuere Entwürfe erhalten und Warteschlange abgleichen"],
-    ["Pull the manifest fold across to drafts", "Medien-Manifest in die Entwürfe nachziehen"],
-    ["Kick off remaining post-publish workflows", "Verteilung und Backups starten"]
+    ["Check out repository", "queue.phaseCheckout"],
+    ["Set up Node.js", "queue.phaseSetupNode"],
+    ["Install dependencies", "queue.phaseInstallDeps"],
+    ["Prepare final publish commit", "queue.phasePrepareCommit"],
+    ["Check out prepared publish commit", "queue.phaseCheckoutPrepared"],
+    ["Validate production site", "queue.phaseValidateSite"],
+    ["Push published commit to main", "queue.phasePushMain"],
+    ["Publish build media to R2", "queue.phasePublishMediaR2"],
+    ["Return to the main branch before persisting automation state", "queue.phaseReturnToMain"],
+    ["Commit updated media manifest", "queue.phaseCommitManifest"],
+    ["Check the published commit is still main's tip", "queue.phaseCheckTip"],
+    ["Prepare the Worker bundle", "queue.phasePrepareWorker"],
+    ["Deploy to Cloudflare Workers", "queue.phaseDeployCloudflare"],
+    ["Rebuild main instead of deploying stale output", "queue.phaseRebuildStale"],
+    ["Sync drafts to deployed commit", "queue.phaseSyncDrafts"],
+    ["Pull the manifest fold across to drafts", "queue.phasePullManifest"],
+    ["Kick off remaining post-publish workflows", "queue.phasePostPublish"]
   ];
   const phaseMessages = new Map(phases);
 
@@ -52,11 +58,11 @@
   }
 
   function describeRun(run, jobsPayload, request = {}) {
-    if (!run) return { state: "queued", message: "Waiting for GitHub to accept the publish request" };
+    if (!run) return { state: "queued", messageKey: "queue.waitingForGithub" };
     if (run.status === "queued" || run.status === "waiting" || run.status === "requested") {
       return {
         state: "queued",
-        message: "Veröffentlichung bei GitHub vorgemerkt",
+        messageKey: "queue.queuedAtGithub",
         runId: run.id,
         url: run.html_url,
         phaseIndex: 0,
@@ -69,15 +75,15 @@
         // Says only what this run actually established. Syndication is dispatched, not awaited:
         // GoToSocial owns the social delivery (and its Bluesky crosspost) in its own queue,
         // with its own retries and monitoring, and finishes minutes after this job is done.
-        return { state: "success", message: "Veröffentlicht und verteilt", runId: run.id, url: run.html_url, timings: timingBreakdown(run, jobsPayload) };
+        return { state: "success", messageKey: "queue.publishedAndDistributed", runId: run.id, url: run.html_url, timings: timingBreakdown(run, jobsPayload) };
       }
       const failedStep = (jobsPayload?.jobs || [])
         .flatMap((job) => job.steps || [])
         .find((step) => step.conclusion === "failure");
-      const detail = failedStep?.name ? ` bei „${failedStep.name}“` : "";
       return {
         state: "failed",
-        message: `Veröffentlichung fehlgeschlagen${detail}`,
+        messageKey: failedStep?.name ? "queue.publishFailedAtStep" : "queue.publishFailedGeneric",
+        messageVars: failedStep?.name ? { step: failedStep.name } : undefined,
         runId: run.id,
         url: run.html_url,
         conclusion: run.conclusion || "failure"
@@ -90,7 +96,7 @@
     const phaseIndex = phases.findIndex(([name]) => name === activeStep?.name);
     return {
       state: "running",
-      message: phaseMessages.get(activeStep?.name) || "Wird auf GitHub veröffentlicht",
+      messageKey: phaseMessages.get(activeStep?.name) || "queue.publishingOnGithub",
       runId: run.id,
       url: run.html_url,
       step: activeStep?.name || "",

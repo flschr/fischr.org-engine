@@ -1,5 +1,5 @@
 import { publishRequestKey } from "./00-konstanten.js";
-import { t } from "./00a-i18n.js";
+import { t, tn } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { queueKarte } from "./27h-queue-card.js";
 import { AKTIONS_SCHLUESSEL, erzwungeneMedien, istWirksam } from "./04c-queue-actions.js";
@@ -95,30 +95,30 @@ export function renderQueue() {
     const item = document.createElement("li");
     const card = document.createElement("div");
     card.className = "queue-progress";
-    const label = publishCount === 1 ? "1 Änderung wird veröffentlicht" : `${publishCount} Änderungen werden veröffentlicht`;
+    const label = tn("queue.changesPublishing", publishCount);
     const progressMeta = [publishProgressMeta(), publishTimingLabel()].filter(Boolean).join(" · ");
-    const announcementKey = `${state.publishStatus?.state || "queued"}:${state.publishStatus?.step || state.publishStatus?.message || ""}`;
+    const announcementKey = `${state.publishStatus?.state || "queued"}:${state.publishStatus?.step || state.publishStatus?.messageKey || state.publishStatus?.message || ""}`;
     const shouldAnnounce = announcementKey !== state.publishAnnouncementKey;
     state.publishAnnouncementKey = announcementKey;
     const progressValue = state.publishStatus?.phaseIndex != null && state.publishStatus?.phaseCount
       ? Math.round((state.publishStatus.phaseIndex / state.publishStatus.phaseCount) * 100)
       : null;
     const progressText = state.publishStatus?.phaseIndex != null && state.publishStatus?.phaseCount
-      ? `Schritt ${state.publishStatus.phaseIndex} von ${state.publishStatus.phaseCount}`
-      : "Fortschritt wird ermittelt";
+      ? t("queue.stepProgress", { phaseIndex: state.publishStatus.phaseIndex, phaseCount: state.publishStatus.phaseCount })
+      : t("queue.determiningProgress");
     // Re-resolved via t() here, not read off state.publishStatus.message
     // directly: that field is a snapshot taken whenever GitHub was last
     // polled, and without messageKey a language switch mid-publish would
     // leave it frozen in whatever language it was in when it was written.
-    const statusMessage = state.publishStatus?.messageKey ? t(state.publishStatus.messageKey) : state.publishStatus?.message;
+    const statusMessage = state.publishStatus?.messageKey ? t(state.publishStatus.messageKey, state.publishStatus.messageVars) : state.publishStatus?.message;
     card.innerHTML = [
       '<span class="queue-progress-spinner" aria-hidden="true"></span>',
       '<span class="queue-progress-text">',
-      `<strong>${escapeHtml(label)}${state.publishRequest?.validationMode ? ` · ${escapeHtml(state.publishRequest.validationMode === "content" ? "Schneller Content-Publish" : "Publish mit Codeprüfung")}` : ""}</strong>`,
-      `<span${shouldAnnounce ? ' role="status" aria-live="polite"' : ""}>${escapeHtml(statusMessage || "Warten auf den Start durch GitHub")}</span>`,
+      `<strong>${escapeHtml(label)}${state.publishRequest?.validationMode ? ` · ${escapeHtml(state.publishRequest.validationMode === "content" ? t("queue.fastContentPublish") : t("queue.publishWithCodeCheck"))}` : ""}</strong>`,
+      `<span${shouldAnnounce ? ' role="status" aria-live="polite"' : ""}>${escapeHtml(statusMessage || t("queue.pendingAtGithub"))}</span>`,
       progressMeta ? `<span class="queue-progress-meta" aria-hidden="true">${escapeHtml(progressMeta)}</span>` : "",
-      state.publishStatus?.slowContent ? '<span class="queue-progress-meta">Warnung: Dieser Content-Publish dauert länger als 90 Sekunden.</span>' : "",
-      `<span class="queue-progress-track" role="progressbar" aria-label="Veröffentlichungsfortschritt" aria-valuetext="${escapeHtml(progressText)}"${progressValue == null ? "" : ` aria-valuenow="${progressValue}"`} aria-valuemin="0" aria-valuemax="100"><span${progressValue == null ? "" : ` style="width:${progressValue}%"`}></span></span>`,
+      state.publishStatus?.slowContent ? `<span class="queue-progress-meta">${escapeHtml(t("queue.slowContentWarning"))}</span>` : "",
+      `<span class="queue-progress-track" role="progressbar" aria-label="${escapeHtml(t("aria.publishProgress"))}" aria-valuetext="${escapeHtml(progressText)}"${progressValue == null ? "" : ` aria-valuenow="${progressValue}"`} aria-valuemin="0" aria-valuemax="100"><span${progressValue == null ? "" : ` style="width:${progressValue}%"`}></span></span>`,
       "</span>"
     ].join("");
     item.append(card);
@@ -130,14 +130,15 @@ export function renderQueue() {
     const item = document.createElement("li");
     const card = document.createElement("div");
     card.className = "queue-progress is-error";
+    const failedMessage = state.publishStatus.messageKey ? t(state.publishStatus.messageKey, state.publishStatus.messageVars) : state.publishStatus.message;
     const runLink = state.publishStatus.url
-      ? `<a href="${escapeHtml(state.publishStatus.url)}" target="_blank" rel="noopener noreferrer">Details in GitHub öffnen</a>`
+      ? `<a href="${escapeHtml(state.publishStatus.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t("queue.openInGithub"))}</a>`
       : "";
     card.innerHTML = [
       '<span data-icon="circle-alert" aria-hidden="true"></span>',
       '<span class="queue-progress-text">',
-      "<strong>Veröffentlichung fehlgeschlagen</strong>",
-      `<span>${escapeHtml(state.publishStatus.message)}. Die geprüften Änderungen bleiben in der Warteschlange.</span>`,
+      `<strong>${escapeHtml(t("queue.publishFailedGeneric"))}</strong>`,
+      `<span>${escapeHtml(t("queue.failedCardSuffix", { message: failedMessage }))}</span>`,
       runLink,
       "</span>"
     ].join("");
@@ -153,8 +154,8 @@ export function renderQueue() {
     // immer offensteht, trifft das auch jemanden, der nur nachsehen wollte — dann darf hier
     // keine Entwarnung stehen, die niemand geprüft hat.
     empty.textContent = hasGithubAccess()
-      ? "Keine ausstehenden Änderungen. Alles ist veröffentlicht."
-      : "Nicht mit GitHub verbunden — die Warteschlange kann gerade nicht gelesen werden.";
+      ? t("queue.emptyAllPublished")
+      : t("queue.emptyNotConnected");
     els.queueList.append(empty);
     return;
   }
