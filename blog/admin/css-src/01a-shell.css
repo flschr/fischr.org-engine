@@ -8,48 +8,6 @@
   min-height: 100vh;
 }
 
-/* Sync/publish status lives at the foot of the sidebar now. */
-.sync-button {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 0.6rem;
-  margin-top: auto;
-  border-color: var(--line-2);
-  background: var(--panel);
-  color: var(--ink-soft);
-  font-weight: 550;
-}
-.sync-button svg { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; }
-.sync-button .sync-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sync-button.has-changes {
-  border-color: transparent;
-  background: var(--accent-weak);
-  color: var(--accent-ink);
-}
-.sync-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.3rem;
-  min-height: 1.3rem;
-  padding: 0 0.4rem;
-  border-radius: var(--radius-pill);
-  background: var(--line);
-  color: var(--ink-soft);
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.sync-button.has-changes .sync-count { background: var(--accent); color: var(--accent-contrast); }
-/* After has-changes in the cascade so a publish in flight always wins the
-   color, whether or not something is still queued behind it. */
-.sync-button.is-publishing {
-  border-color: transparent;
-  background: var(--green-weak);
-  color: var(--green);
-}
-.sync-button.is-publishing .sync-count { background: var(--green); color: #fff; }
-
 /* ---- Layout + sidebar -------------------------------------------------- */
 
 .admin-layout {
@@ -112,6 +70,34 @@
 .nav-icon { display: inline-flex; flex: 0 0 1.3rem; color: var(--ink-faint); }
 .nav-icon svg { width: 1.3rem; height: 1.3rem; }
 .nav-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Sync is a .nav-link like the other three destinations — nothing to open
+   or close differently, no pinned-apart resting style. The badge is the only
+   thing that marks "something is waiting"; at zero it stays invisible rather
+   than sit there as a standing "0". */
+.sync-count {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  min-height: 1.3rem;
+  padding: 0 0.4rem;
+  margin-left: auto;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.sync-button.has-changes .sync-count { display: inline-flex; }
+/* The active chip fills with --accent (.nav-link.is-active above), so the
+   badge inverts to stay legible on top of it — same swap as the mobile tab
+   bar uses for the same reason (06-responsive.css). */
+.nav-link.is-active .sync-count { background: var(--accent-contrast); color: var(--accent); }
+/* After has-changes/is-active in the cascade so a publish in flight always
+   wins the badge color, whichever of those also applies. */
+.sync-button.is-publishing .sync-count { display: inline-flex; background: var(--green); color: #fff; }
 
 .connection-dot {
   flex: 0 0 auto;

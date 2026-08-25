@@ -20,6 +20,8 @@ export function showView(name) {
   if (els.socialConfigView) els.socialConfigView.hidden = name !== "social";
   if (els.statsNav) els.statsNav.classList.toggle("is-active", name === "stats");
   els.syncButton.classList.toggle("is-active", name === "queue");
+  if (name === "queue") els.syncButton.setAttribute("aria-current", "page");
+  else els.syncButton.removeAttribute("aria-current");
   // Social and Stats aren't tied to a content collection — leaving the
   // previous collection's tab marked active would misrepresent "you are
   // here" once its own tab bar row doesn't get a marker of its own. Queue

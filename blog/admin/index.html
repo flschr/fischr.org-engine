@@ -53,16 +53,17 @@ eleventyExcludeFromCollections: true
               <span class="nav-icon" data-icon="bar-chart-2" aria-hidden="true"></span>
               <span class="nav-label" data-i18n="viewTitle.stats">Statistik</span>
             </button>
+            <!-- Publish and Einstellungen used to be two separate destinations
+                 here; Einstellungen now lives as a button inside the queue it
+                 opens (queue-settings below) so this is the sidebar's/tab bar's
+                 fourth and last stop, not a fifth. It's a nav-link like the
+                 other three — .sync-button only adds the notification badge. -->
+            <button id="syncButton" class="nav-link sync-button" type="button">
+              <span class="nav-icon" data-icon="refresh-cw" aria-hidden="true"></span>
+              <span class="nav-label" data-i18n="viewTitle.queue">Sync</span>
+              <span class="sync-count" aria-hidden="true">0</span>
+            </button>
           </div>
-          <!-- Publish and Einstellungen used to be two separate destinations
-               here; Einstellungen now lives as a button inside the queue it
-               opens (queue-settings below) so this is the sidebar's/tab bar's
-               fourth and last stop, not a fifth. -->
-          <button id="syncButton" class="sync-button" type="button">
-            <span data-icon="refresh-cw" aria-hidden="true"></span>
-            <span class="sync-label">Sync</span>
-            <span class="sync-count">0</span>
-          </button>
         </aside>
 
         <main id="content" class="admin-workspace">

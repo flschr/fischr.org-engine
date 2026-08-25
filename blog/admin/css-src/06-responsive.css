@@ -96,10 +96,8 @@
   }
   .nav-link.is-active .nav-icon { color: var(--accent-contrast); }
   .nav-link .nav-icon { flex: 0 0 auto; }
-  .nav-link .nav-icon svg,
-  .sync-button svg { width: 1.35rem; height: 1.35rem; }
-  .nav-label,
-  .sync-button .sync-label {
+  .nav-link .nav-icon svg { width: 1.35rem; height: 1.35rem; }
+  .nav-label {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
