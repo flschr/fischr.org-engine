@@ -1,6 +1,9 @@
 // Continuation of 00a2c-i18n-en-3.js — see 00a1d-i18n-de-4.js for what this split covers.
 export const dictEn4 = {
-  "queue.socialSyncToggle": "Social sync active",
+  "queue.socialSyncActiveLabel": "Active",
+  "queue.socialSyncPausedLabel": "Paused",
+  "queue.socialSyncActiveAria": "Social sync active — click to pause",
+  "queue.socialSyncPausedAria": "Social sync paused — click to resume",
   "queue.socialSyncPaused": "Social sync paused.",
   "queue.socialSyncResumed": "Social sync resumed.",
   "queue.socialSyncLoadFailed": "Couldn't load — please try again.",

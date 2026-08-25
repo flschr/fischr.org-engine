@@ -159,7 +159,7 @@ export function wireEditorEvents() {
   els.pushButton.addEventListener("click", syncOutbox);
   els.discardAllButton.addEventListener("click", discardAllChanges);
   els.cleanupOrphansButton?.addEventListener("click", discardUnusedMedia);
-  els.socialSyncToggle?.addEventListener("change", toggleSocialSync);
+  els.socialSyncToggleButton?.addEventListener("click", toggleSocialSync);
   els.titleInput.addEventListener("input", () => {
     syncAutoSlug();
     if (state.current?.collection === "pages" && (!els.permalinkInput.value || state.current.isNew)) {

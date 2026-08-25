@@ -29,12 +29,15 @@ test("the sync toggle pauses GoToSocial posting", async ({ page }) => {
   await page.goto("/admin/");
   await page.locator("#syncButton").click();
 
-  const toggle = page.locator("#socialSyncToggle");
-  await expect(toggle).toBeChecked();
-  await expect(toggle).toBeEnabled();
+  const button = page.locator("#socialSyncToggleButton");
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(button).toHaveText(/Aktiv/);
+  await expect(button).toBeEnabled();
 
-  await toggle.uncheck();
+  await button.click();
   await expect(page.locator("#statusBar")).toContainText("Social-Sync pausiert.");
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(button).toHaveText(/Pausiert/);
 
   const upload = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
   const saved = JSON.parse(upload.body.content);
@@ -57,11 +60,14 @@ test("the sync toggle resumes GoToSocial posting", async ({ page }) => {
   await page.goto("/admin/");
   await page.locator("#syncButton").click();
 
-  const toggle = page.locator("#socialSyncToggle");
-  await expect(toggle).not.toBeChecked();
+  const button = page.locator("#socialSyncToggleButton");
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(button).toHaveText(/Pausiert/);
 
-  await toggle.check();
+  await button.click();
   await expect(page.locator("#statusBar")).toContainText("Social-Sync fortgesetzt.");
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(button).toHaveText(/Aktiv/);
 
   const upload = requests.find((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
   const saved = JSON.parse(upload.body.content);
@@ -69,7 +75,7 @@ test("the sync toggle resumes GoToSocial posting", async ({ page }) => {
 });
 
 // Ohne diese Absicherung würde ein leeres {} als "geladen" durchgehen (siehe
-// refreshSocialSyncToggle in 27f-social-sync-toggle.js): der Schalter zeigte "aktiv" und ein
+// refreshSocialSyncToggle in 27f-social-sync-toggle.js): der Knopf zeigte "aktiv" und ein
 // Klick hätte die komplette Konfigurationsdatei auf { social: { enabled: false } } reduziert.
 test("a failed config load leaves the sync toggle disabled instead of writable", async ({ page }) => {
   const requests = [];
@@ -80,8 +86,8 @@ test("a failed config load leaves the sync toggle disabled instead of writable",
   await page.goto("/admin/");
   await page.locator("#syncButton").click();
 
-  const toggle = page.locator("#socialSyncToggle");
-  await expect(toggle).toBeDisabled();
+  const button = page.locator("#socialSyncToggleButton");
+  await expect(button).toBeDisabled();
 
   const blobUploads = requests.filter((request) => request.method === "POST" && request.url.endsWith("/git/blobs"));
   expect(blobUploads).toEqual([]);

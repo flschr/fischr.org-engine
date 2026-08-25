@@ -356,6 +356,25 @@ eleventyExcludeFromCollections: true
                   <span data-icon="trash-2" aria-hidden="true"></span>
                   <span class="queue-action-label" data-i18n="queue.discardAllAction">Alles verwerfen</span>
                 </button>
+                <!-- Independent of the publish queue: flips social.enabled in
+                     automation/social-config.json straight away (same
+                     instant-commit mechanism as Settings → Distribution), not
+                     part of the drafts/queue flow. For a planned bulk
+                     operation that renames post URLs in one go — the
+                     "already posted" ledger is keyed by URL and would
+                     otherwise lose track of them (see docs/social.md).
+                     Label/pause-play icon/aria-pressed are set from JS
+                     (27f-social-sync-toggle.js) since they reflect live
+                     state, not a fixed string — the data-i18n* attributes
+                     here only cover the disabled initial paint before that
+                     first render. The Mastodon mark next to them is static
+                     (build-time, via faIcon like the footer's) — it names
+                     what "sync" means here, not a state. -->
+                <button id="socialSyncToggleButton" type="button" class="ghost social-sync-toggle-button" disabled aria-pressed="true" aria-label="Social sync active" title="Social sync active">
+                  {{ "mastodon" | faIcon | safe }}
+                  <span id="socialSyncToggleIcon" data-icon="pause" aria-hidden="true"></span>
+                  <span id="socialSyncToggleLabel" class="queue-action-label" data-i18n="queue.socialSyncActiveLabel">Active</span>
+                </button>
                 <!-- Einstellungen war ein eigener Nav-Punkt; jetzt Knopf hier,
                      einen Tab weniger in Sidebar/Tab-Leiste. Icon-only wie
                      Aktualisieren/Neuer Artikel in den anderen Werkzeugleisten,
@@ -365,17 +384,6 @@ eleventyExcludeFromCollections: true
                 </button>
               </div>
             </div>
-            <!-- Independent of the publish queue below: flips
-                 social.enabled in automation/social-config.json straight
-                 away (same instant-commit mechanism as Settings → Distribution),
-                 not part of the drafts/queue flow. For a planned bulk
-                 operation that renames post URLs in one go — the "already
-                 posted" ledger is keyed by URL and would otherwise lose
-                 track of them (see docs/social.md). -->
-            <label class="social-sync-toggle">
-              <input type="checkbox" id="socialSyncToggle" checked disabled>
-              <span data-i18n="queue.socialSyncToggle">Social sync active</span>
-            </label>
             <p id="publishPlan" class="social-hint" role="status"></p>
             <ol id="queueList" class="entry-list"></ol>
           </section>

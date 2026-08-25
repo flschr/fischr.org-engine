@@ -8,16 +8,15 @@
   text-transform: uppercase;
 }
 
-.social-sync-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: var(--content-w);
-  margin: 0 auto 0.6rem 0;
-  font-size: 0.85rem;
-  color: var(--ink-faint);
+/* Paused stands out (amber, this admin's colour for "needs attention" — see
+   .entry-card.has-local-change) since it's the state you don't want to
+   forget you left something in. Active stays plain "ghost" like its
+   siblings — nothing to flag when sync is doing what it always does. */
+.social-sync-toggle-button.is-paused {
+  border-color: var(--amber-line);
+  background: var(--amber-weak);
+  color: var(--amber);
 }
-.social-sync-toggle input { margin: 0; }
 
 .queue-card { cursor: default; }
 .queue-card:hover { transform: none; box-shadow: none; border-color: var(--line); }

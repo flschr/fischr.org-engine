@@ -4,7 +4,10 @@
 // vorbeiliefen — Kennzahlen, Panel-Titel, Zeitraum-Beschriftungen, Kalender-Hinweise, Karten-
 // Metadaten und Statusmeldungen.
 export const dictDe4 = {
-  "queue.socialSyncToggle": "Social-Sync aktiv",
+  "queue.socialSyncActiveLabel": "Aktiv",
+  "queue.socialSyncPausedLabel": "Pausiert",
+  "queue.socialSyncActiveAria": "Social-Sync aktiv — zum Pausieren klicken",
+  "queue.socialSyncPausedAria": "Social-Sync pausiert — zum Fortsetzen klicken",
   "queue.socialSyncPaused": "Social-Sync pausiert.",
   "queue.socialSyncResumed": "Social-Sync fortgesetzt.",
   "queue.socialSyncLoadFailed": "Konnte nicht geladen werden — bitte erneut versuchen.",
