@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { fieldLabels, state } from "./01c-state.js";
 import { ICON } from "./02-toolbar.js";
@@ -76,7 +77,7 @@ export function syncPublishButton({ fromKeystroke = false } = {}) {
   // nothing queued is a safe no-op (see syncAfterSave in 25b-publish-actions.js).
   els.publishButton.dataset.state = affordance.visible ? "change" : "idle";
   els.publishButton.innerHTML = ICON.send;
-  const label = affordance.visible ? affordance.label : "Veröffentlichen";
+  const label = affordance.visible ? t(affordance.label) : t("dialog.publish");
   els.publishButton.setAttribute("aria-label", label);
   els.publishButton.title = label;
 }

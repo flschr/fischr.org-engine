@@ -91,8 +91,7 @@ export const dictEn = {
   "queue.publishFailed": "Publish failed: {error}{hint}",
   "queue.mediaProcessingFailed": "Media processing failed: {error}",
   "queue.restoringStatus": "Restoring publish status from GitHub",
-  "action.discardAllChanges": "Discard all changes",
-  "action.discardUnusedUploads": "Discard unused uploads",
+  "queue.publishWaitsForMedia": "The publish is waiting until GitHub has processed all media.",
   "action.discard": "Discard",
   "action.thisAction": "This action",
   "media.actionWaitsForProcessing": "{action} waits until GitHub has processed all media.",
@@ -160,5 +159,5 @@ export const dictEn = {
   "settings.readOnlyNoGithub": "Read only – GitHub is not connected.",
   "dialog.unsavedChangesBody": "The text you started hasn't been saved yet.",
   "common.stayHere": "Stay here",
-  "common.save": "Save"
+  "common.save": "Save",
 };

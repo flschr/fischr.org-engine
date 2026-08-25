@@ -15,8 +15,8 @@
         <h2 id="deleteDialogTitle" data-i18n="dialog.deleteEntry">Delete entry?</h2>
         <p id="deleteDialogText">Die Löschung wird vorgemerkt und erst beim Veröffentlichen ausgeführt.</p>
         <menu>
-          <button class="ghost" value="cancel">Abbrechen</button>
-          <button class="danger" value="delete">Löschung vormerken</button>
+          <button class="ghost" value="cancel" data-i18n="common.cancel">Abbrechen</button>
+          <button class="danger" value="delete" data-i18n="dialog.deleteQueueAction">Löschung vormerken</button>
         </menu>
       </form>
     </dialog>
@@ -26,30 +26,30 @@
         <h2 id="discardDialogTitle" data-i18n="dialog.discardChange">Discard change?</h2>
         <p id="discardDialogText">Diese Änderung wird dauerhaft aus der Warteschlange entfernt.</p>
         <menu>
-          <button class="ghost" value="cancel">Abbrechen</button>
-          <button id="discardDialogAction" class="danger" value="discard">Verwerfen</button>
+          <button class="ghost" value="cancel" data-i18n="common.cancel">Abbrechen</button>
+          <button id="discardDialogAction" class="danger" value="discard" data-i18n="action.discard">Verwerfen</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="unpublishDialog" class="dialog">
       <form method="dialog">
-        <h2>Veröffentlichung zurückziehen?</h2>
-        <p>Der Artikel wird als Entwurf gespeichert und dabei sofort vom öffentlichen Blog entfernt.</p>
+        <h2 data-i18n="dialog.unpublishTitle">Veröffentlichung zurückziehen?</h2>
+        <p data-i18n="dialog.unpublishBody">Der Artikel wird als Entwurf gespeichert und dabei sofort vom öffentlichen Blog entfernt.</p>
         <menu>
-          <button class="ghost" value="cancel">Abbrechen</button>
-          <button class="danger" value="unpublish">Zurückziehen</button>
+          <button class="ghost" value="cancel" data-i18n="common.cancel">Abbrechen</button>
+          <button class="danger" value="unpublish" data-i18n="action.unpublish">Zurückziehen</button>
         </menu>
       </form>
     </dialog>
 
     <dialog id="mediaFailureDialog" class="dialog">
       <form method="dialog">
-        <h2>Medienverarbeitung fehlgeschlagen</h2>
+        <h2 data-i18n="dialog.mediaFailureTitle">Medienverarbeitung fehlgeschlagen</h2>
         <p id="mediaFailureDialogText">Das Medium konnte nicht vollständig verarbeitet werden.</p>
         <menu>
-          <button class="danger" value="remove">Medium entfernen</button>
-          <button class="primary-action" value="retry">Erneut versuchen</button>
+          <button class="danger" value="remove" data-i18n="action.removeMedium">Medium entfernen</button>
+          <button class="primary-action" value="retry" data-i18n="action.retry">Erneut versuchen</button>
         </menu>
       </form>
     </dialog>
@@ -63,12 +63,12 @@
 
     <!-- The writing bar's "+": everything that inserts into the text but is
          not needed in every article. Filled from MORE_COMMANDS. -->
-    <dialog id="moreCommandsDialog" class="dialog sheet-dialog" aria-label="Weitere Einfügungen">
+    <dialog id="moreCommandsDialog" class="dialog sheet-dialog" aria-label="Weitere Einfügungen" data-i18n-aria="dialog.moreInsertions">
       <form method="dialog" class="sheet-form">
-        <h2>Einfügen</h2>
+        <h2 data-i18n="common.insert">Einfügen</h2>
         <div id="moreCommandsList" class="tb-sheet-list"></div>
         <menu>
-          <button class="ghost" value="cancel">Abbrechen</button>
+          <button class="ghost" value="cancel" data-i18n="common.cancel">Abbrechen</button>
         </menu>
       </form>
     </dialog>
@@ -76,21 +76,21 @@
     <!-- The top bar's "⋯": rare actions on the article itself. They sit here
          rather than in the bar so that "Löschen" is never one mis-tap away
          from "Speichern" on a phone. -->
-    <dialog id="docMenuDialog" class="dialog sheet-dialog" aria-label="Weitere Artikelaktionen">
+    <dialog id="docMenuDialog" class="dialog sheet-dialog" aria-label="Weitere Artikelaktionen" data-i18n-aria="dialog.moreArticleActions">
       <form method="dialog" class="sheet-form">
         <h2 id="docMenuDialogTitle">Artikel</h2>
         <div class="tb-sheet-list">
           <button id="docMenuUnpublish" class="tb-sheet-button" type="submit" value="unpublish">
             <span data-icon="eye-off" aria-hidden="true"></span>
-            <span class="tb-sheet-label">Veröffentlichung zurückziehen</span>
+            <span class="tb-sheet-label" data-i18n="entry.unpublishAction">Veröffentlichung zurückziehen</span>
           </button>
           <button id="docMenuDelete" class="tb-sheet-button is-danger" type="submit" value="delete">
             <span data-icon="trash-2" aria-hidden="true"></span>
-            <span class="tb-sheet-label">Artikel löschen</span>
+            <span class="tb-sheet-label"></span>
           </button>
         </div>
         <menu>
-          <button class="ghost" value="cancel">Abbrechen</button>
+          <button class="ghost" value="cancel" data-i18n="common.cancel">Abbrechen</button>
         </menu>
       </form>
     </dialog>

@@ -13,7 +13,9 @@
 // jede Stelle t() direkt auf, statt über data-i18n zu laufen.
 
 import { dictDe } from "./00a1-i18n-de.js";
+import { dictDe2 } from "./00a1b-i18n-de-2.js";
 import { dictEn } from "./00a2-i18n-en.js";
+import { dictEn2 } from "./00a2b-i18n-en-2.js";
 
 export const langStorageKey = "rw-admin-lang";
 
@@ -28,7 +30,7 @@ export function setLang(lang) {
 // de ist die Vorgabe UND der Ausweich, falls ein Schlüssel im gewählten
 // Wörterbuch fehlt — deshalb schreibfehlerfest gegenüber einem vergessenen
 // en-Eintrag, nie gegenüber einem vergessenen de-Eintrag.
-const dict = { de: dictDe, en: dictEn };
+const dict = { de: { ...dictDe, ...dictDe2 }, en: { ...dictEn, ...dictEn2 } };
 
 export function t(key, vars) {
   const table = dict[currentLang()] || dict.de;

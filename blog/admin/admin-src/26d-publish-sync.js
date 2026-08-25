@@ -111,7 +111,7 @@ export function guardMediaIdle(action = t("action.thisAction")) {
 
 export async function guardMediaReadyForPublish(changes) {
   if (!await hasUnfinishedMediaProcessing(changes)) return true;
-  showStatus("Die Veröffentlichung wartet, bis GitHub alle Medien verarbeitet hat.", "error");
+  showStatus(t("queue.publishWaitsForMedia"), "error");
   return false;
 }
 

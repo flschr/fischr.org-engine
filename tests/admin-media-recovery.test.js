@@ -61,8 +61,8 @@ test("R2-migrated image uploads are recognized as durable even without a drafts 
 });
 
 test("media failures offer retry or removal instead of permanently poisoning saves", () => {
-  assert.match(dialogsHtml, /value="remove">Medium entfernen/);
-  assert.match(dialogsHtml, /value="retry">Erneut versuchen/);
+  assert.match(dialogsHtml, /value="remove"[^>]*>Medium entfernen/);
+  assert.match(dialogsHtml, /value="retry"[^>]*>Erneut versuchen/);
   assert.match(source, /if \(action === "retry"\) await startMediaJobs\(items\)/);
   assert.match(source, /if \(action === "remove"\) await discardFailedMediaUploads\(items\)/);
   assert.doesNotMatch(source, /mediaUploadError/);

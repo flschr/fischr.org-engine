@@ -50,7 +50,7 @@ export async function setEditorMode(mode) {
   if (mode === "preview") syncEditorFromVisible();
   if (mode === "preview") {
     els.previewPanel.hidden = false;
-    els.previewPanel.innerHTML = '<p class="preview-empty">Vorschau wird geladen …</p>';
+    els.previewPanel.innerHTML = `<p class="preview-empty">${t("editor.previewLoading")}</p>`;
     try {
       await loadPreviewRuntime();
     } catch (error) {
@@ -67,7 +67,7 @@ export function renderEditorBody() {
   if (els.previewModeButton) {
     els.previewModeButton.innerHTML = isPreview ? ICON.edit : ICON.eye;
     els.previewModeButton.setAttribute("aria-pressed", isPreview ? "true" : "false");
-    const label = isPreview ? "Bearbeiten" : "Vorschau";
+    const label = isPreview ? t("common.edit") : t("aria.editorPreview");
     els.previewModeButton.setAttribute("aria-label", label);
     els.previewModeButton.title = label;
   }
@@ -75,7 +75,7 @@ export function renderEditorBody() {
   if (isPreview) {
     els.editorMount.hidden = true;
     els.previewPanel.hidden = false;
-    els.previewPanel.innerHTML = renderPreview(state.bodyMarkdown) || '<p class="preview-empty">Noch kein Inhalt.</p>';
+    els.previewPanel.innerHTML = renderPreview(state.bodyMarkdown) || `<p class="preview-empty">${t("editor.noContentYet")}</p>`;
     bindPreviewImageFallbacks();
     return;
   }

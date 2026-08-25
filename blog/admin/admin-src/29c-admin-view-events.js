@@ -5,7 +5,6 @@ import { openSocialConfig } from "./14-social-settings.js";
 import { addSocialCategory, resetSocialConfig, saveSocialConfig, updateSocialConfigDirty } from "./14a-social-controls.js";
 import { renderSocialCategoryCards } from "./14b-social-cards.js";
 import { confirmLeaveEditor } from "./19-recovery.js";
-import { renderQueue } from "./27c-queue-render.js";
 import { loadStats, openStats, setStatsRangeButtons } from "./21-stats.js";
 import { toggleStatsRowDrill } from "./21a-stats-details.js";
 import { statsIsPreset } from "./21b-stats-period.js";
@@ -92,16 +91,19 @@ export function wireAdminViewEvents() {
   });
   // A device preference, not part of the saved social config — takes effect
   // immediately, no Speichern/Zurücksetzen of its own. applyStaticTranslations
-  // only reaches [data-i18n] markup; updateConnectionState and
-  // renderSocialCategoryCards build their own text from t() on every call and
-  // have to be asked again explicitly, or they'd keep showing the previous
-  // language until their next unrelated re-render.
+  // only reaches [data-i18n] markup; updateConnectionState,
+  // renderSocialCategoryCards and updateSocialConfigDirty build their own
+  // text from t() on every call and have to be asked again explicitly, or
+  // they'd keep showing the previous language until their next unrelated
+  // re-render. (Only these three: the select lives inside #socialConfigView,
+  // which showView() keeps mutually exclusive with every other view, so
+  // nothing outside Settings can be on screen while this listener runs.)
   els.adminLangSelect?.addEventListener("change", () => {
     setLang(els.adminLangSelect.value);
     applyStaticTranslations();
     updateConnectionState();
     renderSocialCategoryCards();
-    if (state.view === "queue") renderQueue();
+    updateSocialConfigDirty();
   });
   els.socialConfigSave?.addEventListener("click", saveSocialConfig);
   els.socialConfigReset?.addEventListener("click", resetSocialConfig);

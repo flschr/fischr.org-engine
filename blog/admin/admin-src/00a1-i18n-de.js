@@ -93,8 +93,7 @@ export const dictDe = {
   "queue.publishFailed": "Veröffentlichung fehlgeschlagen: {error}{hint}",
   "queue.mediaProcessingFailed": "Medienverarbeitung fehlgeschlagen: {error}",
   "queue.restoringStatus": "Veröffentlichungsstatus wird von GitHub wiederhergestellt",
-  "action.discardAllChanges": "Alle Änderungen verwerfen",
-  "action.discardUnusedUploads": "Unbenutzte Uploads verwerfen",
+  "queue.publishWaitsForMedia": "Die Veröffentlichung wartet, bis GitHub alle Medien verarbeitet hat.",
   "action.discard": "Verwerfen",
   "action.thisAction": "Diese Aktion",
   "media.actionWaitsForProcessing": "{action} wartet, bis GitHub alle Medien verarbeitet hat.",
@@ -162,5 +161,5 @@ export const dictDe = {
   "settings.readOnlyNoGithub": "Nur Lesen – GitHub-Verbindung fehlt.",
   "dialog.unsavedChangesBody": "Der begonnene Text wurde noch nicht gespeichert.",
   "common.stayHere": "Hier bleiben",
-  "common.save": "Speichern"
+  "common.save": "Speichern",
 };

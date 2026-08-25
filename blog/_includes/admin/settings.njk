@@ -1,5 +1,5 @@
           <!-- Settings view: GitHub connection (sync) + social configuration -->
-          <section id="socialConfigView" class="view social-config-view settings-view" aria-label="Einstellungen" hidden>
+          <section id="socialConfigView" class="view social-config-view settings-view" aria-label="Einstellungen" hidden data-i18n-aria="viewTitle.settings">
             <div class="library-head view-head">
               <h1 class="view-title" data-i18n="viewTitle.settings">Settings</h1>
             </div>
@@ -15,16 +15,16 @@
                 <p id="connectionText" class="setup-text">Mit GitHub anmelden, um Beiträge und Medien zu laden und Änderungen zu veröffentlichen.</p>
                 <p id="connectionUser" class="setup-user" hidden></p>
                 <div class="setup-actions">
-                  <a id="loginButton" class="primary-action" href="/api/admin/auth/login?return_to=/admin/">Mit GitHub anmelden</a>
-                  <a id="logoutButton" class="ghost" href="/api/admin/auth/logout" hidden>Abmelden</a>
+                  <a id="loginButton" class="primary-action" href="/api/admin/auth/login?return_to=/admin/" data-i18n="settings.signIn">Mit GitHub anmelden</a>
+                  <a id="logoutButton" class="ghost" href="/api/admin/auth/logout" hidden data-i18n="settings.signOut">Abmelden</a>
                 </div>
                 <details id="tokenFallback" class="token-fallback" hidden>
-                  <summary>Token-Ersatz</summary>
-                  <p class="setup-text">Nur verwenden, solange GitHub OAuth noch nicht eingerichtet ist.</p>
+                  <summary data-i18n="settings.tokenFallback">Token-Ersatz</summary>
+                  <p class="setup-text" data-i18n="settings.tokenFallbackHint">Nur verwenden, solange GitHub OAuth noch nicht eingerichtet ist.</p>
                   <input id="tokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… or ghp_…">
                   <div class="setup-actions">
-                    <button id="saveTokenButton" type="button" class="primary-action">Verbinden</button>
-                    <button id="clearTokenButton" type="button" class="ghost">Trennen</button>
+                    <button id="saveTokenButton" type="button" class="primary-action" data-i18n="settings.connect">Verbinden</button>
+                    <button id="clearTokenButton" type="button" class="ghost" data-i18n="settings.disconnect">Trennen</button>
                   </div>
                 </details>
               </div>
@@ -48,24 +48,24 @@
 
             <!-- Syndication config — the cards below are saved together. -->
             <div class="settings-section-head">
-              <h2 class="section-title">Distribution</h2>
+              <h2 class="section-title" data-i18n="settings.distribution">Distribution</h2>
               <div class="library-tools">
                 <span id="socialConfigStatus" class="social-config-status"></span>
                 <button id="socialConfigReset" type="button" class="ghost" disabled>
                   <span data-icon="refresh-cw" aria-hidden="true"></span>
-                  <span>Zurücksetzen</span>
+                  <span data-i18n="common.resetAction">Zurücksetzen</span>
                 </button>
                 <button id="socialConfigSave" type="button" class="primary-action" disabled>
                   <span data-icon="save" aria-hidden="true"></span>
-                  <span>Speichern</span>
+                  <span data-i18n="common.save">Speichern</span>
                 </button>
               </div>
             </div>
-            <p class="social-config-intro">Vorgaben für neue Beiträge bei GoToSocial. Weitere Verteilung übernimmt der Server.</p>
+            <p class="social-config-intro" data-i18n="settings.distributionIntro">Vorgaben für neue Beiträge bei GoToSocial. Weitere Verteilung übernimmt der Server.</p>
 
             <div class="settings-card">
               <div class="settings-card-head"><h3 class="settings-card-title" data-i18n="settings.publishingDestination">Publishing destination</h3></div>
-              <p class="settings-card-hint">Wohin neue Beiträge veröffentlicht werden.</p>
+              <p class="settings-card-hint" data-i18n="settings.publishDestinationHint">Wohin neue Beiträge veröffentlicht werden.</p>
               <div class="settings-fields">
                 <label class="settings-field"><span data-i18n="settings.gotosocialInstance">GoToSocial instance</span><input id="cfgGotosocialInstance" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://social.example.org"></label>
               </div>
@@ -74,14 +74,14 @@
             <details class="settings-card settings-advanced">
               <summary>
                 <span class="summary-text">
-                  <span class="settings-card-title">Erweitert</span>
-                  <span class="settings-card-hint">Zeitplan-Einstellungen – die Vorgaben passen meistens</span>
+                  <span class="settings-card-title" data-i18n="common.advanced">Erweitert</span>
+                  <span class="settings-card-hint" data-i18n="settings.advancedHint">Zeitplan-Einstellungen – die Vorgaben passen meistens</span>
                 </span>
               </summary>
               <div class="settings-fields">
-                <label class="settings-field"><span>Maximale Beiträge pro Lauf</span><input id="cfgMaxPostsPerRun" type="number" min="1" step="1" inputmode="numeric"><small>Anzahl der Beiträge pro geplantem Lauf.</small></label>
-                <label class="settings-field"><span>Maximales Alter in Tagen</span><input id="cfgMaxAgeDays" type="number" min="0" step="1" inputmode="numeric"><small>Ältere Beiträge überspringen.</small></label>
-                <label class="settings-field"><span>Nicht veröffentlichen vor</span><input id="cfgStartAfter" type="datetime-local" autocomplete="off"><small>Frühere Beiträge überspringen; leer bedeutet unbegrenzt.</small></label>
+                <label class="settings-field"><span data-i18n="settings.maxPostsPerRun">Maximale Beiträge pro Lauf</span><input id="cfgMaxPostsPerRun" type="number" min="1" step="1" inputmode="numeric"><small data-i18n="settings.maxPostsPerRunHint">Anzahl der Beiträge pro geplantem Lauf.</small></label>
+                <label class="settings-field"><span data-i18n="settings.maxAgeDays">Maximales Alter in Tagen</span><input id="cfgMaxAgeDays" type="number" min="0" step="1" inputmode="numeric"><small data-i18n="settings.maxAgeDaysHint">Ältere Beiträge überspringen.</small></label>
+                <label class="settings-field"><span data-i18n="settings.startAfter">Nicht veröffentlichen vor</span><input id="cfgStartAfter" type="datetime-local" autocomplete="off"><small data-i18n="settings.startAfterHint">Frühere Beiträge überspringen; leer bedeutet unbegrenzt.</small></label>
               </div>
             </details>
 
@@ -90,11 +90,11 @@
                 <h3 class="settings-card-title" data-i18n="settings.postTypes">Post types</h3>
                 <button id="socialConfigAdd" type="button" class="ghost">
                   <span data-icon="plus" aria-hidden="true"></span>
-                  <span>Hinzufügen</span>
+                  <span data-i18n="common.add">Hinzufügen</span>
                 </button>
               </div>
-              <p class="settings-card-hint">Wiederverwendbare Vorlagen zum Teilen. Ohne Auswahl gilt die Vorgabe.</p>
-              <label class="settings-field"><span>Standard-Beitragstyp</span><select id="cfgDefaultCategory"></select></label>
+              <p class="settings-card-hint" data-i18n="settings.postTypesHint">Wiederverwendbare Vorlagen zum Teilen. Ohne Auswahl gilt die Vorgabe.</p>
+              <label class="settings-field"><span data-i18n="settings.defaultPostType">Standard-Beitragstyp</span><select id="cfgDefaultCategory"></select></label>
               <div id="socialCategoryList" class="social-category-list"></div>
             </div>
           </section>

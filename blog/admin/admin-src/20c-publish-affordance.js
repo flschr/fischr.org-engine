@@ -22,10 +22,15 @@ export function publishAffordance({
   // Raw templates are saved, never published as their own act.
   if (sourceMode) return { visible: false, action: null, label: "" };
 
+  // label is an i18n key, not resolved text: this module stays import-free
+  // (see the header comment) so it can be tested without a browser, so it
+  // hands back a key for the caller to resolve via t() instead of calling
+  // t() here itself.
+
   // Pages have no draft/published distinction to speak of; their send button
   // behaves like it always did.
   if (collection !== "posts") {
-    return { visible: true, action: draftIntent ? "publish" : "sync-publish", label: "Veröffentlichen" };
+    return { visible: true, action: draftIntent ? "publish" : "sync-publish", label: "dialog.publish" };
   }
 
   if (!published) {
@@ -34,7 +39,7 @@ export function publishAffordance({
     return {
       visible: true,
       action: draftIntent ? "publish" : "sync-publish",
-      label: "Veröffentlichen"
+      label: "dialog.publish"
     };
   }
 
@@ -45,5 +50,5 @@ export function publishAffordance({
     return { visible: false, action: null, label: "" };
   }
 
-  return { visible: true, action: "sync-publish", label: "Änderung veröffentlichen" };
+  return { visible: true, action: "sync-publish", label: "queue.publishChange" };
 }

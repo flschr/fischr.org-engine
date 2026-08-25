@@ -55,7 +55,7 @@ export function setCollection(collection) {
   updateNav();
 
   // "New" creates a page only on the Pages view; everywhere else an article.
-  const newLabel = collection === "pages" ? "Neue Seite" : "Neuer Artikel";
+  const newLabel = t(collection === "pages" ? "viewTitle.newPage" : "viewTitle.newArticle");
   if (els.newEntryButtonLabel) els.newEntryButtonLabel.textContent = newLabel;
 
   if (collection === "media") {
@@ -69,7 +69,7 @@ export function setCollection(collection) {
 
   state.libraryCollection = collection;
   els.libraryTitle.textContent = t(collections[collection].titleKey);
-  els.searchInput.placeholder = collection === "pages" ? "Seiten durchsuchen" : "Artikel durchsuchen";
+  els.searchInput.placeholder = t(collection === "pages" ? "entry.searchPages" : "entry.searchArticles");
   if (els.entryTypeSelect) els.entryTypeSelect.value = collection;
   if (els.newEntryButtonLib) {
     els.newEntryButtonLib.setAttribute("aria-label", newLabel);

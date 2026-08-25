@@ -33,25 +33,25 @@ eleventyExcludeFromCollections: true
     <link rel="stylesheet" href="{{ '/admin/vendor/styles/admin.css' | adminAssetUrl }}">
   </head>
   <body class="admin-body">
-    <a class="skip-link" href="#content">Zum Inhalt springen</a>
+    <a class="skip-link" href="#content" data-i18n="common.skipToContent">Zum Inhalt springen</a>
 
     <div class="admin-shell">
       <div class="admin-layout">
-        <aside id="sidebar" class="admin-sidebar" role="navigation" aria-label="Navigation">
+        <aside id="sidebar" class="admin-sidebar" role="navigation" aria-label="Navigation" data-i18n-aria="aria.navigation">
           <!-- A div, not a nav: on phones this wrapper is display:contents so
                its four tabs share one row, which would drop a landmark here. -->
           <div class="sidebar-nav">
             <button class="nav-link is-active" type="button" data-collection="posts" aria-current="page">
               <span class="nav-icon" data-icon="file-text" aria-hidden="true"></span>
-              <span class="nav-label">Artikel</span>
+              <span class="nav-label" data-i18n="viewTitle.articles">Artikel</span>
             </button>
             <button class="nav-link" type="button" data-collection="media">
               <span class="nav-icon" data-icon="image" aria-hidden="true"></span>
-              <span class="nav-label">Mediathek</span>
+              <span class="nav-label" data-i18n="viewTitle.media">Mediathek</span>
             </button>
             <button id="statsNav" class="nav-link" type="button">
               <span class="nav-icon" data-icon="bar-chart-2" aria-hidden="true"></span>
-              <span class="nav-label">Statistik</span>
+              <span class="nav-label" data-i18n="viewTitle.stats">Statistik</span>
             </button>
           </div>
           <!-- Publish and Einstellungen used to be two separate destinations
@@ -72,16 +72,16 @@ eleventyExcludeFromCollections: true
             <span class="pull-refresh-spinner" data-icon="refresh-cw"></span>
           </div>
           <!-- Library view: list of posts / pages -->
-          <section id="libraryView" class="view library-view" aria-label="Inhalte">
+          <section id="libraryView" class="view library-view" aria-label="Inhalte" data-i18n-aria="aria.library">
             <div class="library-head view-head">
               <h1 id="libraryTitle" class="view-title" data-i18n="viewTitle.articles">Articles</h1>
               <div class="library-tools">
-                <input id="searchInput" class="search" type="search" autocomplete="off" placeholder="Suchen">
-                <select id="entryTypeSelect" aria-label="Inhaltstyp">
-                  <option value="posts">Artikel</option>
-                  <option value="pages">Seiten</option>
+                <input id="searchInput" class="search" type="search" autocomplete="off" placeholder="Suchen" data-i18n-placeholder="common.search">
+                <select id="entryTypeSelect" aria-label="Inhaltstyp" data-i18n-aria="dialog.contentType">
+                  <option value="posts" data-i18n="viewTitle.articles">Artikel</option>
+                  <option value="pages" data-i18n="viewTitle.pages">Seiten</option>
                 </select>
-                <button id="refreshButton" type="button" class="icon-button" aria-label="Aktualisieren">
+                <button id="refreshButton" type="button" class="icon-button" aria-label="Aktualisieren" data-i18n-aria="common.refresh">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>
                 </button>
                 <button id="newEntryButtonLib" type="button" class="primary-action lib-new js-new" aria-label="Neuer Artikel" title="Neuer Artikel">
@@ -116,39 +116,39 @@ eleventyExcludeFromCollections: true
                  On a wide screen there is no keyboard to ride and plenty of
                  room, so this wrapper lays both out as a single line. -->
             <div class="editor-bars">
-              <nav id="writingBar" class="writing-bar" aria-label="Schreiben">
+              <nav id="writingBar" class="writing-bar" aria-label="Schreiben" data-i18n-aria="aria.writing">
                 <!-- Alt-text renders right after "media" here — see
                      PRIMARY_COMMANDS in 02-toolbar.js. -->
-                <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung"></div>
+                <div id="formatToolbar" class="format-toolbar" role="toolbar" aria-label="Formatierung" data-i18n-aria="aria.formatting"></div>
                 <span class="writing-bar-spacer"></span>
-                <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)">
+                <button id="undoButton" class="tb-btn" type="button" aria-label="Rückgängig" title="Rückgängig (⌘Z)" data-i18n-aria="action.undo" data-i18n-title="toolbar.undoTitle">
                   <span data-icon="undo-2" aria-hidden="true"></span>
                 </button>
-                <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)">
+                <button id="redoButton" class="tb-btn" type="button" aria-label="Wiederholen" title="Wiederholen (⌘⇧Z)" data-i18n-aria="action.redo" data-i18n-title="toolbar.redoTitle">
                   <span data-icon="redo-2" aria-hidden="true"></span>
                 </button>
               </nav>
 
-              <nav class="editor-bar" aria-label="Artikel">
+              <nav class="editor-bar" aria-label="Artikel" data-i18n-aria="viewTitle.articles">
                 <!-- Always visible, like Speichern next to it — a button that
                      only shows up sometimes reads as broken. When there is
                      nothing queued to send, clicking it is a safe no-op (see
                      syncAfterSave in 25b-publish-actions.js); the label just
                      falls back to the generic "Veröffentlichen" until
                      syncPublishButton() has something more specific to say. -->
-                <button id="publishButton" class="tb-btn tb-publish is-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen">
+                <button id="publishButton" class="tb-btn tb-publish is-publish" type="button" aria-label="Veröffentlichen" title="Veröffentlichen" data-i18n-aria="dialog.publish" data-i18n-title="dialog.publish">
                   <span data-icon="send" aria-hidden="true"></span>
                 </button>
-                <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern">
+                <button id="saveButton" class="tb-btn tb-save" type="button" aria-label="Speichern" title="Speichern" data-i18n-aria="common.save" data-i18n-title="common.save">
                   <span data-icon="save" aria-hidden="true"></span>
                 </button>
-                <button id="toggleMetaButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Artikeloptionen" title="Artikeloptionen">
+                <button id="toggleMetaButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Artikeloptionen" title="Artikeloptionen" data-i18n-aria="dialog.articleOptions" data-i18n-title="dialog.articleOptions">
                   <span data-icon="sliders-horizontal" aria-hidden="true"></span>
                 </button>
                 <button id="previewModeButton" class="tb-btn" type="button" aria-pressed="false" aria-label="Vorschau" title="Vorschau">
                   <span data-icon="eye" aria-hidden="true"></span>
                 </button>
-                <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen">
+                <button id="docMenuButton" class="tb-btn" type="button" aria-haspopup="dialog" aria-label="Weitere Artikelaktionen" title="Weitere Artikelaktionen" data-i18n-aria="dialog.moreArticleActions" data-i18n-title="dialog.moreArticleActions">
                   <span data-icon="ellipsis" aria-hidden="true"></span>
                 </button>
               </nav>
@@ -167,7 +167,7 @@ eleventyExcludeFromCollections: true
             <input id="gpxUploadInput" class="hidden-file-input" type="file" tabindex="-1" accept="application/gpx+xml,.gpx">
 
             <article class="editor-article">
-              <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel"></textarea>
+              <textarea id="titleInput" class="title-input" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" lang="de" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" data-1p-ignore data-lpignore="true" placeholder="Titel" data-i18n-placeholder="common.title"></textarea>
               <p id="editorMetaLine" class="editor-meta"></p>
 
               <!-- A dialog, not an inline card: on a phone the fields below
@@ -175,14 +175,14 @@ eleventyExcludeFromCollections: true
                    Same sheet treatment as docMenuDialog/moreCommandsDialog —
                    see the comment there — so it opens over the article
                    instead of shoving it aside. -->
-              <dialog id="metaPanel" class="dialog sheet-dialog" aria-label="Artikeloptionen">
+              <dialog id="metaPanel" class="dialog sheet-dialog" aria-label="Artikeloptionen" data-i18n-aria="dialog.articleOptions">
                 <form method="dialog" class="sheet-form">
                   <!-- tabindex so showModal()'s default "focus the first
                        focusable descendant" lands here instead of on the Slug
                        input below — a focused text field opens the keyboard
                        immediately, which is not what opening a menu to look
                        at/adjust settings should do. -->
-                  <h2 tabindex="-1">Artikeloptionen</h2>
+                  <h2 tabindex="-1" data-i18n="dialog.articleOptions">Artikeloptionen</h2>
                   <div class="meta-panel">
                     <label data-field="slug">
                       <span>Slug</span>
@@ -193,18 +193,18 @@ eleventyExcludeFromCollections: true
                       <input id="permalinkInput" type="text" autocomplete="off" spellcheck="false">
                     </label>
                     <label data-field="date">
-                      <span>Datum</span>
+                      <span data-i18n="dialog.date">Datum</span>
                       <input id="dateInput" type="datetime-local" autocomplete="off">
                     </label>
                     <label data-field="lang">
-                      <span>Sprache</span>
+                      <span data-i18n="settings.language">Sprache</span>
                       <select id="langInput">
-                        <option value="de">Deutsch</option>
-                        <option value="en">Englisch</option>
+                        <option value="de" data-i18n="settings.language.de">Deutsch</option>
+                        <option value="en" data-i18n="settings.language.en">Englisch</option>
                       </select>
                     </label>
                     <label data-field="ogimage">
-                      <span>Vorschaubild</span>
+                      <span data-i18n="dialog.previewImage">Vorschaubild</span>
                       <div class="meta-input-action">
                         <input id="socialImageInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="/assets/images/...">
                         <button id="socialImageSelectButton" class="icon-button" type="button" aria-label="Choose preview image from library" title="Choose from library" data-i18n-aria="aria.choosePreviewImage" data-i18n-title="aria.chooseFromLibrary">
@@ -215,7 +215,7 @@ eleventyExcludeFromCollections: true
                     <input id="draftInput" type="checkbox" hidden>
                   </div>
                   <menu>
-                    <button class="ghost" value="cancel">Fertig</button>
+                    <button class="ghost" value="cancel" data-i18n="common.done">Fertig</button>
                   </menu>
                 </form>
               </dialog>
@@ -226,7 +226,7 @@ eleventyExcludeFromCollections: true
           </div>
 
           <!-- Publish dialog: what the post IS (structured data) + how it is shared -->
-          <dialog id="publishDialog" class="publish-dialog" aria-label="Veröffentlichen">
+          <dialog id="publishDialog" class="publish-dialog" aria-label="Veröffentlichen" data-i18n-aria="dialog.publish">
             <div class="publish-dialog-inner">
               <div class="publish-dialog-head">
                 <h2 id="publishDialogTitle" class="publish-dialog-title" tabindex="-1" autofocus data-i18n="dialog.publish">Publish</h2>
@@ -236,28 +236,28 @@ eleventyExcludeFromCollections: true
                 <h3 class="publish-section-title" data-i18n="dialog.contentType">Content type</h3>
                 <label class="social-field">
                   <select id="contentTypeSelect">
-                    <option value="">Normaler Beitrag</option>
-                    <option value="recipe">Rezept</option>
-                    <option value="book">Buchrezension</option>
-                    <option value="movie">Filmrezension</option>
-                    <option value="series">Serienrezension</option>
+                    <option value="" data-i18n="contentType.normal">Normaler Beitrag</option>
+                    <option value="recipe" data-i18n="contentType.recipe">Rezept</option>
+                    <option value="book" data-i18n="contentType.book">Buchrezension</option>
+                    <option value="movie" data-i18n="contentType.movie">Filmrezension</option>
+                    <option value="series" data-i18n="contentType.series">Serienrezension</option>
                   </select>
                 </label>
-                <p class="social-hint">Steuert die strukturierten Daten für Suchmaschinen – unabhängig vom Teilen.</p>
+                <p class="social-hint" data-i18n="dialog.contentTypeHint">Steuert die strukturierten Daten für Suchmaschinen – unabhängig vom Teilen.</p>
                 <div id="reviewFields" class="review-fields" hidden>
-                  <label class="social-field"><span>Titel des Werks</span><input id="reviewItemName" type="text" autocomplete="off"></label>
+                  <label class="social-field"><span data-i18n="review.title">Titel des Werks</span><input id="reviewItemName" type="text" autocomplete="off"></label>
                   <div class="review-rating-row">
-                    <label class="social-field"><span>Bewertung</span><input id="reviewRating" type="number" min="0" step="0.5" inputmode="decimal"></label>
-                    <label class="social-field"><span>von</span><input id="reviewBest" type="number" min="1" step="1" inputmode="numeric"></label>
+                    <label class="social-field"><span data-i18n="review.rating">Bewertung</span><input id="reviewRating" type="number" min="0" step="0.5" inputmode="decimal"></label>
+                    <label class="social-field"><span data-i18n="review.ratingOf">von</span><input id="reviewBest" type="number" min="1" step="1" inputmode="numeric"></label>
                   </div>
-                  <label class="social-field" id="reviewAuthorField"><span>Autor oder Autorin</span><input id="reviewAuthor" type="text" autocomplete="off"></label>
-                  <label class="social-field"><span>Link (optional)</span><input id="reviewSameAs" type="text" inputmode="url" autocomplete="off" placeholder="https://…"></label>
+                  <label class="social-field" id="reviewAuthorField"><span data-i18n="review.author">Autor oder Autorin</span><input id="reviewAuthor" type="text" autocomplete="off"></label>
+                  <label class="social-field"><span data-i18n="review.link">Link (optional)</span><input id="reviewSameAs" type="text" inputmode="url" autocomplete="off" placeholder="https://…"></label>
                 </div>
               </section>
 
               <section class="publish-section" id="shareSection">
                 <h3 class="publish-section-title" data-i18n="dialog.sharing">Sharing</h3>
-                <p id="publishDialogSocialHint" class="social-hint" hidden>Bereits versendete Social-Posts werden bei einem Update nicht erneut gesendet. Falls dieser Beitrag noch nie geteilt wurde, wird das beim nächsten Sync nachgeholt.</p>
+                <p id="publishDialogSocialHint" class="social-hint" hidden data-i18n="dialog.alreadySharedHint">Bereits versendete Social-Posts werden bei einem Update nicht erneut gesendet. Falls dieser Beitrag noch nie geteilt wurde, wird das beim nächsten Sync nachgeholt.</p>
                 <label class="social-field">
                   <select id="categorySelect"></select>
                 </label>
@@ -265,7 +265,7 @@ eleventyExcludeFromCollections: true
                      select above; the select itself stays outside so it's always live. -->
                 <div id="shareDetails" class="share-details">
                   <label class="social-field">
-                    <span>Text <span id="socialTextCount" class="social-count"></span></span>
+                    <span><span data-i18n="common.text">Text</span> <span id="socialTextCount" class="social-count"></span></span>
                     <!-- One field visually: the editable text, then the link the
                          template appends pinned read-only at its end. -->
                     <div class="social-text-field">
@@ -274,10 +274,10 @@ eleventyExcludeFromCollections: true
                     </div>
                   </label>
                   <div class="social-field">
-                    <span>Bilder</span>
+                    <span data-i18n="social.images">Bilder</span>
                     <div id="socialImagePicker" class="social-image-picker">
                       <div id="socialImageThumbs" class="social-image-thumbs"></div>
-                      <button id="socialImageGalleryAdd" type="button" class="social-gallery-add">+ aus Mediathek</button>
+                      <button id="socialImageGalleryAdd" type="button" class="social-gallery-add" data-i18n="social.addFromGallery">+ aus Mediathek</button>
                     </div>
                   </div>
                 </div>
@@ -285,8 +285,8 @@ eleventyExcludeFromCollections: true
 
               <div class="publish-dialog-foot">
                 <span class="publish-dialog-foot-spacer"></span>
-                <button id="publishDialogCancel" type="button" class="ghost">Abbrechen</button>
-                <button id="publishDialogConfirm" type="button" class="primary-action">Veröffentlichen</button>
+                <button id="publishDialogCancel" type="button" class="ghost" data-i18n="common.cancel">Abbrechen</button>
+                <button id="publishDialogConfirm" type="button" class="primary-action" data-i18n="dialog.publish">Veröffentlichen</button>
               </div>
             </div>
           </dialog>
@@ -296,30 +296,30 @@ eleventyExcludeFromCollections: true
               <h2 data-i18n="dialog.missingAltText">Missing alt text</h2>
               <p id="missingAltDialogText"></p>
               <menu>
-                <button type="submit" class="ghost" value="no">Trotzdem veröffentlichen</button>
-                <button type="submit" class="primary-action" value="generate">Alt-Text erzeugen</button>
+                <button type="submit" class="ghost" value="no" data-i18n="dialog.publishAnyway">Trotzdem veröffentlichen</button>
+                <button type="submit" class="primary-action" value="generate" data-i18n="dialog.generateAltText">Alt-Text erzeugen</button>
               </menu>
             </form>
           </dialog>
 
           <!-- Media / gallery view -->
-          <section id="mediaView" class="view media-view" aria-label="Medien" hidden>
+          <section id="mediaView" class="view media-view" aria-label="Medien" hidden data-i18n-aria="viewTitle.media">
             <div class="library-head view-head">
               <h1 class="view-title" data-i18n="viewTitle.media">Media</h1>
               <div class="library-tools">
-                <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Bilder durchsuchen">
-                <select id="mediaFilterInput" aria-label="Medienfilter">
-                  <option value="all">Alle</option>
-                  <option value="duplicates">Duplikate</option>
-                  <option value="pending">Ausstehend</option>
+                <input id="mediaSearchInput" class="search" type="search" autocomplete="off" placeholder="Bilder durchsuchen" data-i18n-placeholder="media.searchPlaceholder">
+                <select id="mediaFilterInput" aria-label="Medienfilter" data-i18n-aria="media.filterLabel">
+                  <option value="all" data-i18n="media.filterAll">Alle</option>
+                  <option value="duplicates" data-i18n="media.filterDuplicates">Duplikate</option>
+                  <option value="pending" data-i18n="media.filterPending">Ausstehend</option>
                 </select>
-                <button id="refreshMediaButton" type="button" class="icon-button" aria-label="Aktualisieren">
+                <button id="refreshMediaButton" type="button" class="icon-button" aria-label="Aktualisieren" data-i18n-aria="common.refresh">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>
                 </button>
                 <!-- Icon-only "+", matching Neuer Artikel / Neue Seite rather
                      than spelling out "Medien" — same action, same look, and
                      one less wide element in a row that was already tight. -->
-                <label class="file-button primary-action" aria-label="Medien hochladen" title="Medien hochladen">
+                <label class="file-button primary-action" aria-label="Medien hochladen" title="Medien hochladen" data-i18n-aria="media.uploadMedia" data-i18n-title="media.uploadMedia">
                   <input id="mediaUploadInput" type="file" accept="image/*,video/*,video/quicktime,.mov,.mp4,.m4v,.webm" multiple>
                   <span data-icon="plus" aria-hidden="true"></span>
                 </label>
@@ -327,8 +327,8 @@ eleventyExcludeFromCollections: true
             </div>
             <div id="mediaPickBar" class="media-pick-bar" hidden>
               <span data-icon="image" aria-hidden="true"></span>
-              <span class="media-pick-text">Bild zum Teilen auswählen.</span>
-              <button id="mediaPickCancel" type="button" class="ghost">Abbrechen</button>
+              <span class="media-pick-text" data-i18n="media.pickImageHint">Bild zum Teilen auswählen.</span>
+              <button id="mediaPickCancel" type="button" class="ghost" data-i18n="common.cancel">Abbrechen</button>
             </div>
             <div id="mediaGrid" class="media-grid"></div>
           </section>
@@ -343,36 +343,36 @@ eleventyExcludeFromCollections: true
               <div class="library-tools">
                 <button id="pushButton" type="button" class="primary-action" disabled>
                   <span data-icon="send" aria-hidden="true"></span>
-                  <span id="pushButtonLabel">Veröffentlichen</span>
+                  <span id="pushButtonLabel" data-i18n="dialog.publish">Veröffentlichen</span>
                   <span id="pushButtonCount" class="queue-count" hidden>0</span>
                 </button>
-                <button id="cleanupOrphansButton" type="button" class="ghost danger" hidden aria-label="Unbenutzte verwerfen" title="Unbenutzte verwerfen">
+                <button id="cleanupOrphansButton" type="button" class="ghost danger" hidden aria-label="Unbenutzte verwerfen" title="Unbenutzte verwerfen" data-i18n-aria="queue.discardOrphans" data-i18n-title="queue.discardOrphans">
                   <span data-icon="trash-2" aria-hidden="true"></span>
-                  <span class="queue-action-label">Unbenutzte verwerfen</span>
+                  <span class="queue-action-label" data-i18n="queue.discardOrphans">Unbenutzte verwerfen</span>
                   <span id="cleanupOrphansCount" class="queue-count">0</span>
                 </button>
-                <button id="discardAllButton" type="button" class="ghost danger" disabled aria-label="Alles verwerfen" title="Alles verwerfen">
+                <button id="discardAllButton" type="button" class="ghost danger" disabled aria-label="Alles verwerfen" title="Alles verwerfen" data-i18n-aria="queue.discardAllAction" data-i18n-title="queue.discardAllAction">
                   <span data-icon="trash-2" aria-hidden="true"></span>
-                  <span class="queue-action-label">Alles verwerfen</span>
+                  <span class="queue-action-label" data-i18n="queue.discardAllAction">Alles verwerfen</span>
                 </button>
                 <!-- Einstellungen war ein eigener Nav-Punkt; jetzt Knopf hier,
                      einen Tab weniger in Sidebar/Tab-Leiste. Icon-only wie
                      Aktualisieren/Neuer Artikel in den anderen Werkzeugleisten,
                      nicht als einziger Knopf hier mit Textlabel. -->
-                <button id="queueSettingsButton" type="button" class="icon-button" aria-label="Einstellungen" title="Einstellungen">
+                <button id="queueSettingsButton" type="button" class="icon-button" aria-label="Einstellungen" title="Einstellungen" data-i18n-aria="viewTitle.settings" data-i18n-title="viewTitle.settings">
                   <span data-icon="settings" aria-hidden="true"></span>
                 </button>
               </div>
             </div>
             <p id="publishPlan" class="social-hint" role="status"></p>
-            <h2 class="section-title">Sync</h2>
+            <h2 class="section-title" data-i18n="viewTitle.queue">Sync</h2>
             <ol id="queueList" class="entry-list"></ol>
           </section>
 
           <!-- Stats view: the site's own numbers. All data comes from
                /api/admin/analytics (server-side, session-gated) — it reads the
                D1 database, no third-party service is involved. -->
-          <section id="statsView" class="view stats-view" aria-label="Statistik" hidden>
+          <section id="statsView" class="view stats-view" aria-label="Statistik" hidden data-i18n-aria="viewTitle.stats">
             <div class="library-head view-head stats-head">
               <h1 class="view-title" data-i18n="viewTitle.stats">Statistics</h1>
               <p id="statsRangeLabel" class="stats-range-label"></p>
@@ -387,28 +387,28 @@ eleventyExcludeFromCollections: true
                   <!-- "Tage" spelled out once, on the last preset, is enough
                        to read the row as days — repeating it on every pill
                        was most of why the row scrolled instead of fitting. -->
-                  <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum">
-                    <button type="button" class="stats-range-btn" data-period="1d" aria-label="Heute">1</button>
-                    <button type="button" class="stats-range-btn is-active" data-period="7d" aria-label="7 Tage">7</button>
-                    <button type="button" class="stats-range-btn" data-period="30d" aria-label="30 Tage">30</button>
-                    <button type="button" class="stats-range-btn" data-period="90d" aria-label="90 Tage">90</button>
-                    <button type="button" class="stats-range-btn" data-period="365d">365 Tage</button>
-                    <button id="statsCustomToggle" type="button" class="stats-range-btn" data-period="custom" aria-expanded="false" aria-controls="statsCustom">Zeitraum</button>
+                  <div id="statsRange" class="stats-range" role="group" aria-label="Zeitraum" data-i18n-aria="stats.period">
+                    <button type="button" class="stats-range-btn" data-period="1d" aria-label="Heute" data-i18n-aria="stats.today">1</button>
+                    <button type="button" class="stats-range-btn is-active" data-period="7d" aria-label="7 Tage" data-i18n-aria="stats.days7">7</button>
+                    <button type="button" class="stats-range-btn" data-period="30d" aria-label="30 Tage" data-i18n-aria="stats.days30">30</button>
+                    <button type="button" class="stats-range-btn" data-period="90d" aria-label="90 Tage" data-i18n-aria="stats.days90">90</button>
+                    <button type="button" class="stats-range-btn" data-period="365d" data-i18n="stats.days365">365 Tage</button>
+                    <button id="statsCustomToggle" type="button" class="stats-range-btn" data-period="custom" aria-expanded="false" aria-controls="statsCustom" data-i18n="stats.period">Zeitraum</button>
                   </div>
-                  <div id="statsCustom" class="stats-picker" role="group" aria-label="Freier Zeitraum" hidden>
+                  <div id="statsCustom" class="stats-picker" role="group" aria-label="Freier Zeitraum" hidden data-i18n-aria="stats.customPeriod">
                     <p id="statsCalRange" class="stats-calendar-range" aria-live="polite"></p>
                     <div class="stats-calendar-head">
-                      <button id="statsCalPrev" type="button" class="icon-button" aria-label="Vorheriger Monat"><span data-icon="chevron-left" aria-hidden="true"></span></button>
+                      <button id="statsCalPrev" type="button" class="icon-button" aria-label="Vorheriger Monat" data-i18n-aria="stats.prevMonth"><span data-icon="chevron-left" aria-hidden="true"></span></button>
                       <p id="statsCalMonth" class="stats-calendar-month"></p>
-                      <button id="statsCalNext" type="button" class="icon-button" aria-label="Nächster Monat"><span data-icon="chevron-right" aria-hidden="true"></span></button>
+                      <button id="statsCalNext" type="button" class="icon-button" aria-label="Nächster Monat" data-i18n-aria="stats.nextMonth"><span data-icon="chevron-right" aria-hidden="true"></span></button>
                     </div>
-                    <div class="stats-calendar-weekdays" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
-                    <div id="statsCalGrid" class="stats-calendar-grid" role="grid" aria-label="Tage"></div>
+                    <div class="stats-calendar-weekdays" aria-hidden="true"><span data-i18n="stats.wdMon">Mo</span><span data-i18n="stats.wdTue">Di</span><span data-i18n="stats.wdWed">Mi</span><span data-i18n="stats.wdThu">Do</span><span data-i18n="stats.wdFri">Fr</span><span data-i18n="stats.wdSat">Sa</span><span data-i18n="stats.wdSun">So</span></div>
+                    <div id="statsCalGrid" class="stats-calendar-grid" role="grid" aria-label="Tage" data-i18n-aria="stats.days"></div>
                     <p id="statsCustomHint" class="stats-picker-hint" hidden></p>
-                    <button id="statsCustomApply" type="button" class="primary-action stats-picker-apply" disabled>Anzeigen</button>
+                    <button id="statsCustomApply" type="button" class="primary-action stats-picker-apply" disabled data-i18n="common.show">Anzeigen</button>
                   </div>
                 </div>
-                <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren">
+                <button id="statsRefresh" type="button" class="icon-button" aria-label="Aktualisieren" data-i18n-aria="common.refresh">
                   <span data-icon="refresh-cw" aria-hidden="true"></span>
                 </button>
               </div>

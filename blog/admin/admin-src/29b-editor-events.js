@@ -1,4 +1,4 @@
-import { collections } from "./01-bootstrap.js";
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { syncAutoSlug } from "./06-paths.js";
@@ -95,9 +95,9 @@ export function wireEditorEvents() {
     if (els.docMenuUnpublish) els.docMenuUnpublish.hidden = !published;
     // A page is not an article. The delete confirmation next door already names
     // the kind it is about; the menu that leads to it has to agree.
-    const label = collections[state.current?.collection]?.label || "Eintrag";
+    const label = t(state.current?.collection === "pages" ? "entry.page" : "entry.article");
     const deleteLabel = els.docMenuDelete?.querySelector(".tb-sheet-label");
-    if (deleteLabel) deleteLabel.textContent = `${label} löschen`;
+    if (deleteLabel) deleteLabel.textContent = t("entry.deleteLabel", { label });
     if (els.docMenuDialogTitle) els.docMenuDialogTitle.textContent = label;
     if (!els.docMenuDialog) return;
     // Reset before opening, like every other dialog here. WebKit — i.e. the

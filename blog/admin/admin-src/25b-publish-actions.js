@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { showStatus } from "./03-status.js";
@@ -32,14 +33,14 @@ export async function saveWithProgress(mode, { offerSync = false } = {}) {
   // its own confirmed action behind the "⋯" menu.
   const shouldSync = offerSync || mode === "publish";
   els.saveDialog.classList.remove("is-done", "is-error");
-  els.saveDialogText.textContent = mode === "publish" ? "Veröffentlichung wird vorgemerkt …" : "Wird gespeichert …";
+  els.saveDialogText.textContent = mode === "publish" ? t("save.queuingPublish") : t("settings.saving");
   if (!els.saveDialog.open) els.saveDialog.showModal();
   try {
     const ok = await queueCurrent(mode);
     if (ok) {
       renderEditorMetaLine();
       els.saveDialog.classList.add("is-done");
-      els.saveDialogText.textContent = "In GitHub gespeichert";
+      els.saveDialogText.textContent = t("save.savedToGithub");
       if (shouldSync) {
         if (els.saveDialog.open) els.saveDialog.close();
         await syncAfterSave();
@@ -52,7 +53,7 @@ export async function saveWithProgress(mode, { offerSync = false } = {}) {
     return ok;
   } catch (error) {
     els.saveDialog.classList.add("is-error");
-    els.saveDialogText.textContent = `Fehlgeschlagen: ${error.message}`;
+    els.saveDialogText.textContent = t("save.failed", { error: error.message });
     window.setTimeout(() => { if (els.saveDialog.open) els.saveDialog.close(); }, 2600);
     return false;
   }
@@ -69,7 +70,7 @@ async function syncAfterSave() {
     changes = await loadChanges();
   } catch (error) {
     if (!changes.length) {
-      showStatus(`Synchronisierungsprüfung fehlgeschlagen: ${error.message}`, "error");
+      showStatus(t("queue.syncCheckFailed", { error: error.message }), "error");
       return;
     }
   }

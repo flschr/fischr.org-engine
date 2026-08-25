@@ -1,4 +1,5 @@
 import { buildDocument, splitDocument } from "./09-frontmatter.js";
+import { tn } from "./00a-i18n.js";
 import { draftRepository } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
@@ -23,7 +24,7 @@ function mediaFailureAction(items, error) {
   items.forEach((item) => state.failedMediaUploads.set(item.change.path, item));
   if (!els.mediaFailureDialog || !els.mediaFailureDialogText) return Promise.resolve("later");
   const count = items.length;
-  els.mediaFailureDialogText.textContent = `${count === 1 ? "Ein Medium konnte" : `${count} Medien konnten`} nicht vollständig verarbeitet werden: ${error.message}`;
+  els.mediaFailureDialogText.textContent = tn("dialog.mediaFailureBody", count, { error: error.message });
   els.mediaFailureDialog.returnValue = "later";
   return new Promise((resolve) => {
     const done = () => resolve(els.mediaFailureDialog.returnValue || "later");

@@ -9,7 +9,7 @@ test("an unpublished article always offers the button — it is the only way liv
   const draft = await affordance({ published: false, draftIntent: true });
   assert.equal(draft.visible, true);
   assert.equal(draft.action, "publish");
-  assert.equal(draft.label, "Veröffentlichen");
+  assert.equal(draft.label, "dialog.publish");
 
   // Untouched and unsaved is still worth offering: nothing is live yet, so
   // there is nothing for "no difference" to mean.
@@ -31,7 +31,7 @@ test("a difference brings the button back, from either side", async () => {
   const typing = await affordance({ published: true, hasQueuedChange: false, editorDirty: true });
   assert.equal(typing.visible, true);
   assert.equal(typing.action, "sync-publish");
-  assert.equal(typing.label, "Änderung veröffentlichen");
+  assert.equal(typing.label, "queue.publishChange");
 
   // And an edit already saved into the queue counts too.
   const queued = await affordance({ published: true, hasQueuedChange: true, editorDirty: false });

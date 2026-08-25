@@ -85,7 +85,7 @@ export function renderQueue() {
     els.cleanupOrphansButton.disabled = orphanCount === 0 || publishLocked || mediaProcessing;
     if (els.cleanupOrphansCount) els.cleanupOrphansCount.textContent = String(orphanCount);
   }
-  els.pushButtonLabel.textContent = state.publishInFlight ? "Wird veröffentlicht …" : "Veröffentlichen";
+  els.pushButtonLabel.textContent = state.publishInFlight ? t("queue.publishingInProgress") : t("dialog.publish");
   els.pushButtonCount.textContent = String(state.publishInFlight ? publishCount : selectedCount);
   els.pushButtonCount.hidden = !state.publishInFlight && visibleChanges.length === 0;
 
