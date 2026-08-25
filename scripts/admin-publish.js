@@ -106,7 +106,7 @@ function preparePublishCommit() {
   } else {
     const tree = git(["write-tree"]);
     const changeCount = requestedChangeCount || countChanges(expectedMainSha, expectedDraftSha, managedPaths, auswahl);
-    const message = `Publish ${changeCount} change${String(changeCount) === "1" ? "" : "s"} [admin-publish] [skip ci]`;
+    const message = `Publish ${changeCount} change${String(changeCount) === "1" ? "" : "s"} [admin-publish] [skip ci] [CF-Pages-Skip]`;
     finalCommit = git(["commit-tree", tree, "-p", currentMainSha, "-m", message]);
   }
 
@@ -141,7 +141,7 @@ function pushFinalCommit() {
       finalCommit = git([
         "commit-tree", tree,
         "-p", currentMainSha,
-        "-m", `Publish ${requestedChangeCount || "reviewed"} changes [admin-publish] [skip ci]`
+        "-m", `Publish ${requestedChangeCount || "reviewed"} changes [admin-publish] [skip ci] [CF-Pages-Skip]`
       ]);
       console.log(`Preserved concurrent automation state on ${publishBranch}.`);
     }
