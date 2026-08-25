@@ -228,8 +228,14 @@ export function feedReader(userAgent = "") {
 // GoatCounter-Import, ein bloßes Label ohne Adresse ("Google"). Ohne diese
 // Zusammenführung zählt "google.com", die App-Kennung und das Label als drei
 // Quellen in der Liste, wo es eine ist.
+//
+// Die Mastodon-App bekommt bewusst keine Instanz zugeordnet: Ihr Referrer
+// nennt nie, von welcher Instanz der Klick kam — das gibt die App gar nicht
+// mit, anders als deren Weboberfläche. "mastodon.social" wäre geraten. Die
+// Projektadresse benennt die Quelle ehrlich, ohne eine Instanz zu behaupten.
 export const APP_REFERRER_HOSTS = {
-  "com.google.android.googlequicksearchbox": "google.com"
+  "com.google.android.googlequicksearchbox": "google.com",
+  "org.joinmastodon.android": "joinmastodon.org"
 };
 
 export function normalizeRefHost(host) {

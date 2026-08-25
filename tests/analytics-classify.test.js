@@ -88,13 +88,27 @@ test("Google-Varianten werden zu einer Quelle zusammengeführt", () => {
   assert.equal(analytics.normalizeRefHost("google.co.uk"), "google.com");
   // Andere Quellen bleiben unangetastet, auch wenn sie wie eine Reverse-Domain
   // aussehen — nur bekannte App-Kennungen werden aufgelöst.
-  assert.equal(analytics.normalizeRefHost("org.joinmastodon.android"), "org.joinmastodon.android");
+  assert.equal(analytics.normalizeRefHost("org.example.otherapp"), "org.example.otherapp");
   assert.equal(analytics.normalizeRefHost(""), "");
   // Das Muster darf nur echte Google-Domains treffen. Ohne die Begrenzung auf
   // kurze TLD-Teile matchte es auch eine fremde Domain, die zufällig mit
   // "google." beginnt.
   assert.equal(analytics.normalizeRefHost("google.com.evilxtracker.com"), "google.com.evilxtracker.com");
   assert.equal(analytics.normalizeRefHost("googleanalytics.com"), "googleanalytics.com");
+});
+
+test("die Mastodon-App wird auf die Projektadresse abgebildet, nicht auf eine Instanz", () => {
+  assert.equal(analytics.normalizeRefHost("org.joinmastodon.android"), "joinmastodon.org");
+  assert.deepEqual(
+    analytics.referrer("android-app://org.joinmastodon.android/https/mastodon.social/@example", "mysite.example"),
+    { host: "joinmastodon.org", path: "/https/mastodon.social/@example" }
+  );
+  // Eine echte Instanz-Weboberfläche bleibt eine eigene, echte Quelle — nur
+  // der App-Referrer, der keine Instanz nennt, wird umgeleitet.
+  assert.deepEqual(analytics.referrer("https://mastodon.social/@example/12345", "mysite.example"), {
+    host: "mastodon.social",
+    path: "/@example/12345"
+  });
 });
 
 test("Pfade werden vereinheitlicht, damit eine Seite eine Zeile bleibt", () => {

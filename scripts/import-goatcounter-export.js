@@ -75,9 +75,12 @@ function normalizePath(value) {
 
 // Dieselbe Zusammenführung wie in der Live-Zählung (functions/_analytics.js,
 // normalizeRefHost): Eine Landes-TLD von Google und das GoatCounter-Label
-// "Google" ohne Adresse sind dieselbe Quelle wie "google.com".
+// "Google" ohne Adresse sind dieselbe Quelle wie "google.com". Die Mastodon-
+// App bekommt keine Instanz zugeordnet — ihr Referrer nennt nie, welche
+// Instanz den Klick gebracht hat.
 const APP_REFERRER_HOSTS = {
-  "com.google.android.googlequicksearchbox": "google.com"
+  "com.google.android.googlequicksearchbox": "google.com",
+  "org.joinmastodon.android": "joinmastodon.org"
 };
 
 function normalizeRefHost(host) {
