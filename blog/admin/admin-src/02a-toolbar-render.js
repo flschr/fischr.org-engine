@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { MORE_COMMANDS, PRIMARY_COMMANDS, icon } from "./02-toolbar.js";
@@ -24,13 +25,16 @@ function commandButton(command, { className, withLabel = false }) {
   button.type = "button";
   button.className = className;
   button.dataset.command = command.name;
-  button.title = command.title;
-  button.setAttribute("aria-label", command.title);
+  button.title = t(command.titleKey);
+  button.setAttribute("aria-label", t(command.titleKey));
+  button.dataset.i18nTitle = command.titleKey;
+  button.dataset.i18nAria = command.titleKey;
   button.innerHTML = icon(command.icon);
   if (withLabel) {
     const label = document.createElement("span");
     label.className = "tb-sheet-label";
-    label.textContent = command.title;
+    label.textContent = t(command.titleKey);
+    label.dataset.i18n = command.titleKey;
     button.append(label);
   }
   // Formatting controls must not steal the browser selection from either
@@ -60,8 +64,10 @@ export function renderFormatToolbar() {
   more.type = "button";
   more.className = "tb-btn tb-more";
   more.dataset.command = "more";
-  more.title = "Weitere Einfügungen";
-  more.setAttribute("aria-label", "Weitere Einfügungen");
+  more.title = t("dialog.moreInsertions");
+  more.setAttribute("aria-label", t("dialog.moreInsertions"));
+  more.dataset.i18nTitle = "dialog.moreInsertions";
+  more.dataset.i18nAria = "dialog.moreInsertions";
   more.setAttribute("aria-haspopup", "dialog");
   more.innerHTML = icon("plus");
   more.addEventListener("mousedown", (event) => event.preventDefault());

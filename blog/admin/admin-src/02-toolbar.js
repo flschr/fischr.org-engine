@@ -27,31 +27,31 @@ export const ICON = {
 export const PRIMARY_COMMANDS = [
   {
     name: "bold",
-    title: "Fett (⌘B)",
+    titleKey: "toolbar.boldTitle",
     icon: "bold",
     run: (ed) => ed.toggleWrap("**")
   },
   {
     name: "italic",
-    title: "Kursiv (⌘I)",
+    titleKey: "toolbar.italicTitle",
     icon: "italic",
     run: (ed) => ed.toggleWrap("*")
   },
   {
     name: "link",
-    title: "Link (⌘K)",
+    titleKey: "toolbar.linkTitle",
     icon: "link",
     run: (ed) => insertLinkFromDialog(ed)
   },
   {
     name: "media",
-    title: "Bild oder Video einfügen",
+    titleKey: "toolbar.mediaTitle",
     icon: "image",
     run: () => els.imageUploadInput.click()
   },
   {
     name: "alt-text",
-    title: "Alt-Texte erzeugen",
+    titleKey: "toolbar.altTextTitle",
     icon: "sparkles",
     run: () => generateMissingAltTexts()
   }
@@ -60,37 +60,37 @@ export const PRIMARY_COMMANDS = [
 export const MORE_COMMANDS = [
   {
     name: "code",
-    title: "Code",
+    titleKey: "toolbar.codeTitle",
     icon: "code",
     run: (ed) => ed.toggleWrap("`")
   },
   {
     name: "strike",
-    title: "Durchgestrichen",
+    titleKey: "toolbar.strikeTitle",
     icon: "strikethrough",
     run: (ed) => ed.toggleWrap("~~")
   },
   {
     name: "highlight",
-    title: "Markieren",
+    titleKey: "toolbar.highlightTitle",
     icon: "highlighter",
     run: (ed) => ed.toggleWrap("==")
   },
   {
     name: "footnote",
-    title: "Fußnote",
+    titleKey: "toolbar.footnoteTitle",
     icon: "superscript",
     run: (ed) => insertFootnoteFromDialog(ed)
   },
   {
     name: "admonition",
-    title: "Hinweis einfügen",
+    titleKey: "toolbar.admonitionTitle",
     icon: "circle-alert",
     run: (ed) => insertAdmonitionFromDialog(ed)
   },
   {
     name: "gpx",
-    title: "GPX-Tour hochladen",
+    titleKey: "toolbar.gpxTitle",
     icon: "route",
     run: () => els.gpxUploadInput.click()
   }

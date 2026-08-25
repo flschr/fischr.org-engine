@@ -111,9 +111,9 @@ export function renderMedia() {
     const copyButton = document.createElement("button");
     copyButton.type = "button";
     copyButton.className = "ghost";
-    copyButton.textContent = "Kopieren";
-    copyButton.title = "Markdown kopieren";
-    copyButton.setAttribute("aria-label", "Markdown kopieren");
+    copyButton.textContent = t("media.copyLabel");
+    copyButton.title = t("media.copyMarkdownTitle");
+    copyButton.setAttribute("aria-label", t("media.copyMarkdownTitle"));
     copyButton.addEventListener("click", async () => {
       copyButton.disabled = true;
       try {

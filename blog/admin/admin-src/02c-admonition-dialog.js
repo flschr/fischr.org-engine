@@ -1,3 +1,4 @@
+import { t } from "./00a-i18n.js";
 import { ensureEditor } from "./17-editor.js";
 
 export async function insertAdmonitionFromDialog(editor = ensureEditor()) {
@@ -29,14 +30,14 @@ function askAdmonitionOptions(selectedText = "") {
     form.method = "dialog";
 
     const heading = document.createElement("h2");
-    heading.textContent = "Hinweis einfügen";
+    heading.textContent = t("toolbar.admonitionTitle");
 
     const typeLabel = document.createElement("label");
     typeLabel.className = "dialog-field";
     const typeText = document.createElement("span");
-    typeText.textContent = "Typ";
+    typeText.textContent = t("dialog.admonitionType");
     const select = document.createElement("select");
-    select.setAttribute("aria-label", "Typ");
+    select.setAttribute("aria-label", t("dialog.admonitionType"));
     for (const { marker, cmsLabel } of window.RWAdmonitions.types) {
       const option = document.createElement("option");
       option.value = marker;
@@ -48,11 +49,11 @@ function askAdmonitionOptions(selectedText = "") {
     const titleLabel = document.createElement("label");
     titleLabel.className = "dialog-field";
     const titleText = document.createElement("span");
-    titleText.textContent = "Titel";
+    titleText.textContent = t("common.title");
     const input = document.createElement("input");
     input.type = "text";
-    input.setAttribute("aria-label", "Titel");
-    input.placeholder = "Gut zu wissen";
+    input.setAttribute("aria-label", t("common.title"));
+    input.placeholder = t("dialog.admonitionPlaceholder");
     input.required = true;
     // A selection already has to be turned into a single line for the title
     // field regardless — collapse newlines/whitespace the same way here.
@@ -63,11 +64,11 @@ function askAdmonitionOptions(selectedText = "") {
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "ghost";
-    cancel.textContent = "Abbrechen";
+    cancel.textContent = t("common.cancel");
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.className = "primary-action";
-    submit.textContent = "Einfügen";
+    submit.textContent = t("common.insert");
     menu.append(cancel, submit);
 
     let resolved = false;
