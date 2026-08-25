@@ -47,7 +47,7 @@ export async function getBlobText(sha) {
 // Was an einem Blob wiederholt gebraucht wird. Der Entwurfszustand steht hier, weil er so
 // unveränderlich ist wie der Inhalt zu seiner sha — und weil ihn sonst jede Zeile der
 // Warteschlange neu aus dem Frontmatter lesen müsste.
-function blobNotiz(content) {
+export function blobNotiz(content) {
   const fields = splitDocument(content).fields || {};
   return { content, title: String(fields.title || "").trim(), draft: Boolean(fields.draft) };
 }
@@ -151,6 +151,14 @@ export function diffChange(path, kind, sha, isNew) {
   };
 }
 
+// The one place that labels a batch of changes with their public-facing `aktion` — shared by
+// getAllChanges() below and refreshChangedPaths() (04a-draft-writes.js) so the two can't drift
+// apart on what counts as classified, the way a hand-copied second call site once did.
+export async function classifyChanges(changes, mainMap) {
+  await beschrifteAktionen(changes, mainMap, { index: await loadPublishedPostsIndex(), istEntwurf });
+  return changes;
+}
+
 // The pending change set = the diff between the drafts and main trees.
 export async function getAllChanges() {
   if (!hasGithubAccess()) return [];
@@ -181,7 +189,7 @@ export async function getAllChanges() {
       if (title) change.label = title;
     }));
 
-  await beschrifteAktionen(changes, mainMap, { index: await loadPublishedPostsIndex(), istEntwurf });
+  await classifyChanges(changes, mainMap);
 
   changes.sort((a, b) => a.path.localeCompare(b.path));
   state.changeCache = { key: cacheKey, changes };

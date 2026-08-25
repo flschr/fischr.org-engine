@@ -60,8 +60,12 @@ test("video processing locks publishing and every destructive queue action", asy
   await expect(page.locator("#pushButton")).toBeDisabled();
   await expect(page.locator("#discardAllButton")).toBeDisabled();
   await expect(page.locator("#cleanupOrphansButton")).toBeDisabled();
+  // Just the video upload's own card: the new post itself is a never-published
+  // draft (only its title was filled in, "Speichern" was never asked to publish),
+  // and a draft that was never public changes nothing on the blog — the queue
+  // no longer shows it (04c-queue-actions.js, OHNE_WIRKUNG).
   const discardButtons = page.locator(".queue-discard");
-  await expect(discardButtons).toHaveCount(2);
+  await expect(discardButtons).toHaveCount(1);
   expect(await discardButtons.evaluateAll((buttons) => buttons.every((button) => button.disabled))).toBe(true);
 
   releaseWorkflow();

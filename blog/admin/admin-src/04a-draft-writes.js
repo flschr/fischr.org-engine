@@ -2,7 +2,7 @@ import { renameOriginsPath } from "./00-konstanten.js";
 import { draftRepository, github } from "./01-bootstrap.js";
 import { preparePrunedRenameOriginsChange } from "./01a-rename-origins.js";
 import { state } from "./01c-state.js";
-import { blobShaMap, blobTextCache, cacheBlobText, diffChange, fetchMainTree, getAllChanges, getBlobText, isManagedPath } from "./04-drafts.js";
+import { blobNotiz, blobShaMap, blobTextCache, cacheBlobText, classifyChanges, diffChange, fetchMainTree, getAllChanges, getBlobText, isManagedPath } from "./04-drafts.js";
 import { fetchTree, hasGithubAccess } from "./05-github-auth.js";
 import { refreshMediaReferenceIndex } from "./15a-media-reference-index.js";
 import { renderSyncState } from "./26d-publish-sync.js";
@@ -61,7 +61,10 @@ export async function putChange(change) {
   await patchDraftTree(result.entries, result);
   state.changeCache = null;
   change.sha = result.blobSha;
-  cacheBlobText(result.blobSha, { content: change.content, title: String(change.label || "").trim() });
+  // blobNotiz(), not a hand-rolled { content, title } — a manual copy here once left out
+  // `draft`, so istEntwurf() read every freshly saved post as published (undefined is falsy),
+  // and a never-published draft showed up in the sync queue as ready to publish.
+  cacheBlobText(result.blobSha, blobNotiz(change.content));
   await refreshChangedPaths(result.entries.map((entry) => entry.path)).catch(() => {});
   return result.commitSha;
 }
@@ -71,15 +74,22 @@ export async function refreshChangedPaths(paths) {
   if (!state.tree?.tree) await fetchTree(true);
   const mainMap = blobShaMap(await fetchMainTree(false));
   const draftMap = blobShaMap(state.tree);
+  // Collected, not written to state.changes yet — classifyChanges() below needs to run to
+  // completion first. Writing each change to state.changes as it's built (as an earlier version
+  // of this function did) exposed a window where a concurrent read (a background publish-status
+  // poll, a second overlapping save) could see an unclassified change and — via the `?? "medien"`
+  // fallback in visibleQueueChanges() — treat it as effective before it actually was.
+  const removedPaths = [];
+  const updated = [];
   for (const path of changed) {
     if (!isManagedPath(path)) {
-      state.changes.delete(path);
+      removedPaths.push(path);
       continue;
     }
     const draftSha = draftMap.get(path);
     const mainSha = mainMap.get(path);
     if (draftSha === mainSha) {
-      state.changes.delete(path);
+      removedPaths.push(path);
       continue;
     }
     const change = diffChange(path, draftSha ? "upsert" : "delete", draftSha || mainSha, Boolean(draftSha && !mainSha));
@@ -87,8 +97,20 @@ export async function refreshChangedPaths(paths) {
       change.content = await getBlobText(change.sha);
       change.label = blobTextCache.get(change.sha)?.title || change.label;
     }
-    state.changes.set(path, change);
+    updated.push(change);
   }
+  if (updated.length) {
+    try {
+      await classifyChanges(updated, mainMap);
+    } catch (error) {
+      // A page whose published-branch blob isn't cached yet needs a real GitHub fetch to
+      // classify (loadPublishedPostsIndex only covers posts) — if that fetch fails, still show
+      // the save: an unclassified change is what this function always risked showing before it
+      // classified anything at all, not a new, worse failure than swallowing the whole refresh.
+    }
+  }
+  removedPaths.forEach((path) => state.changes.delete(path));
+  updated.forEach((change) => state.changes.set(change.path, change));
   const changes = Array.from(state.changes.values()).sort((a, b) => a.path.localeCompare(b.path));
   await refreshMediaReferenceIndex(null, changes);
   renderSyncState(changes);

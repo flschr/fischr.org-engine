@@ -1,10 +1,10 @@
-import { buildDocument, splitDocument } from "./09-frontmatter.js";
+import { buildDocument } from "./09-frontmatter.js";
 import { tn } from "./00a-i18n.js";
 import { draftRepository } from "./01-bootstrap.js";
 import { els } from "./01b-elements.js";
 import { state } from "./01c-state.js";
 import { setBusy, showStatus } from "./03-status.js";
-import { blobShaMap, cacheBlobText, fetchMainTree, getBlobText } from "./04-drafts.js";
+import { blobNotiz, blobShaMap, cacheBlobText, fetchMainTree, getBlobText } from "./04-drafts.js";
 import { commitToDrafts, putChange, refreshChangedPaths } from "./04a-draft-writes.js";
 import { fetchTree } from "./05-github-auth.js";
 import { syncEditorFromVisible } from "./17-editor.js";
@@ -85,10 +85,10 @@ async function discardFailedMediaUploads(items) {
           }
           const documentBlob = await draftRepository.createBlob(content);
           committedDocumentSha = documentBlob.sha;
-          cacheBlobText(documentBlob.sha, {
-            content,
-            title: String(splitDocument(content).fields?.title || "").trim()
-          });
+          // blobNotiz(), not a hand-rolled { content, title } — the same fix as putChange()
+          // (04a-draft-writes.js): a manual copy here would drop `draft` too, and this path
+          // rewrites an existing draft article's own document.
+          cacheBlobText(documentBlob.sha, blobNotiz(content));
           entries.push({ path: storedPath, mode: "100644", type: "blob", sha: documentBlob.sha });
           expectedBlobs[storedPath] = documentSha;
         }

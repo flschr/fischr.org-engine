@@ -35,7 +35,16 @@
   cursor: pointer;
   user-select: none;
 }
-.queue-select input { cursor: pointer; accent-color: var(--accent); }
+/* The global input reset (01-controls.css) already excludes checkboxes/radios from its
+   appearance:none — this just sizes it, same as .social-check input in 03-editor-meta.css. */
+.queue-select input {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
 .queue-select:has(input:disabled) { cursor: default; opacity: 0.55; }
 
 /* Ein Medium, das ein gewählter Artikel braucht, wird benannt statt zur Wahl gestellt — ohne

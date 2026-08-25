@@ -46,6 +46,31 @@ test("ein nie veröffentlichter Entwurf steht nicht in der Warteschlange", async
   await expect(page.locator("#syncButton")).toHaveAttribute("aria-label", "0 Änderungen veröffentlichen");
 });
 
+// Der Fall oben lädt den Entwurf über einen vollen Neuladen (getAllChanges/beschrifteAktionen).
+// Wer im Editor neu anlegt und speichert, nimmt refreshChangedPaths — einen zweiten Pfad, der nur
+// den geänderten Pfad aktualisiert, ohne die Seite neu zu laden. Ohne eigene Beschriftung blieb
+// change.aktion dort undefiniert, und die Warteschlange behandelt ein fehlendes aktion wie
+// „medien" — also wirksam (26d-publish-sync.js, visibleQueueChanges).
+test("ein frisch im Editor gespeicherter Entwurf steht ohne Neuladen ebenso wenig in der Warteschlange", async ({ page }) => {
+  await page.unroute("**/api/admin/auth/session");
+  await mockAuthenticatedGithub(page, [], [], { mainTree: [] });
+  await page.goto("/admin/");
+  await expect(page.locator("#connectionState")).toHaveText("verbunden");
+
+  await page.locator("#newEntryButtonLib").click();
+  await page.getByPlaceholder("Titel").fill("Frischer Entwurf");
+  await page.getByRole("navigation", { name: "Artikel" }).getByRole("button", { name: "Speichern" }).click();
+  await expect(page.locator("#saveDialogText")).toContainText("In GitHub gespeichert");
+  await expect(page.locator("#saveDialog")).toBeHidden();
+
+  await page.locator("#syncButton").evaluate((button) => button.click());
+  await expect(page.locator("#queueView")).toBeVisible();
+
+  await expect(page.locator(".queue-card")).toHaveCount(0);
+  await expect(page.locator("#syncButton")).not.toHaveClass(/has-changes/);
+  await expect(page.locator("#syncButton")).toHaveAttribute("aria-label", "0 Änderungen veröffentlichen");
+});
+
 test("aus einem Entwurf wird beim Freigeben ein Veröffentlichen", async ({ page }) => {
   const pfad = "blog/posts/2026-01-01-entwurf.md";
   await queueMit(page, {

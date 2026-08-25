@@ -24,6 +24,12 @@ import { renderQueue } from "./27c-queue-render.js";
 export function visibleQueueChanges(changes) {
   const allChanges = changes || Array.from(state.changes.values());
   const ohnePoster = allChanges.filter((change) => !isVideoPosterPath(change.path));
+  // `?? "medien"` (i.e. wirksam) is meant for the ordinary case, where every entry already
+  // carries a real `aktion` — every writer of state.changes now classifies through
+  // classifyChanges() (04-drafts.js) before inserting. It only falls back here if that
+  // classification itself failed (04a-draft-writes.js's refreshChangedPaths degrades to an
+  // unclassified entry rather than dropping the save entirely) — the same guess this file made
+  // before either writer classified anything at all.
   const visibleChanges = ohnePoster.filter((change) => istWirksam(change.aktion ?? "medien"));
   if (visibleChanges.length || !allChanges.length) return visibleChanges;
 

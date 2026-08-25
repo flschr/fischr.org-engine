@@ -80,7 +80,18 @@ a.ghost { text-decoration: none; }
    read as one control, not three sizes of it. */
 .file-button svg { width: 1.15rem; height: 1.15rem; }
 
-input,
+/* :not(:where(...)) — none of these properties (full-width, text-input padding/border/
+   background, appearance:none) belong on a checkbox or radio. This reset stripped both down to
+   a blank box with no checkmark twice already (.social-check in 03-editor-meta.css, .queue-select
+   in 02-queue-progress.css both had to patch it back); excluding the two input types here instead
+   of the next consumer having to patch it a third time. The :where() wrapper matters: a plain
+   `:not([type="checkbox"])` raises this selector's specificity above plain-element rules like
+   `.file-button input` (04-publish-dialog.css) that rely on losing to a *more* specific selector
+   later — with that wrapper gone once, this rule started winning over the file input's
+   visually-hidden 1px sizing and stretched #mediaUploadInput to width:100%, overflowing the page.
+   :where() itself always contributes zero specificity, keeping this exactly as specific as the
+   `input` it replaces. */
+input:not(:where([type="checkbox"], [type="radio"])),
 select,
 textarea {
   width: 100%;

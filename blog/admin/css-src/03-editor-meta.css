@@ -95,22 +95,14 @@
   color: var(--ink);
   cursor: pointer;
 }
-/* The global input reset sets appearance:none, which strips a checkbox down to a
-   blank bordered box with no checkmark. Restore real checkbox rendering with a
-   clear checked state for every checkbox in the social panels/editor. */
+/* The global input reset (01-controls.css) already excludes checkboxes/radios from its
+   appearance:none — this just sizes them to match the social panels/editor. */
 .social-check input[type="checkbox"],
 .social-inline-check input[type="checkbox"] {
-  appearance: auto;
-  -webkit-appearance: checkbox;
   width: 1.15rem;
   height: 1.15rem;
-  min-height: 0;
   flex: 0 0 auto;
   margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
   accent-color: var(--accent);
   cursor: pointer;
 }

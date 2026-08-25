@@ -4,7 +4,7 @@
   /* iOS auto-zooms into any focused control whose font-size is below 16px (the
      body runs at 15px), and that zoom is what let the publish sheet/page pan
      sideways on focus. Pin form controls to 16px on touch-sized screens. */
-  input, select, textarea,
+  input:not(:where([type="checkbox"], [type="radio"])), select, textarea,
   .setup-card input { font-size: 16px; }
   /* ---- Bottom tab bar ---------------------------------------------------
    * Four destinations do not need a full-screen drawer. The sidebar becomes a
@@ -118,8 +118,8 @@
   .sync-button { position: relative; }
   .sync-button .sync-count {
     position: absolute;
-    top: 0.05rem;
-    left: calc(50% + 0.35rem);
+    top: 0.2rem;
+    left: calc(50% + 0.55rem);
     min-width: 1rem;
     min-height: 1rem;
     padding: 0 0.3rem;
@@ -131,17 +131,22 @@
   .sync-button.has-changes .sync-count { display: inline-flex; }
   .sync-button.has-changes { color: var(--accent-ink); }
   .sync-button.has-changes > [data-icon] { color: var(--accent); }
-  /* Same inset rounded pill as .nav-link.is-active above — placed after
-     has-changes so the "you are here" marker wins the background/color tie
-     over the weaker pending-changes tint when both apply at once. The count
-     badge itself is untouched, so it still shows on top of the filled mark. */
-  .sync-button.is-active {
-    background: var(--accent);
-    color: var(--accent-contrast);
-    margin: 0.3rem 0.25rem;
-    border-radius: var(--radius);
-  }
-  .sync-button.is-active > [data-icon] { color: var(--accent-contrast); }
+  /* The pale-yellow tint (background: var(--accent-weak), 01a-shell.css) still
+     applies here at its desktop border-radius: 0 — same inset pill as .is-active
+     below, so it stops filling the whole square tab column. */
+  .sync-button.has-changes:not(.is-active) { margin: 0.3rem 0.25rem; border-radius: var(--radius); }
+  /* Same inset rounded pill as .nav-link.is-active above — after has-changes so
+     "you are here" wins the shape tie when both apply. Shape and color are split:
+     is-publishing (01a-shell.css) must still win the color while active, on the
+     pill itself and its icon, not just the badge below — a publish started from
+     the open Sync tab is the ordinary way to reach this combination. */
+  .sync-button.is-active { margin: 0.3rem 0.25rem; border-radius: var(--radius); }
+  .sync-button.is-active:not(.is-publishing) { background: var(--accent); color: var(--accent-contrast); }
+  .sync-button.is-active:not(.is-publishing) > [data-icon] { color: var(--accent-contrast); }
+  /* Default badge is black-on-yellow; on the active tab the pill itself turns
+     solid black (var(--accent) above), so invert the badge to stay visible.
+     Same :not(.is-publishing) guard as above, same reason. */
+  .sync-button.is-active:not(.is-publishing) .sync-count { background: var(--accent-contrast); color: var(--accent); }
 
   /* Everything fixed to the bottom edge floats over the content, so the
      workspace and the status toast both end above it. */
